@@ -2,20 +2,23 @@ import { Hono } from "hono";
 import { readAaveReserves } from "./aave.js";
 import { liveCalendar } from "./calendar-impl.js";
 import { appendSnapshot } from "./d1.js";
-import type { Env } from "./env.js";
+import { rpcUrl, type Env } from "./env.js";
 import { renderPage } from "./html.js";
+import { KV_LATEST, storeLatest } from "./kv-latest.js";
 import { discoverB20Markets, readMarkets } from "./morpho.js";
 import { createViemReader } from "./reader.js";
 import { buildSnapshot, type Snapshot } from "./snapshot.js";
 
-const KV_LATEST = "latest";
 const KV_MORPHO = "morpho-markets";
 const KV_AAVE = "aave-reserves";
+/** Venue reads are cached in KV on request; 15 minutes keeps a crawler from spending the free tier's 1,000 KV writes a day. */
+const VENUE_CACHE_SECONDS = 900;
 
 async function takeSnapshot(env: Env, persist: boolean): Promise<Snapshot> {
-  const reads = await createViemReader(env.BASE_RPC_URL).read();
+  const reads = await createViemReader(rpcUrl(env)).read();
   const snapshot = buildSnapshot(reads, liveCalendar, Math.floor(Date.now() / 1000));
-  await env.SNAPSHOTS.put(KV_LATEST, JSON.stringify(snapshot));
+  const stored = await storeLatest(env.SNAPSHOTS, snapshot);
+  console.log(`snapshot block=${snapshot.block} session=${snapshot.session.state} kv=${stored.reason}`);
   if (persist) {
     try {
       await appendSnapshot(env.DB, snapshot);
@@ -75,12 +78,12 @@ app.get("/v1/sessions", async (c) => {
 });
 
 app.get("/v1/venues/morpho/markets", async (c) => {
-  const rows = await cachedJson(c.env, KV_MORPHO, 300, async () => readMarkets(c.env.BASE_RPC_URL, await discoverB20Markets()));
+  const rows = await cachedJson(c.env, KV_MORPHO, VENUE_CACHE_SECONDS, async () => readMarkets(rpcUrl(c.env), await discoverB20Markets()));
   return c.json({ chainId: 8453, count: rows.length, markets: rows });
 });
 
 app.get("/v1/venues/aave/positions", async (c) => {
-  const reserves = await cachedJson(c.env, KV_AAVE, 300, () => readAaveReserves(c.env.BASE_RPC_URL));
+  const reserves = await cachedJson(c.env, KV_AAVE, VENUE_CACHE_SECONDS, () => readAaveReserves(rpcUrl(c.env)));
   // TODO(M5 indexer): scan Borrow events on the spoke, then getUserAccountData per borrower.
   return c.json({ chainId: 8453, spoke: "MAG7", reserves, borrowers: { status: "not_indexed_yet" } });
 });

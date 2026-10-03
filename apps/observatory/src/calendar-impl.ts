@@ -9,5 +9,5 @@ export const liveCalendar: CalendarPort = {
     const n = cal.nextTransition(t, 14);
     return { to: n.to as Session, at: typeof n.at === "number" && n.at > 0 ? n.at : null };
   },
-  source: (cal as { CALENDAR_SOURCE?: string }).CALENDAR_SOURCE ?? "NYSE 2026 scheduled calendar (@boundline/calendar)",
+  source: `${cal.NYSE_2026.source} via @boundline/calendar`,
 };

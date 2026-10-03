@@ -43,13 +43,51 @@ mainnet on 3 Oct 2026 (block 52117568) with a stubbed reader and calendar.
 
 ## Deploy
 
-1. `wrangler kv namespace create SNAPSHOTS` and put the id into `wrangler.jsonc`.
-2. `wrangler d1 create boundline-observatory`, put the id into `wrangler.jsonc`, then
-   `wrangler d1 migrations apply boundline-observatory --remote`.
-3. `wrangler r2 bucket create boundline-observatory-exports`.
-4. `wrangler deploy`. Add the custom domain `boundline.xyz` in the Workers dashboard (or the
-   `routes` block noted in `wrangler.jsonc`) once the zone is on the account.
-5. Optional: set `BASE_RPC_URL` to a CDP Node RPC URL as a secret for higher read limits.
+Live on the team's Cloudflare account at **https://boundline-observatory.papermind-ai.workers.dev**
+(deployed 3 Oct 2026 from this directory with `pnpm exec wrangler deploy`; the cron `* * * * *` is
+attached). Resources, all bound in `wrangler.jsonc`:
 
-The cron fires every minute. The first snapshot after deploy is computed on demand by the first
-request if the cron has not run yet.
+| Resource | Name | Id |
+| --- | --- | --- |
+| KV namespace (`SNAPSHOTS`) | SNAPSHOTS | `aa7d8b27e629463da60008acfeccc30d` |
+| D1 database (`DB`) | boundline-observatory | `dce1418d-1356-40ba-b6a8-5915ddbd95a7` (APAC) |
+
+Redeploy:
+
+```sh
+pnpm --filter @boundline/chain build && pnpm --filter @boundline/calendar build
+cd apps/observatory
+pnpm exec wrangler d1 migrations apply boundline-observatory --remote   # only when migrations/ changed
+pnpm exec wrangler deploy
+```
+
+First-time setup on another account: `wrangler kv namespace create SNAPSHOTS` and
+`wrangler d1 create boundline-observatory`, put both ids into `wrangler.jsonc`, apply the migration,
+deploy. Add the custom domain `boundline.xyz` in the Workers dashboard (or the `routes` block noted in
+`wrangler.jsonc`) once the zone is on the account.
+
+### RPC
+
+`BASE_RPC_URL` (a var in `wrangler.jsonc`) is a comma-separated list read through a viem fallback
+transport, in order: publicnode, dRPC, Blast, then `mainnet.base.org`. Base's own public endpoint answers
+"over rate limit" to Cloudflare's shared egress, which took the first deploy down on every snapshot, so it
+is last. For a keyed endpoint (CDP Node, Alchemy) set the secret and it is tried first:
+
+```sh
+pnpm exec wrangler secret put BASE_RPC_URL_PRIVATE   # paste the full URL with the key
+```
+
+### Free-tier budget
+
+The Worker is sized for the Workers Free plan. The cron fires 1,440 times a day while free KV allows
+1,000 writes a day, so `src/kv-latest.ts` rewrites the `latest` key only when something a reader must
+see at once has changed (session state, a feed print, the frozen flag, registry or issuer pauses,
+multipliers, a scheduled corporate action, read errors) or when the stored copy is 10 minutes old.
+Block number, feed age and the DEX price therefore lag by up to 10 minutes on the page and under `/v1`
+when nothing else moves; D1 still receives every minute's rows (10 a minute, 14,400 a day, inside the
+100,000-a-day free write limit). The two venue routes cache in KV for 15 minutes for the same reason.
+
+R2 is not bound: the deploy login has no r2 scope and nothing exports yet. `Env.EXPORTS` is optional;
+re-add the binding in `wrangler.jsonc` when exports land.
+
+The first snapshot after deploy is computed on demand by the first request if the cron has not run yet.
