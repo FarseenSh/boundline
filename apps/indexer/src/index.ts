@@ -29,6 +29,16 @@ export async function tick(env: Env): Promise<void> {
   if (summary.errors.length > 0) console.error(`tick errors: ${summary.errors.join(" | ")}`);
 }
 
+/** Fallback trigger: another Worker's cron calls this through a service binding with the shared TICK_TOKEN. */
+app.post("/__tick", async (c) => {
+  const token = c.env.TICK_TOKEN;
+  const auth = c.req.header("authorization") ?? "";
+  if (!token || auth !== `Bearer ${token}`) return c.json({ error: "unauthorized" }, 401);
+  const started = Date.now();
+  await tick(c.env);
+  return c.json({ ok: true, ms: Date.now() - started });
+});
+
 export default {
   fetch: app.fetch,
   async scheduled(_controller: ScheduledController, env: Env, ctx: ExecutionContext): Promise<void> {

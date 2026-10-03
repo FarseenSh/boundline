@@ -7,6 +7,9 @@ export interface Env {
   BASE_RPC_URL: string;
   /** Optional keyed RPC (a secret: `wrangler secret put BASE_RPC_URL_PRIVATE`); tried before the public list. */
   BASE_RPC_URL_PRIVATE?: string;
+  /** Optional service binding to the indexer Worker; the cron calls its POST /__tick with INDEXER_TICK_TOKEN. */
+  INDEXER?: Fetcher;
+  INDEXER_TICK_TOKEN?: string;
 }
 
 /** The RPC list every read uses: the keyed secret first when set, then the public list. */

@@ -19,6 +19,8 @@
   // "r2_buckets": [{ "binding": "EXPORTS", "bucket_name": "boundline-observatory-exports" }]; the code treats EXPORTS as optional.
   // Public RPCs in fallback order (mainnet.base.org rate-limits Cloudflare egress, so it is last; Blast was dropped on 3 Oct 2026 when it began failing every call). A keyed RPC goes in the secret BASE_RPC_URL_PRIVATE.
   "vars": { "BASE_RPC_URL": "https://base-rpc.publicnode.com,https://base.drpc.org,https://mainnet.base.org" },
+  // Service binding to the indexer: its cron is called from here as a fallback (Worker-to-Worker fetches over workers.dev are refused, error 1042).
+  "services": [{ "binding": "INDEXER", "service": "boundline-indexer" }],
   "observability": { "enabled": true }
   // Custom domain: add `"routes": [{ "pattern": "boundline.xyz", "custom_domain": true }]` once the zone is on this account.
 }

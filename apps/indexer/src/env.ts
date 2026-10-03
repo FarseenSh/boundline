@@ -14,6 +14,8 @@ export interface Env {
   INDEX_MAINNET?: string;
   /** Block ranges a single source may scan per tick (default 5 × 2,000 blocks). */
   MAX_RANGES_PER_TICK?: string;
+  /** Secret shared with the Observatory, whose cron calls POST /__tick through a service binding (fallback for this Worker's own cron). */
+  TICK_TOKEN?: string;
 }
 
 function joinUrls(...parts: (string | undefined)[]): string {

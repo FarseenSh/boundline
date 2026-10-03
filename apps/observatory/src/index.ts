@@ -186,9 +186,26 @@ export function createApp(overrides: Partial<AppDeps> = {}) {
         await afterSnapshot(env, snapshot);
       })(),
     );
+    ctx.waitUntil(kickIndexer(env));
   }
 
   return { app, scheduled, takeSnapshot, afterSnapshot };
+}
+
+/** Fallback trigger for the indexer: its own cron has not fired on this account, so this cron calls its
+ *  POST /__tick through the service binding with the shared token. Never throws; the tick is idempotent. */
+export async function kickIndexer(env: Env): Promise<void> {
+  if (!env.INDEXER || !env.INDEXER_TICK_TOKEN) return;
+  try {
+    const res = await env.INDEXER.fetch("https://indexer/__tick", {
+      method: "POST",
+      headers: { authorization: `Bearer ${env.INDEXER_TICK_TOKEN}` },
+      signal: AbortSignal.timeout(25_000),
+    });
+    console.log(`indexer tick via binding: ${res.status}`);
+  } catch (err) {
+    console.warn(`indexer tick via binding failed: ${err instanceof Error ? err.message : String(err)}`);
+  }
 }
 
 const live = createApp();
