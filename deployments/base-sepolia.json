@@ -3,7 +3,7 @@
   "chainId": 84532,
   "deployedAt": "2026-10-03",
   "deployer": "0x2f0d9B1f16CD702259C6cC259e8D5E5455282a4E",
-  "owner": "0x2f0d9B1f16CD702259C6cC259e8D5E5455282a4E",
+  "owner": "0x2f0d9B1f16CD702259C6cC259e8D5E5455282a4E (calendar, gate, market seed); the keeper owns the feeds and the registry",
   "toolchain": "base-forge 1.6.0-v1.1.0 (Beryl precompiles locally, Cobalt on chain), solc 0.8.30, cancun, optimizer 10000 runs",
   "notes": [
     "Test-only deployment. The broadcaster owns the calendar, registry, gate and feeds; no feed is locked.",
@@ -162,5 +162,18 @@
     "deployOracles": 7705468,
     "createMarket": 197505,
     "seed": 166014
+  },
+  "keeper": {
+    "address": "0x28A50Eb7C2Db2B04638D3b226c724A1Cfe999894",
+    "role": "feed-mirror keeper: owns the three TestPriceFeeds and the MirrorOracleRegistry; mirrors mainnet Chainlink rounds and OracleRegistry params onto them (apps/keeper)",
+    "createdAt": "2026-10-03",
+    "fundingTx": "0x81d9e9631e348b5958ef9a7db2a02f46a24064c04b9dce2a193d93fadb3297cf",
+    "fundedWei": "10000000000000000",
+    "ownershipTransfers": {
+      "AAPLt feed": "0x9bd238856be6b911cbe89596d97c881636786fdf8ded10e467ad5897e81a45fc",
+      "NVDAt feed": "0xca96f4b469a152e10d21e9f4acafc92af5b1228d0afa4728347ae81af81f55de",
+      "TSLAt feed": "0x11e8d9c306e8e14e5f6961a879c309409e0f62670a83dc759e3fa26d8e440186",
+      "MirrorOracleRegistry": "see the deployer's transactions on 3 Oct; owner() verified as the keeper"
+    }
   }
 }

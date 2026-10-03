@@ -1,0 +1,25 @@
+{
+  "name": "@boundline/keeper",
+  "version": "0.1.0",
+  "private": true,
+  "description": "The Boundline keeper: a Cloudflare Worker that mirrors mainnet Chainlink stock feeds and OracleRegistry state onto the Base Sepolia simulators every minute, and later runs shadow-health protection.",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "cf-typegen": "wrangler types"
+  },
+  "dependencies": {
+    "@boundline/calendar": "workspace:*",
+    "@boundline/chain": "workspace:*",
+    "hono": "4.13.12",
+    "viem": "2.57.2"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "latest",
+    "wrangler": "4.147.0"
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "boundline-keeper",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-09-01",
+  "compatibility_flags": ["nodejs_compat"],
+  // One tick a minute: read mainnet and Sepolia, write only what differs (see src/plan.ts).
+  "triggers": { "crons": ["* * * * *"] },
+  // Public RPCs in fallback order. Mainnet list as in apps/observatory (mainnet.base.org rate-limits Cloudflare egress, so it is last).
+  // Sepolia endpoints verified with eth_chainId (0x14a34) and a Multicall3 call on 3 Oct 2026; blastapi.io is shut down.
+  // Keyed RPCs go in the secrets BASE_RPC_URL_PRIVATE / BASE_SEPOLIA_RPC_URL_PRIVATE and are tried first.
+  // The signing key is the secret KEEPER_KEY (`wrangler secret put KEEPER_KEY`), never a var here.
+  "vars": {
+    "BASE_RPC_URL": "https://base-rpc.publicnode.com,https://base.drpc.org,https://mainnet.base.org",
+    "BASE_SEPOLIA_RPC_URL": "https://sepolia.base.org,https://base-sepolia-rpc.publicnode.com,https://base-sepolia.drpc.org"
+  },
+  "observability": { "enabled": true }
+}
