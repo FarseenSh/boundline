@@ -3,7 +3,7 @@
 Living record of everything built so far, where it lives, how it is verified, and what is open.
 **Start here** in any new session (human or Claude), then `docs/BUILD.md` for the schedule.
 Update this file at the end of every session together with the ledger in `docs/BUILD.md`.
-Last update: **Sat 3 Oct 2026, night IST** (after commit `cf03ac0`; see section 12).
+Last update: **Sat 3 Oct 2026, night IST** (after commit `e964a07`; see section 12).
 
 ## 1. What Boundline is, in one paragraph
 
@@ -148,9 +148,13 @@ SessionGuards and ShadowGuards for AAPLc and NVDAc (`DRY_RUN_ETCH` stubs are ref
 the AAPLc/USDC mainnet market was simulated against the live Morpho (about 5.9M gas). `DeployCreditDesk`
 (`--tc DeployCreditDesk`, env `GATE`, `KEEPER`, `COLLATERAL`, `ORACLE`, `PARTNER_ID`, policy values) deploys the
 desk, registers the market, creates the partner and sets the ticker policy with named pre-check errors.
-**Size:** `CreditDesk` is 28,271 bytes at the project's 10,000 optimizer runs (EIP-170 allows 24,576); Sepolia
-was deployed with `FOUNDRY_OPTIMIZER_RUNS=200` (23,634 bytes). `forge build --sizes` fails on purpose until the
-desk is split into libraries. `wire-sepolia.sh` performs the Cobalt wire (allowlist the venues, composite
+**Size:** the monolithic desk was 28,271 bytes at the project's 10,000 optimizer runs (EIP-170 allows 24,576), so
+Sepolia got it with `FOUNDRY_OPTIMIZER_RUNS=200` (23,634 bytes). It is now split: `CreditDesk` (19,738 bytes: state,
+access control, orchestration, accounting, events, decision hashes) plus the external `CreditDeskLib` (15,073
+bytes: quote, obligation status, expected debt, market checks, add-collateral, borrow, repay-all, withdraw,
+signature validation, B20 preflight) called by DELEGATECALL; ABI, storage layout and events unchanged. CI runs
+`forge build --sizes --skip 'test/**' --skip 'script/**'`. The Sepolia desk at `0x39aB…399a` is still the 200-run
+monolith; it is redeployed with the library version at the feature-freeze redeploy. `wire-sepolia.sh` performs the Cobalt wire (allowlist the venues, composite
 `INTERSECT(blocklist, allowlist)` on the receiver scope, seize-exempt list) as `cast send` calls, each preceded by
 the identical `eth_call`, because base-forge's local simulation runs Beryl precompiles.
 
@@ -294,7 +298,7 @@ list; KV on the free tier allows 1,000 writes a day, hence the throttle; macOS h
 
 ```sh
 forge test --root contracts     # 113 passed, 1 skipped (fork test without BASE_RPC_URL), 11 suites
-forge build --root contracts --sizes   # fails on purpose: CreditDesk 28,271 bytes at 10k runs (see 4.5)
+forge build --root contracts --sizes --skip 'test/**' --skip 'script/**'   # CreditDesk 19,738 + CreditDeskLib 15,073 bytes
 pnpm test                       # 310 vitest: calendar 98, chain 14, observatory 78, keeper 30, indexer 43, api 47
 pnpm typecheck                  # clean
 BASE_RPC_URL=<archive rpc> forge test --root contracts --match-path 'test/fork/*'   # live Morpho fork proof
@@ -333,8 +337,7 @@ IssueTestStocks 6, DeployCreditDesk 9, TestPriceFeed 6, MirrorOracleRegistry 5, 
 - Mon 5 Oct, first REGULAR session: the first in-session `draw` on line 1 through the desk (owner key), a repay,
   and a quote with non-zero capacity through the API, all recorded as evidence.
 
-**Next build items (dependency order)**: split `CreditDesk` into libraries so it fits at 10,000 runs and add
-`forge build --sizes` to CI; indexer phase 2 (mainnet feed aggregators, OracleRegistry, B20 Morpho markets, Aave
+**Next build items (dependency order)**: indexer phase 2 (mainnet feed aggregators, OracleRegistry, B20 Morpho markets, Aave
 spoke) and the API's obligations served from it; Observatory Aave V4 positions; NVDAt and TSLAt markets and
 wire; scheduled-multiplier drill; pre-liquidation contracts, Protector and keeper with validity
 transactions; AaveDesk and ProtectionVault; Reserve; fork replay harness; router, self-repaying and
@@ -369,6 +372,8 @@ top-ups for the Sepolia book.
 | `3516b67` | Observatory: reopen capture runs and shadow health for real Morpho positions |
 | `962040d` | Indexer Worker: events into D1 with hash-chained daily roots and Morpho reconciliation |
 | `cf03ac0` | Partner API: lines, quotes, obligations and decisions over the CreditDesk |
+| `be9cb68` | Build context, ledger and deployment record for the five live lanes |
+| `e964a07` | CreditDesk split into the desk and an external CreditDeskLib (fits EIP-170 at 10,000 runs) |
 
 ## 13. How to keep this file true
 
