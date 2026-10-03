@@ -1,0 +1,25 @@
+{
+  "name": "@boundline/observatory",
+  "version": "0.1.0",
+  "private": true,
+  "description": "The B20 credit Observatory: a Cloudflare Worker that reads every Coinbase tokenized stock, feed, registry flag, venue position and shadow health on Base mainnet and serves them as a public page and JSON API.",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "cf-typegen": "wrangler types"
+  },
+  "dependencies": {
+    "@boundline/calendar": "workspace:*",
+    "@boundline/chain": "workspace:*",
+    "hono": "4.13.12",
+    "viem": "2.57.2"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "latest",
+    "wrangler": "4.147.0"
+  }
+}

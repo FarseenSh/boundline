@@ -15,5 +15,11 @@
     "lint": "pnpm -r --if-present lint",
     "contracts:build": "forge build --root contracts",
     "contracts:test": "forge test --root contracts"
+  },
+  "devDependencies": {
+    "@types/node": "latest",
+    "tsx": "4.23.15",
+    "typescript": "7.0.2",
+    "vitest": "5.0.3"
   }
 }
