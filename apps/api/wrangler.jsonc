@@ -1,0 +1,28 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "boundline-api",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-09-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "observability": { "enabled": true },
+  // Create with `pnpm exec wrangler d1 create boundline-api`, paste the id here, then
+  // `pnpm exec wrangler d1 migrations apply boundline-api --remote`.
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "boundline-api",
+      "database_id": "9dee89e3-b1bd-42b3-b91c-adbcf9f58da9",
+      "migrations_dir": "migrations"
+    }
+  ],
+  "vars": {
+    "CHAIN_ID": "84532",
+    // Both answered eth_chainId 0x14a34 on 3 Oct 2026; the first is tried first.
+    "BASE_SEPOLIA_RPC_URL": "https://sepolia.base.org,https://base-sepolia-rpc.publicnode.com",
+    // The Sepolia CreditDesk (deployments/base-sepolia.json); empty would make desk routes answer 503.
+    "CREDIT_DESK": "0x39aBaDc0aAa12D1F7e259b89536Aa1848997399a",
+    "MORPHO": "0xBBBBBbbBBb9cC5e90e3b3Af64bdAF62C37EEFFCb",
+    "SESSION_GATE": "0x92f59437d4ef5CDcEAe2CcDE89B03A7B4B1Ae427",
+    "INDEXER_URL": "https://boundline-indexer.papermind-ai.workers.dev"
+  }
+}

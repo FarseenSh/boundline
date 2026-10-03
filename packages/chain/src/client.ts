@@ -17,7 +17,7 @@ export type BaseClient = PublicClient<HttpTransport | FallbackTransport<HttpTran
 
 /** Public Base RPCs that answered Multicall3 and Aerodrome `observe` reads on 3 Oct 2026; `mainnet.base.org` rate-limits shared egress such as Cloudflare's, so it goes last. */
 export const PUBLIC_RPC_URLS: Readonly<Record<ChainId, readonly string[]>> = {
-  [CHAIN_IDS.base]: ["https://base-rpc.publicnode.com", "https://base.drpc.org", "https://base-mainnet.public.blastapi.io", "https://mainnet.base.org"],
+  [CHAIN_IDS.base]: ["https://base-rpc.publicnode.com", "https://base.drpc.org", "https://mainnet.base.org"],
   [CHAIN_IDS.baseSepolia]: ["https://sepolia.base.org", "https://base-sepolia-rpc.publicnode.com"],
 };
 
