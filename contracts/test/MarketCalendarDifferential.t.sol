@@ -7,12 +7,12 @@ import {MarketCalendar} from "../src/calendar/MarketCalendar.sol";
 import {IMarketCalendar} from "../src/interfaces/IMarketCalendar.sol";
 import {Nyse2026} from "../src/calendar/Nyse2026.sol";
 
-/// @notice Differential test: the onchain calendar against `@boundline/calendar`, the
+/// @notice Differential test: the onchain calendar against packages/calendar, the
 ///         TypeScript reference that resolves America/New_York through the host tz database
 ///         instead of the contract's DST rule and civil-date arithmetic.
 ///
 ///         Fixture: test/fixtures/calendar-2026.json, flat parallel arrays written by
-///         `pnpm --filter @boundline/calendar fixture` (every 2026 session boundary at
+///         `pnpm --filter calendar fixture` (packages/calendar) (every 2026 session boundary at
 ///         -1s/0/+1s/+60s, both DST transitions, every holiday and its eve, and a seeded
 ///         random sample of the year).
 contract MarketCalendarDifferentialTest is Test {
@@ -29,7 +29,7 @@ contract MarketCalendarDifferentialTest is Test {
         json = vm.readFile(FIXTURE);
     }
 
-    function test_differential_sessionAt() public view {
+    function test_differential_sessionAt() public {
         uint256[] memory t = json.readUintArray(".t");
         uint256[] memory s = json.readUintArray(".s");
         assertEq(t.length, s.length, "parallel arrays");
@@ -51,7 +51,7 @@ contract MarketCalendarDifferentialTest is Test {
         assertEq(mismatches, 0, "sessionAt disagrees with the TypeScript calendar");
     }
 
-    function test_differential_nextTransition() public view {
+    function test_differential_nextTransition() public {
         uint256[] memory tt = json.readUintArray(".tt");
         uint256[] memory to = json.readUintArray(".to");
         uint256[] memory at = json.readUintArray(".at");
