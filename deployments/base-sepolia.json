@@ -1,0 +1,166 @@
+{
+  "network": "base-sepolia",
+  "chainId": 84532,
+  "deployedAt": "2026-10-03",
+  "deployer": "0x2f0d9B1f16CD702259C6cC259e8D5E5455282a4E",
+  "owner": "0x2f0d9B1f16CD702259C6cC259e8D5E5455282a4E",
+  "toolchain": "base-forge 1.6.0-v1.1.0 (Beryl precompiles locally, Cobalt on chain), solc 0.8.30, cancun, optimizer 10000 runs",
+  "notes": [
+    "Test-only deployment. The broadcaster owns the calendar, registry, gate and feeds; no feed is locked.",
+    "The three stocks are real B20 assets created through the factory precompile with an allowlist of holders bound to MINT_RECEIVER_POLICY and an empty blocklist bound to both transfer scopes. Step 5 (`wire`: composite INTERSECT receiver policy and SEIZE_EXEMPT_POLICY for the venues) has not run yet.",
+    "The TestPriceFeeds hold their deploy-time answer (updatedAt 1791037640); with the default 24h heartbeat + 2h tolerance the gate reports FEED_STALE from 2026-10-04T16:27:20Z until something calls setAnswer.",
+    "Verification: all nine Solidity contracts verified on sepolia.basescan.org through the Etherscan v2 API during the deploy."
+  ],
+  "contracts": {
+    "MarketCalendar": {
+      "address": "0x70575eb938645A9D3E18Dda035f5A6a7713696B8",
+      "block": 47634676,
+      "tx": "0xe52ed802e66440c182b4af391e241cf223133a026f57ac7cb01a1171a9e513a2",
+      "loadYear2026Tx": "0x62c4bec245e4647da550e280d0cd090c408c0f58003aa7bd70e9e5c891b93fae",
+      "source": "Nyse2026"
+    },
+    "MirrorOracleRegistry": {
+      "address": "0xc78A796710be93774310ff8Cf467EaABCeAb4655",
+      "block": 47634676,
+      "tx": "0x6e579e856a6d6ebe3f1ccc46b52dde0de8f69952b745454ce74d9a04ee1f48be"
+    },
+    "SessionGate": {
+      "address": "0x92f59437d4ef5CDcEAe2CcDE89B03A7B4B1Ae427",
+      "block": 47634676,
+      "tx": "0x81b806ffcb978e97a1c10d816ee41db7d42356dc4b86ee9d52934e7c787f923c",
+      "defaults": {
+        "heartbeat": 86400,
+        "tolerance": 7200
+      }
+    }
+  },
+  "stocks": {
+    "AAPLt": {
+      "token": "0xB2000000000000000000000E063E65377cA34141",
+      "decimals": 8,
+      "name": "Boundline test AAPLt",
+      "holdersAllowlistId": "72057594037928092",
+      "blocklistId": "157",
+      "allowlistTx": "0x538c75fbb5092b0b288aa4bf353c6b563cc1bcac503241c95476ea9bdf5d4553",
+      "blocklistTx": "0x5c9cd37e1e1954eb2b1eb21c48ee3c75495d1942188985ab83dc879df37d89c1",
+      "createTx": "0x4f4a6d6f23a7d5eca48ec8bcfb350e9f675473f369cf181c580dd0bc7767f570",
+      "block": 47634622,
+      "feed": "0xa652b75CA90084FA16D4F18Fd96B5dd7069ee52a",
+      "feedTx": "0xec6a6fdc8383520c92d1832addecd163afd5098699f9ca46d9e6f1b996141ad4",
+      "feedAnswerE8": "33366495000",
+      "setFeedTx": "0xa3087529e7dc82a635c0e848e0feb1a3497ca13b8d55229cec16b98f4ce6daf8",
+      "sessionGuard": "0x1589aAb40fF0b2E0C4c679e70865eb97A24e5854",
+      "sessionGuardTx": "0xf6f297a456302bbd75f8e843e9b65bf67b7db84e42be4f3a1654da4a839537d5",
+      "shadowGuard": null
+    },
+    "NVDAt": {
+      "token": "0xB200000000000000000000AEd76Eae58870E2ae6",
+      "decimals": 8,
+      "name": "Boundline test NVDAt",
+      "holdersAllowlistId": "72057594037928094",
+      "blocklistId": "159",
+      "allowlistTx": "0x6e6474f73e4554bb744dd432d52832715c120a83de59ef06d8d98b1ea6bf054b",
+      "blocklistTx": "0x971fc476dec809d1cc9d29c48e618c23abad66a132e3c6593f67f6eaaf4c092c",
+      "createTx": "0x9ea128473774e842cc9c42a03201d80d300fe63db8ffac3ac064205cf258a502",
+      "block": 47634622,
+      "feed": "0x097dCec820dCF11b5e8d0fA698b86714f96dB0e2",
+      "feedTx": "0x71f34318fe9c81312d02d9a8fa665df0f63e6e3a1e6994b257e1e0f90a50a22e",
+      "feedAnswerE8": "18750000000",
+      "setFeedTx": "0x38cd9d77a00694135b9a90e646c39b0ab997df3712c48f76277a34bc8d08df79",
+      "sessionGuard": "0xcEDcD908aB8B12766147459fb34F8C6Da4aA7518",
+      "sessionGuardTx": "0x86e01f0bef6c33c61af6a123521173adc1ca561faf433a4ebcf4d39653744459",
+      "shadowGuard": null
+    },
+    "TSLAt": {
+      "token": "0xb200000000000000000000Af3FB2181a8772F804",
+      "decimals": 8,
+      "name": "Boundline test TSLAt",
+      "holdersAllowlistId": "72057594037928096",
+      "blocklistId": "161",
+      "allowlistTx": "0x6cacfe0485e132dc7ec77f31967ea8a2e02072f9de380ce693ead27045e16a2d",
+      "blocklistTx": "0x61778f3d6b66a59d10b1df168b2b916af4b9c6c2a97bc3a3bd9147a087a298f3",
+      "createTx": "0x291a5a18ba6d22eae1579fc912ff6c016f49064fb5b1872be4edd2c6836e79f0",
+      "block": 47634622,
+      "feed": "0x5CB94874E3a54F36Bc8DD9c85405ea300e5b43a1",
+      "feedTx": "0xcf6b7a56153db606344570761962f6a32896a8e0b82180d7662a0d1dc7b78fd1",
+      "feedAnswerE8": "43000000000",
+      "setFeedTx": "0xd896be8eb1796ed27261f26e8fd8ade165002503e8aad83e81ed5e60209b4dc6",
+      "sessionGuard": "0xcADf92BBDC997fDb5920FF0Ba95B4d2d2b8389B3",
+      "sessionGuardTx": "0x50c13e14b6507d56febbdbacdf83a0242ce221eaf8c5cf283841b7538fcafed8",
+      "shadowGuard": null
+    }
+  },
+  "holders": {
+    "amountPerHolder": "100000000000",
+    "addresses": [
+      "0x2f0d9B1f16CD702259C6cC259e8D5E5455282a4E",
+      "0xB789aD318945B37566E2549F65526Cc269a482Fc",
+      "0xc709E654f322714261b65280A0f7121B3a0F0BE8"
+    ]
+  },
+  "precompiles": {
+    "b20Factory": "0xB20f000000000000000000000000000000000000",
+    "policyRegistry": "0x8453000000000000000000000000000000000002"
+  },
+  "morpho": {
+    "address": "0xBBBBBbbBBb9cC5e90e3b3Af64bdAF62C37EEFFCb",
+    "adaptiveCurveIrm": "0x46415998764C29aB2a25CbeA6254146D50D22687",
+    "usdc": "0x036CbD53842c5426634e7929541eC2318f3dCF7e"
+  },
+  "markets": {
+    "AAPLt/USDC": {
+      "id": "0x4a03b124a170a913931f00ab87f7966d388370cf457c0a3c4fb6fcf4fbb88047",
+      "params": {
+        "loanToken": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+        "collateralToken": "0xB2000000000000000000000E063E65377cA34141",
+        "oracle": "0x1589aAb40fF0b2E0C4c679e70865eb97A24e5854",
+        "irm": "0x46415998764C29aB2a25CbeA6254146D50D22687",
+        "lltv": "625000000000000000"
+      },
+      "createTx": "0x9ac34b99a822927dc8219aa8292b4781c4afc9e84251f073a988006dff62b0a9",
+      "block": 47634839,
+      "seed": {
+        "usdc": "10000000",
+        "approveTx": "0x081450e83b90cdd3285a86102445ad7606c3f8d0db4eaa76fb8e0da9d546463c",
+        "supplyTx": "0x739d720c62d4c298d902f3679391cd6a31b382a59c8e5de06ac619c55cfd8dcd",
+        "block": 47634977,
+        "supplier": "0x2f0d9B1f16CD702259C6cC259e8D5E5455282a4E"
+      }
+    }
+  },
+  "proofs": [
+    {
+      "what": "borrower approves AAPLt to Morpho",
+      "from": "0xB789aD318945B37566E2549F65526Cc269a482Fc",
+      "tx": "0xd951c3fcc16194c08c90022fc3f271200f568bd8bfb56b3739ec17af597299a0",
+      "block": 47634915,
+      "result": "success"
+    },
+    {
+      "what": "borrower supplies 10 AAPLt (1e9) as collateral during the WEEKEND session",
+      "from": "0xB789aD318945B37566E2549F65526Cc269a482Fc",
+      "tx": "0x01191a773774584bdbf4a72aff4397c870bf455c3277d7d0adf8396a42cb760b",
+      "block": 47634983,
+      "result": "success: supplyCollateral never reads the oracle"
+    },
+    {
+      "what": "borrower borrows 1 USDC during the WEEKEND session (eth_call)",
+      "from": "0xB789aD318945B37566E2549F65526Cc269a482Fc",
+      "result": "revert 0x3e363de9\u202605 = MarketClosed(WEEKEND): the SessionGuard refuses to price a held feed"
+    },
+    {
+      "what": "SessionGuard.price() and SessionGate.priceOf(AAPLt) during the WEEKEND session (eth_call)",
+      "result": "revert MarketClosed(WEEKEND)"
+    },
+    {
+      "what": "AAPLt isPaused(feature) for features 0..3 on the live chain",
+      "result": "false, false, false, false (Cobalt B20 asset answers the selector)"
+    }
+  ],
+  "gas": {
+    "issueTestStocks": 2174526,
+    "deployOracles": 7705468,
+    "createMarket": 197505,
+    "seed": 166014
+  }
+}

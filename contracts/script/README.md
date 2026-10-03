@@ -93,25 +93,47 @@ DEPLOY_ORACLE=true forge script script/CreateSessionSafeMarket.s.sol --rpc-url b
   --sender 0x0000000000000000000000000000000000000001
 ```
 
-### Tonight on Sepolia, with a funded deployer key
+### Deployed on Base Sepolia (3 Oct 2026)
+
+Run from the test-only deployer `0x2f0d9B1f16CD702259C6cC259e8D5E5455282a4E` with `base-forge`; the test stocks are
+real B20 assets (one byte of code, executed by the node), so every script that touches them runs under Base's build.
+Full record with transaction hashes and proofs: `deployments/base-sepolia.json`. All nine Solidity contracts are
+verified on sepolia.basescan.org.
+
+| Contract | Address |
+| --- | --- |
+| MarketCalendar (2026 loaded) | `0x70575eb938645A9D3E18Dda035f5A6a7713696B8` |
+| MirrorOracleRegistry | `0xc78A796710be93774310ff8Cf467EaABCeAb4655` |
+| SessionGate | `0x92f59437d4ef5CDcEAe2CcDE89B03A7B4B1Ae427` |
+| AAPLt (B20) / TestPriceFeed / SessionGuard | `0xB2000000000000000000000E063E65377cA34141` / `0xa652b75CA90084FA16D4F18Fd96B5dd7069ee52a` / `0x1589aAb40fF0b2E0C4c679e70865eb97A24e5854` |
+| NVDAt (B20) / TestPriceFeed / SessionGuard | `0xB200000000000000000000AEd76Eae58870E2ae6` / `0x097dCec820dCF11b5e8d0fA698b86714f96dB0e2` / `0xcEDcD908aB8B12766147459fb34F8C6Da4aA7518` |
+| TSLAt (B20) / TestPriceFeed / SessionGuard | `0xb200000000000000000000Af3FB2181a8772F804` / `0x5CB94874E3a54F36Bc8DD9c85405ea300e5b43a1` / `0xcADf92BBDC997fDb5920FF0Ba95B4d2d2b8389B3` |
+| Morpho market AAPLt/USDC, AdaptiveCurveIrm, LLTV 62.5% | id `0x4a03b124a170a913931f00ab87f7966d388370cf457c0a3c4fb6fcf4fbb88047` |
+
+The order that worked, one deploy instead of two:
 
 ```bash
-cd contracts
-export BASE_SEPOLIA_RPC_URL=https://sepolia.base.org BASESCAN_API_KEY=...
-# 1. calendar, mirror registry, test feeds, gate, guards (one run, verified)
-forge script script/DeployOracles.s.sol --tc DeployOracles --sig "runSepolia()" \
-  --rpc-url base_sepolia --broadcast --verify --account <keystore>
-# 2. real B20 test stocks through the precompile (Base's Foundry build; stock forge cannot simulate them)
-MINT_TO=<teammate> base-forge script script/IssueTestStocks.s.sol --tc IssueTestStocks \
-  --rpc-url base_sepolia --broadcast --account <keystore>
-# 3. rerun 1 with the real tokens so the guards price them: AAPLt_TOKEN=<from step 2> ...
-# 4. the Sepolia market on the AAPLt guard
-COLLATERAL=<AAPLt> ORACLE=<AAPLt SessionGuard> forge script script/CreateSessionSafeMarket.s.sol \
-  --rpc-url base_sepolia --broadcast --account <keystore>
-# 5. wire Morpho, the desk and the keeper once they exist
-base-forge script script/IssueTestStocks.s.sol --tc IssueTestStocks --sig "wire(address,address[])" \
-  <AAPLt> "[0xBBBBBbbBBb9cC5e90e3b3Af64bdAF62C37EEFFCb,<desk>,<keeper>]" --rpc-url base_sepolia --broadcast --account <keystore>
+cd contracts   # key sourced into the shell, never on the command line as a literal
+MINT_TO=<holders> base-forge script script/IssueTestStocks.s.sol --tc IssueTestStocks --rpc-url base_sepolia --broadcast --private-key "$KEY"
+AAPLt_TOKEN=<...> NVDAt_TOKEN=<...> TSLAt_TOKEN=<...> AAPLt_PRICE_E8=33366495000 ... \
+  base-forge script script/DeployOracles.s.sol --tc DeployOracles --sig "runSepolia()" --rpc-url base_sepolia --broadcast --verify --private-key "$KEY"
+COLLATERAL=<AAPLt> ORACLE=<AAPLt guard> base-forge script script/CreateSessionSafeMarket.s.sol --rpc-url base_sepolia --broadcast --private-key "$KEY"
+SEED_USDC=10000000 COLLATERAL=<AAPLt> ORACLE=<AAPLt guard> base-forge script script/CreateSessionSafeMarket.s.sol --sig "seed()" --rpc-url base_sepolia --broadcast --slow --private-key "$KEY"
 ```
+
+Live proof on the public venue: the borrower `0xB789aD318945B37566E2549F65526Cc269a482Fc` holds 10 AAPLt as
+collateral (supplied during the weekend session, since `supplyCollateral` never reads the oracle) and a weekend
+`borrow` reverts `MarketClosed(WEEKEND)`; `cast call` prints it as `0x3e363de9…05`.
+
+Still to run on Sepolia: step 5 `wire` (Cobalt composite receiver policy and `SEIZE_EXEMPT_POLICY` for Morpho, the
+desk and the keeper) once the desk and keeper exist, and the feed mirror keeper: the TestPriceFeeds hold their
+deploy-time answer, so the gate reports `FEED_STALE` from Sun 4 Oct 16:27 UTC until something calls `setAnswer`.
+
+Lessons: `sepolia.base.org` is load-balanced and its nodes disagree on the head for a few seconds, so a forge
+broadcast started right after a `cast send` from the same key fetched a stale nonce and failed with `nonce too low`;
+run one broadcaster per key at a time, pass `--slow`, and retry after a few seconds. Under base-forge the local
+simulation uses Beryl precompiles even against a Cobalt chain, so anything Cobalt-only (`wire`) cannot be broadcast
+from it; send that calldata with `cast send`, which does not simulate.
 
 ## Which Foundry build runs what (verified 3 Oct 2026)
 
