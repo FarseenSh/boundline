@@ -17,8 +17,8 @@
   // R2 is off: the account's wrangler login has no r2 scope and exports are not built yet. To turn it on, run
   // `wrangler r2 bucket create boundline-observatory-exports` with an R2-scoped login and add
   // "r2_buckets": [{ "binding": "EXPORTS", "bucket_name": "boundline-observatory-exports" }]; the code treats EXPORTS as optional.
-  // Public RPCs in fallback order (mainnet.base.org rate-limits Cloudflare egress, so it is last). A keyed RPC goes in the secret BASE_RPC_URL_PRIVATE.
-  "vars": { "BASE_RPC_URL": "https://base-rpc.publicnode.com,https://base.drpc.org,https://base-mainnet.public.blastapi.io,https://mainnet.base.org" },
+  // Public RPCs in fallback order (mainnet.base.org rate-limits Cloudflare egress, so it is last; Blast was dropped on 3 Oct 2026 when it began failing every call). A keyed RPC goes in the secret BASE_RPC_URL_PRIVATE.
+  "vars": { "BASE_RPC_URL": "https://base-rpc.publicnode.com,https://base.drpc.org,https://mainnet.base.org" },
   "observability": { "enabled": true }
   // Custom domain: add `"routes": [{ "pattern": "boundline.xyz", "custom_domain": true }]` once the zone is on this account.
 }
