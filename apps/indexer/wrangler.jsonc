@@ -1,0 +1,27 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "boundline-indexer",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-09-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "triggers": { "crons": ["* * * * *"] },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "boundline-indexer",
+      // Create it once with `pnpm exec wrangler d1 create boundline-indexer` and paste the id here.
+      "database_id": "dde9a6a8-e474-43a0-a809-b7f5e2e91ca4",
+      "migrations_dir": "migrations"
+    }
+  ],
+  // Public RPCs in fallback order; a keyed RPC goes in the secrets BASE_RPC_URL_PRIVATE / BASE_SEPOLIA_RPC_URL_PRIVATE.
+  // CREDIT_DESK_SEPOLIA stays empty until the desk is deployed; INDEX_MAINNET turns on the (not yet registered) phase-2 sources.
+  "vars": {
+    "BASE_RPC_URL": "https://base-rpc.publicnode.com,https://base.drpc.org,https://mainnet.base.org",
+    "BASE_SEPOLIA_RPC_URL": "https://sepolia.base.org,https://base-sepolia-rpc.publicnode.com",
+    "CREDIT_DESK_SEPOLIA": "0x39aBaDc0aAa12D1F7e259b89536Aa1848997399a",
+    "INDEX_MAINNET": "false",
+    "MAX_RANGES_PER_TICK": "5"
+  },
+  "observability": { "enabled": true }
+}
