@@ -4,23 +4,15 @@ pragma solidity ^0.8.28;
 import {Ownable2Step, Ownable} from "@openzeppelin/contracts/access/Ownable2Step.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {EIP712} from "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
-import {SignatureChecker} from "@openzeppelin/contracts/utils/cryptography/SignatureChecker.sol";
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
-import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
-import {IMorpho, MarketParams, Id, Position} from "morpho-blue/interfaces/IMorpho.sol";
+import {IMorpho, MarketParams, Id} from "morpho-blue/interfaces/IMorpho.sol";
 import {MarketParamsLib} from "morpho-blue/libraries/MarketParamsLib.sol";
-import {MorphoBalancesLib} from "morpho-blue/libraries/periphery/MorphoBalancesLib.sol";
-import {IB20} from "base-std/interfaces/IB20.sol";
-import {IScaledUIAmount, IScaledUIAmountNewUIMultiplier} from "base-std/interfaces/IERC8056.sol";
 import {IPolicyRegistry} from "base-std/interfaces/IPolicyRegistry.sol";
-import {B20Constants} from "base-std/lib/B20Constants.sol";
 import {IMarketCalendar} from "../interfaces/IMarketCalendar.sol";
-import {IPriceGate} from "../interfaces/IPriceGate.sol";
 import {IEligibility} from "../interfaces/IEligibility.sol";
 import {SessionGate} from "../oracle/SessionGate.sol";
+import {CreditDeskLib} from "./CreditDeskLib.sol";
 
 /// @title CreditDesk
 /// @notice Partner-scoped lines of credit against tokenized stocks on Morpho Blue, self-custody
@@ -35,11 +27,12 @@ import {SessionGate} from "../oracle/SessionGate.sol";
 ///         operates on markets whose oracle is a `SessionGuard` bound to its own `SessionGate`, so
 ///         session, registry-pause, transfer-pause and staleness are enforced at the venue and
 ///         explained here with reason codes.
+///
+///         The pricing and venue logic lives in `CreditDeskLib`, an external library linked at
+///         deploy time and run with DELEGATECALL, so the desk fits under the EIP-170 size limit.
 contract CreditDesk is Ownable2Step, ReentrancyGuard, EIP712 {
-    using SafeERC20 for IERC20;
     using SafeCast for uint256;
     using MarketParamsLib for MarketParams;
-    using MorphoBalancesLib for IMorpho;
 
     // ---------------------------------------------------------------- types
 
@@ -228,6 +221,9 @@ contract CreditDesk is Ownable2Step, ReentrancyGuard, EIP712 {
     error NothingToRepay();
     error PolicyForbids(bytes32 scope, address account);
     error ZeroAmount();
+    /// @dev Raised inside `CreditDeskLib`'s token transfers and bubbled up unchanged; declared here so the
+    ///      desk's ABI keeps decoding it.
+    error SafeERC20FailedOperation(address token);
 
     // ---------------------------------------------------------------- constructor
 
@@ -266,15 +262,7 @@ contract CreditDesk is Ownable2Step, ReentrancyGuard, EIP712 {
     function registerMarket(MarketParams calldata params) external onlyOwner {
         Id id = params.id();
         if (_markets[id].params.oracle != address(0)) revert MarketAlreadyRegistered(id);
-        if (MORPHO.idToMarketParams(id).lltv == 0) revert UnknownMarket(id);
-        if (!_isSessionGuard(params.oracle)) revert OracleNotSessionGuard(params.oracle);
-        MarketConfig storage m = _markets[id];
-        m.params = params;
-        m.collateralDecimals = IERC20Metadata(params.collateralToken).decimals();
-        m.loanDecimals = IERC20Metadata(params.loanToken).decimals();
-        m.enabled = true;
-        IERC20(params.collateralToken).forceApprove(address(MORPHO), type(uint256).max);
-        IERC20(params.loanToken).forceApprove(address(MORPHO), type(uint256).max);
+        CreditDeskLib.registerMarket(_venue(), _markets[id], params, id);
         emit MarketRegistered(id, params.collateralToken, params.loanToken, params.lltv);
     }
 
@@ -393,7 +381,7 @@ contract CreditDesk is Ownable2Step, ReentrancyGuard, EIP712 {
         if (m.params.oracle == address(0)) revert UnknownMarket(marketId);
         if (!m.enabled) revert Refused(Reason.MARKET_DISABLED);
         if (!_tickers[partnerId][m.params.collateralToken].allowed) revert Refused(Reason.TICKER_NOT_ALLOWED);
-        if (!_eligible(p, partnerId, msg.sender)) revert Refused(Reason.NOT_ELIGIBLE);
+        if (!CreditDeskLib.eligible(p, partnerId, msg.sender)) revert Refused(Reason.NOT_ELIGIBLE);
         if (lineOf[partnerId][msg.sender][marketId] != 0) revert LineExists(lineOf[partnerId][msg.sender][marketId]);
 
         if (p.signer != address(0)) {
@@ -410,7 +398,7 @@ contract CreditDesk is Ownable2Step, ReentrancyGuard, EIP712 {
                     )
                 )
             );
-            if (!SignatureChecker.isValidSignatureNow(p.signer, digest, signature)) revert BadAuthorization();
+            if (!CreditDeskLib.isValidSignature(p.signer, digest, signature)) revert BadAuthorization();
         }
 
         lineId = ++lineCount;
@@ -434,11 +422,7 @@ contract CreditDesk is Ownable2Step, ReentrancyGuard, EIP712 {
         if (amount == 0) revert ZeroAmount();
         Line storage l = _line(lineId);
         if (l.status == LineStatus.CLOSED || l.status == LineStatus.NONE) revert Refused(Reason.LINE_NOT_OPEN);
-        MarketConfig storage m = _markets[l.marketId];
-        _preflight(l.collateral, msg.sender, address(this));
-        _preflight(l.collateral, address(this), address(MORPHO));
-        IERC20(l.collateral).safeTransferFrom(msg.sender, address(this), amount);
-        MORPHO.supplyCollateral(m.params, amount, l.user, "");
+        CreditDeskLib.addCollateral(_venue(), l, _markets[l.marketId], msg.sender, amount);
         bytes32 h = _decide(lineId, "ADD_COLLATERAL", amount, 0);
         emit CollateralAdded(lineId, msg.sender, amount, h);
     }
@@ -452,8 +436,7 @@ contract CreditDesk is Ownable2Step, ReentrancyGuard, EIP712 {
         Quote memory q = _quote(l, amount);
         if (q.reason != Reason.NONE) revert Refused(q.reason);
 
-        MarketConfig storage m = _markets[l.marketId];
-        MORPHO.borrow(m.params, amount, 0, l.user, l.user); // receiver is the position owner, always
+        CreditDeskLib.borrow(_venue(), l, _markets[l.marketId], amount);
 
         uint128 a = amount.toUint128();
         l.drawnPrincipal += a;
@@ -470,22 +453,8 @@ contract CreditDesk is Ownable2Step, ReentrancyGuard, EIP712 {
     function repay(uint256 lineId, uint256 amount) external nonReentrant returns (uint256 repaid) {
         if (amount == 0) revert ZeroAmount();
         Line storage l = _line(lineId);
-        if (l.status == LineStatus.NONE) revert UnknownLine(lineId);
-        MarketConfig storage m = _markets[l.marketId];
-        Position memory pos = MORPHO.position(l.marketId, l.user);
-        if (pos.borrowShares == 0) revert NothingToRepay();
-        uint256 debt = MORPHO.expectedBorrowAssets(m.params, l.user);
-        bool full = amount == REPAY_ALL || amount >= debt;
-        // `debt` is the position's shares converted up at the accrued totals, which is exactly what
-        // Morpho charges for repaying those shares, so a full repay pulls `debt` and nothing more.
-        uint256 pull = full ? debt : amount;
-        IERC20(m.params.loanToken).safeTransferFrom(msg.sender, address(this), pull);
-        if (full) {
-            (repaid,) = MORPHO.repay(m.params, 0, pos.borrowShares, l.user, "");
-            if (pull > repaid) IERC20(m.params.loanToken).safeTransfer(msg.sender, pull - repaid);
-        } else {
-            (repaid,) = MORPHO.repay(m.params, amount, 0, l.user, "");
-        }
+        bool full;
+        (repaid, full) = CreditDeskLib.repay(_venue(), l, _markets[l.marketId], msg.sender, amount);
 
         uint128 principalDown = uint128(Math.min(repaid, l.drawnPrincipal));
         l.drawnPrincipal -= principalDown;
@@ -506,17 +475,7 @@ contract CreditDesk is Ownable2Step, ReentrancyGuard, EIP712 {
         if (msg.sender != l.user) revert NotLineOwner();
         Quote memory q = _quote(l, 0);
         if (q.reason != Reason.NONE) revert Refused(q.reason);
-        if (amount > q.collateralRaw) revert Refused(Reason.INSUFFICIENT_CAPACITY);
-
-        MarketConfig storage m = _markets[l.marketId];
-        // post-withdraw check against the policy LTV, not only the venue LLTV
-        uint256 remainingValue = Math.mulDiv(q.collateralValue, q.collateralRaw - amount, q.collateralRaw);
-        if (Math.mulDiv(remainingValue, q.effectiveMaxLtvWad, WAD) < q.debt) {
-            revert Refused(Reason.INSUFFICIENT_CAPACITY);
-        }
-
-        _preflight(l.collateral, address(MORPHO), l.user);
-        MORPHO.withdrawCollateral(m.params, amount, l.user, l.user); // receiver is the position owner, always
+        CreditDeskLib.withdrawCollateral(_venue(), l, _markets[l.marketId], q, amount);
         bytes32 h = _decide(lineId, "WITHDRAW_COLLATERAL", amount, q.price8);
         emit CollateralWithdrawn(lineId, amount, q.price8, q.session, h);
     }
@@ -526,8 +485,7 @@ contract CreditDesk is Ownable2Step, ReentrancyGuard, EIP712 {
         Line storage l = _line(lineId);
         if (msg.sender != l.user) revert NotLineOwner();
         if (l.status == LineStatus.CLOSED) revert Refused(Reason.LINE_NOT_OPEN);
-        MarketConfig storage m = _markets[l.marketId];
-        uint256 debt = MORPHO.expectedBorrowAssets(m.params, l.user);
+        uint256 debt = CreditDeskLib.expectedDebt(MORPHO, _markets[l.marketId], l.user);
         if (debt != 0) revert DebtOutstanding(debt);
         l.status = LineStatus.CLOSED;
         lineOf[l.partnerId][l.user][l.marketId] = 0;
@@ -563,16 +521,7 @@ contract CreditDesk is Ownable2Step, ReentrancyGuard, EIP712 {
 
     /// @notice The obligation status the record shows right now.
     function obligationStatus(uint256 lineId) external view returns (ObligationStatus) {
-        Line storage l = _lines[lineId];
-        if (l.status == LineStatus.NONE) return ObligationStatus.NONE;
-        if (l.status == LineStatus.CLOSED) return ObligationStatus.CLOSED;
-        if (l.status == LineStatus.HELD) return ObligationStatus.HOLD_KEEPER;
-        IPriceGate.Verdict memory v = GATE.check(l.collateral);
-        if (v.state == IPriceGate.GateState.OPEN) return ObligationStatus.OPEN;
-        if (v.state == IPriceGate.GateState.MARKET_CLOSED) return ObligationStatus.HOLD_SESSION;
-        if (v.state == IPriceGate.GateState.FEED_PAUSED) return ObligationStatus.HOLD_ISSUER;
-        if (v.state == IPriceGate.GateState.TRANSFER_PAUSED) return ObligationStatus.HOLD_TRANSFER;
-        return ObligationStatus.HOLD_FEED;
+        return CreditDeskLib.obligationStatus(GATE, _lines[lineId]);
     }
 
     function lineAuthorizationDigest(bytes32 partnerId, address user, Id marketId, uint256 nonce, uint256 deadline)
@@ -592,112 +541,14 @@ contract CreditDesk is Ownable2Step, ReentrancyGuard, EIP712 {
         if (l.status == LineStatus.NONE) revert UnknownLine(lineId);
     }
 
-    function _quote(Line storage l, uint256 amount) internal view returns (Quote memory q) {
-        MarketConfig storage m = _markets[l.marketId];
-        Partner storage p = _partners[l.partnerId];
-        TickerPolicy storage t = _tickers[l.partnerId][l.collateral];
-
-        IPriceGate.Verdict memory v = GATE.check(l.collateral);
-        q.session = v.session;
-        q.collateralRaw = MORPHO.position(l.marketId, l.user).collateral;
-        q.debt = MORPHO.expectedBorrowAssets(m.params, l.user);
-
-        if (paused) return _refuse(q, Reason.DESK_PAUSED);
-        if (l.status == LineStatus.HELD) return _refuse(q, Reason.LINE_HELD);
-        if (l.status != LineStatus.OPEN) return _refuse(q, Reason.LINE_NOT_OPEN);
-        if (!p.active) return _refuse(q, Reason.PARTNER_INACTIVE);
-        if (!m.enabled) return _refuse(q, Reason.MARKET_DISABLED);
-        if (!t.allowed) return _refuse(q, Reason.TICKER_NOT_ALLOWED);
-        if (v.state != IPriceGate.GateState.OPEN) return _refuse(q, _gateReason(v.state));
-        if (!_eligible(p, l.partnerId, l.user)) return _refuse(q, Reason.NOT_ELIGIBLE);
-
-        q.price8 = _scaleTo8(uint256(v.answer), GATE.feedOf(l.collateral).feedDecimals);
-        // value in loan units = raw * price8 * 10^loanDec / (10^8 * 10^collDec)
-        q.collateralValue = Math.mulDiv(
-            q.collateralRaw * q.price8, 10 ** uint256(m.loanDecimals), 10 ** (8 + uint256(m.collateralDecimals))
+    function _quote(Line storage l, uint256 amount) internal view returns (Quote memory) {
+        return CreditDeskLib.quote(
+            _venue(), l, _markets[l.marketId], _partners[l.partnerId], _tickers[l.partnerId][l.collateral], amount
         );
-        (uint256 num, uint256 den) = _corporateActionRatio(l.collateral);
-        if (num < den) {
-            q.collateralValue = Math.mulDiv(q.collateralValue, num, den);
-            q.corporateActionHaircut = true;
-        }
-        q.effectiveMaxLtvWad = Math.min(uint256(t.maxLtvWad), m.params.lltv);
-        q.maxDebt = Math.mulDiv(q.collateralValue, q.effectiveMaxLtvWad, WAD);
-        q.available = q.maxDebt > q.debt ? q.maxDebt - q.debt : 0;
-
-        if (amount != 0) {
-            if (t.minDraw != 0 && amount < t.minDraw) return _refuse(q, Reason.BELOW_MIN_DRAW);
-            if (t.maxDraw != 0 && amount > t.maxDraw) return _refuse(q, Reason.ABOVE_MAX_DRAW);
-            if (p.exposureCap != 0 && uint256(p.exposure) + amount > p.exposureCap) {
-                return _refuse(q, Reason.PARTNER_CAP);
-            }
-            if (t.exposureCap != 0 && uint256(t.exposure) + amount > t.exposureCap) {
-                return _refuse(q, Reason.TICKER_CAP);
-            }
-            if (amount > q.available) return _refuse(q, Reason.INSUFFICIENT_CAPACITY);
-        }
-        if (!MORPHO.isAuthorized(l.user, address(this))) return _refuse(q, Reason.NOT_AUTHORIZED_ON_VENUE);
     }
 
-    function _refuse(Quote memory q, Reason r) internal pure returns (Quote memory) {
-        q.reason = r;
-        return q;
-    }
-
-    function _gateReason(IPriceGate.GateState s) internal pure returns (Reason) {
-        if (s == IPriceGate.GateState.MARKET_CLOSED) return Reason.MARKET_CLOSED;
-        if (s == IPriceGate.GateState.FEED_PAUSED) return Reason.FEED_PAUSED;
-        if (s == IPriceGate.GateState.TRANSFER_PAUSED) return Reason.TRANSFER_PAUSED;
-        if (s == IPriceGate.GateState.FEED_STALE) return Reason.FEED_STALE;
-        if (s == IPriceGate.GateState.FEED_INVALID) return Reason.FEED_INVALID;
-        return Reason.UNKNOWN_TOKEN;
-    }
-
-    function _eligible(Partner storage p, bytes32 partnerId, address user) internal view returns (bool) {
-        if (address(p.eligibility) == address(0)) return true;
-        (bool ok, bytes memory data) =
-            address(p.eligibility).staticcall(abi.encodeCall(IEligibility.isEligible, (partnerId, user)));
-        return ok && data.length >= 32 && abi.decode(data, (bool));
-    }
-
-    /// @dev A scheduled multiplier that lowers the UI balance inside the horizon shrinks capacity by
-    ///      its ratio. Reads are optional: a token without ERC-8056 reads keeps full capacity.
-    function _corporateActionRatio(address token) internal view returns (uint256 num, uint256 den) {
-        (bool ok, bytes memory data) = token.staticcall(abi.encodeCall(IScaledUIAmountNewUIMultiplier.effectiveAt, ()));
-        if (!ok || data.length < 32) return (1, 1);
-        uint256 effectiveAt = abi.decode(data, (uint256));
-        if (
-            effectiveAt == 0 || effectiveAt <= block.timestamp
-                || effectiveAt > block.timestamp + CORPORATE_ACTION_HORIZON
-        ) {
-            return (1, 1);
-        }
-        (bool ok1, bytes memory d1) = token.staticcall(abi.encodeCall(IScaledUIAmount.uiMultiplier, ()));
-        (bool ok2, bytes memory d2) =
-            token.staticcall(abi.encodeCall(IScaledUIAmountNewUIMultiplier.newUIMultiplier, ()));
-        if (!ok1 || !ok2 || d1.length < 32 || d2.length < 32) return (1, 1);
-        uint256 current = abi.decode(d1, (uint256));
-        uint256 next = abi.decode(d2, (uint256));
-        if (current == 0 || next == 0) return (1, 1);
-        return (next, current);
-    }
-
-    /// @dev B20 preflight: refuse before Morpho's SafeTransferLib masks a PolicyForbids revert.
-    function _preflight(address token, address from, address to) internal view {
-        if (!ENFORCE_B20_POLICIES) return;
-        uint64 senderPolicy = IB20(token).policyId(B20Constants.TRANSFER_SENDER_POLICY);
-        if (senderPolicy != 0 && !POLICY_REGISTRY.isAuthorized(senderPolicy, from)) {
-            revert PolicyForbids(B20Constants.TRANSFER_SENDER_POLICY, from);
-        }
-        uint64 receiverPolicy = IB20(token).policyId(B20Constants.TRANSFER_RECEIVER_POLICY);
-        if (receiverPolicy != 0 && !POLICY_REGISTRY.isAuthorized(receiverPolicy, to)) {
-            revert PolicyForbids(B20Constants.TRANSFER_RECEIVER_POLICY, to);
-        }
-    }
-
-    function _isSessionGuard(address oracle) internal view returns (bool) {
-        (bool ok, bytes memory data) = oracle.staticcall(abi.encodeWithSignature("GATE()"));
-        return ok && data.length >= 32 && abi.decode(data, (address)) == address(GATE);
+    function _venue() internal view returns (CreditDeskLib.Venue memory) {
+        return CreditDeskLib.Venue(MORPHO, GATE, POLICY_REGISTRY, ENFORCE_B20_POLICIES, paused);
     }
 
     function _decide(uint256 lineId, bytes32 action, uint256 amount, uint256 price8) internal returns (bytes32 h) {
@@ -705,11 +556,5 @@ contract CreditDesk is Ownable2Step, ReentrancyGuard, EIP712 {
             abi.encode(block.chainid, address(this), lineId, action, amount, price8, block.timestamp, ++_decisionNonce)
         );
         emit Decision(lineId, action, h, amount, price8);
-    }
-
-    function _scaleTo8(uint256 answer, uint8 decimals) internal pure returns (uint256) {
-        if (decimals == 8) return answer;
-        if (decimals > 8) return answer / (10 ** (decimals - 8));
-        return answer * (10 ** (8 - decimals));
     }
 }

@@ -43,7 +43,7 @@ contract DeployCreditDesk is Script {
     address public constant USDC_SEPOLIA = 0x036CbD53842c5426634e7929541eC2318f3dCF7e;
     uint256 public constant DEFAULT_LLTV = 0.625e18;
     string public constant DEFAULT_PARTNER = "boundline-app";
-    uint128 public constant DEFAULT_PARTNER_CAP = 1_000e6;
+    uint128 public constant DEFAULT_PARTNER_CAP = 1000e6;
     uint64 public constant DEFAULT_MAX_LTV_WAD = 0.5e18;
     uint128 public constant DEFAULT_MIN_DRAW = 1e6;
     uint128 public constant DEFAULT_MAX_DRAW = 100e6;
@@ -124,11 +124,51 @@ contract DeployCreditDesk is Script {
         d.desk.registerMarket(c.params);
         d.desk.createPartner(c.partnerId, d.partnerAdmin, c.partnerSigner, IEligibility(address(0)), c.partnerCap);
         if (d.partnerAdmin == deployer) {
-            d.desk.setTickerPolicy(
-                c.partnerId, c.params.collateralToken, true, c.maxLtvWad, c.minDraw, c.maxDraw, c.tickerCap
-            );
+            d.desk
+                .setTickerPolicy(
+                    c.partnerId, c.params.collateralToken, true, c.maxLtvWad, c.minDraw, c.maxDraw, c.tickerCap
+                );
             d.tickerPolicySet = true;
         }
+    }
+
+    /// @dev The external libraries the desk is linked to (`CreditDeskLib`), read back from its runtime
+    ///      code: the compiler emits every linked library as a PUSH20 ahead of the DELEGATECALL. The walk
+    ///      follows opcode boundaries (each PUSHn skips its immediate) and keeps only addresses that hold
+    ///      code and are not the desk's own immutables, so a slice of other data is never mistaken for a
+    ///      library. forge deploys the library before the desk in the same run and the broadcast file
+    ///      lists it under `libraries` as well.
+    function _linkedLibraries(address target, address[] memory ignore) internal view returns (address[] memory libs) {
+        bytes memory code = target.code;
+        address[] memory found = new address[](8);
+        uint256 n;
+        for (uint256 i = 0; i < code.length;) {
+            uint8 op = uint8(code[i]);
+            if (op == 0x73 && i + 21 <= code.length) {
+                address a;
+                assembly {
+                    a := shr(96, mload(add(add(code, 0x20), add(i, 1))))
+                }
+                if (
+                    a.code.length != 0 && n < found.length && !_contains(found, n, a)
+                        && !_contains(ignore, ignore.length, a)
+                ) {
+                    found[n++] = a;
+                }
+            }
+            i += (op >= 0x60 && op <= 0x7f) ? uint256(op - 0x5f) + 1 : 1;
+        }
+        libs = new address[](n);
+        for (uint256 k = 0; k < n; ++k) {
+            libs[k] = found[k];
+        }
+    }
+
+    function _contains(address[] memory list, uint256 len, address a) internal pure returns (bool) {
+        for (uint256 i = 0; i < len; ++i) {
+            if (list[i] == a) return true;
+        }
+        return false;
     }
 
     function _gateOf(address oracle) internal view returns (address) {
@@ -181,8 +221,24 @@ contract DeployCreditDesk is Script {
         console.log("{");
         console.log('  "chainId": %s,', block.chainid);
         console.log('  "creditDesk": "%s",', address(d.desk));
+        address[] memory ignore = new address[](4);
+        ignore[0] = c.morpho;
+        ignore[1] = c.gate;
+        ignore[2] = c.policyRegistry;
+        ignore[3] = address(d.desk);
+        address[] memory libs = _linkedLibraries(address(d.desk), ignore);
+        console.log('  "libraries": [');
+        for (uint256 i = 0; i < libs.length; ++i) {
+            console.log(i + 1 < libs.length ? '    "%s",' : '    "%s"', libs[i]);
+        }
+        console.log("  ],");
         console.log('  "owner": "%s", "keeper": "%s",', d.desk.owner(), c.keeper);
-        console.log('  "gate": "%s", "policyRegistry": "%s", "enforceB20Policies": %s,', c.gate, c.policyRegistry, vm.toString(c.enforceB20));
+        console.log(
+            '  "gate": "%s", "policyRegistry": "%s", "enforceB20Policies": %s,',
+            c.gate,
+            c.policyRegistry,
+            vm.toString(c.enforceB20)
+        );
         console.log('  "market": {');
         console.log('    "id": "%s",', vm.toString(Id.unwrap(d.id)));
         console.log('    "loanToken": "%s", "collateralToken": "%s",', c.params.loanToken, c.params.collateralToken);
@@ -190,15 +246,33 @@ contract DeployCreditDesk is Script {
         console.log("  },");
         console.log('  "partner": {');
         console.log('    "id": "%s", "name": "%s",', vm.toString(d.partnerId), c.partnerName);
-        console.log('    "admin": "%s", "signer": "%s", "exposureCap": %s', d.partnerAdmin, c.partnerSigner, uint256(c.partnerCap));
+        console.log(
+            '    "admin": "%s", "signer": "%s", "exposureCap": %s',
+            d.partnerAdmin,
+            c.partnerSigner,
+            uint256(c.partnerCap)
+        );
         console.log("  },");
         console.log('  "tickerPolicy": {');
-        console.log('    "set": %s, "collateral": "%s", "maxLtvWad": %s,', vm.toString(d.tickerPolicySet), c.params.collateralToken, uint256(c.maxLtvWad));
-        console.log('    "minDraw": %s, "maxDraw": %s, "exposureCap": %s', uint256(c.minDraw), uint256(c.maxDraw), uint256(c.tickerCap));
+        console.log(
+            '    "set": %s, "collateral": "%s", "maxLtvWad": %s,',
+            vm.toString(d.tickerPolicySet),
+            c.params.collateralToken,
+            uint256(c.maxLtvWad)
+        );
+        console.log(
+            '    "minDraw": %s, "maxDraw": %s, "exposureCap": %s',
+            uint256(c.minDraw),
+            uint256(c.maxDraw),
+            uint256(c.tickerCap)
+        );
         console.log("  }");
         console.log("}");
         if (!d.tickerPolicySet) {
-            console.log("ticker policy not set: PARTNER_ADMIN %s is not the broadcaster and must call setTickerPolicy", d.partnerAdmin);
+            console.log(
+                "ticker policy not set: PARTNER_ADMIN %s is not the broadcaster and must call setTickerPolicy",
+                d.partnerAdmin
+            );
         }
     }
 }

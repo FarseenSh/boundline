@@ -135,6 +135,19 @@ run one broadcaster per key at a time, pass `--slow`, and retry after a few seco
 simulation uses Beryl precompiles even against a Cobalt chain, so anything Cobalt-only (`wire`) cannot be broadcast
 from it; send that calldata with `cast send`, which does not simulate.
 
+### Contract sizes
+
+`CreditDesk` keeps its pricing and venue logic in `CreditDeskLib`, an external library linked at deploy time and
+run with DELEGATECALL, so every transfer, approval and Morpho call still happens as the desk and reverts bubble up
+unchanged. At the project's 10,000 optimizer runs the desk is 19,738 runtime bytes (4,838 under EIP-170) and the
+library 15,073; before the split the desk was 28,271 and only fit at 200 runs, which is how the Sepolia desk at
+`0x39aBaDc0aAa12D1F7e259b89536Aa1848997399a` was deployed (it keeps working; the next deploy uses the default runs).
+`forge script` deploys the library before the desk in the same run and records it under `libraries` in the
+broadcast file; `DeployCreditDesk` also reads the linked address back from the desk bytecode and prints it in its
+JSON block. To reuse an already deployed library, pass `--libraries src/desk/CreditDeskLib.sol:CreditDeskLib:<address>`.
+CI runs `forge build --sizes --skip test --skip script` so a future overflow fails the build; the test tree is
+skipped because base-std's `MockB20Factory` is over the limit by design.
+
 ## Which Foundry build runs what (verified 3 Oct 2026)
 
 | Build | B20 precompiles | Composite policies (Cobalt) | `SEIZE_EXEMPT_POLICY` scope |

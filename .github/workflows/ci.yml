@@ -21,7 +21,9 @@ jobs:
         with:
           version: v1.7.1
       - name: build
-        run: forge build --root contracts --sizes
+        run: forge build --root contracts
+      - name: size check (EIP-170, src only; base-std's test mocks are over the limit by design)
+        run: forge build --root contracts --sizes --skip 'test/**' --skip 'script/**'
       - name: test
         run: FOUNDRY_PROFILE=ci forge test --root contracts -vvv
       - name: fmt

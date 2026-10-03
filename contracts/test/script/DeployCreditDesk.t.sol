@@ -96,7 +96,7 @@ contract DeployCreditDeskTest is Test {
         c.partnerId = harness.partnerIdOf("boundline-app");
         c.partnerAdmin = address(0);
         c.partnerSigner = address(0);
-        c.partnerCap = 1_000e6;
+        c.partnerCap = 1000e6;
         c.maxLtvWad = 0.5e18;
         c.minDraw = 1e6;
         c.maxDraw = 100e6;
@@ -132,7 +132,7 @@ contract DeployCreditDeskTest is Test {
         assertEq(p.signer, address(0));
         assertEq(address(p.eligibility), address(0));
         assertTrue(p.active);
-        assertEq(uint256(p.exposureCap), 1_000e6);
+        assertEq(uint256(p.exposureCap), 1000e6);
         assertEq(uint256(p.policyVersion), 2, "createPartner then setTickerPolicy");
 
         assertTrue(d.tickerPolicySet);
@@ -195,9 +195,7 @@ contract DeployCreditDeskTest is Test {
     function test_deploy_revertsWhenLtvNotBelowLltv() public {
         DeployCreditDesk.Config memory c = _config();
         c.maxLtvWad = uint64(LLTV);
-        vm.expectRevert(
-            abi.encodeWithSelector(DeployCreditDesk.LtvNotBelowLltv.selector, uint64(LLTV), LLTV)
-        );
+        vm.expectRevert(abi.encodeWithSelector(DeployCreditDesk.LtvNotBelowLltv.selector, uint64(LLTV), LLTV));
         harness.deployFrom(c);
     }
 
@@ -216,9 +214,7 @@ contract DeployCreditDeskTest is Test {
     function test_partnerIdOf_matchesStringLiterals() public {
         assertEq(harness.partnerIdOf("boundline-app"), bytes32("boundline-app"));
         assertEq(harness.partnerIdOf("a"), bytes32("a"));
-        assertEq(
-            harness.partnerIdOf("0123456789abcdef0123456789abcdef"), bytes32("0123456789abcdef0123456789abcdef")
-        );
+        assertEq(harness.partnerIdOf("0123456789abcdef0123456789abcdef"), bytes32("0123456789abcdef0123456789abcdef"));
         vm.expectRevert(abi.encodeWithSelector(DeployCreditDesk.BadPartnerName.selector, ""));
         harness.partnerIdOf("");
         vm.expectRevert(
@@ -253,7 +249,7 @@ contract DeployCreditDeskTest is Test {
         assertEq(c.partnerId, bytes32("acme"));
         assertEq(c.partnerAdmin, address(0));
         assertEq(c.partnerSigner, address(0));
-        assertEq(uint256(c.partnerCap), 1_000e6);
+        assertEq(uint256(c.partnerCap), 1000e6);
         assertEq(uint256(c.maxLtvWad), 0.4e18);
         assertEq(uint256(c.minDraw), 1e6);
         assertEq(uint256(c.maxDraw), 100e6);
