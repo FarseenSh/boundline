@@ -18,7 +18,9 @@ reopen, one auditable obligation record, embeddable by any wallet or neobroker, 
 | `packages/calendar` | The same calendar in TypeScript, checked against the Solidity one on thousands of instants. |
 | `packages/chain` | Base mainnet and Sepolia addresses, ABIs, viem clients, price math. |
 | `apps/observatory` | The B20 credit Observatory: a Cloudflare Worker that snapshots every feed, registry flag, pause, corporate action, DEX price and venue position on Base mainnet, as a public page and JSON API. |
+| `docs/CONTEXT.md` | **Start here.** The living build context: everything built so far, deployments, live services, toolchain facts, decisions and open items. |
 | `docs/BUILD.md` | The day-by-day build schedule and ledger. |
+| `deployments/` | Addresses, transactions and live proofs per network (Base Sepolia is live). |
 
 ## Run
 
@@ -28,6 +30,9 @@ forge test --root contracts          # calendar, oracles, simulators
 pnpm test                            # TypeScript packages
 pnpm --filter @boundline/observatory dev
 ```
+
+The Observatory is live at https://boundline-observatory.papermind-ai.workers.dev; the Base Sepolia
+sandbox (test stocks, oracle stack, session-safe Morpho market) is listed in `deployments/base-sepolia.json`.
 
 ## Licence
 

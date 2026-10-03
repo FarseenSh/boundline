@@ -21,7 +21,8 @@ SDK, widget, console, app, agent surface → drills, evidence, docs → deck, vi
   public repo is pushed before submission.
 - Every mainnet write is fork-tested first; every deploy is verified on Basescan; amounts stay
   in tens to hundreds of dollars; Boundline never custodies.
-- Update the ledger below at the end of each session.
+- Update the ledger below and `docs/CONTEXT.md` (the living build context: start there in a new
+  session) at the end of each session.
 
 ## Ledger (what is done)
 
