@@ -39,6 +39,24 @@ fail_on_revert = false
 [profile.base]
 base = true
 
+# Per-agent profiles: parallel sessions compile into their own out/cache dirs so
+# concurrent forge runs never race on artifacts. Use FOUNDRY_PROFILE=lane-c etc.
+[profile.lane-a]
+out = "out-lane-a"
+cache_path = "cache-lane-a"
+
+[profile.lane-b]
+out = "out-lane-b"
+cache_path = "cache-lane-b"
+
+[profile.lane-c]
+out = "out-lane-c"
+cache_path = "cache-lane-c"
+
+[profile.lane-d]
+out = "out-lane-d"
+cache_path = "cache-lane-d"
+
 [profile.ci]
 fuzz.runs = 1024
 invariant.runs = 256
@@ -63,3 +81,4 @@ number_underscore = "thousands"
 
 [lint]
 lint_on_build = false
+ignore = ["lib/**"]
