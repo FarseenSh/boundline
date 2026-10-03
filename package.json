@@ -1,0 +1,19 @@
+{
+  "name": "boundline",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Session-aware credit layer for tokenized stocks on Base. Borrow against your stocks, paid in your currency, never liquidated while Wall Street is closed.",
+  "license": "MIT",
+  "packageManager": "pnpm@11.7.0",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "pnpm -r --if-present build",
+    "test": "pnpm -r --if-present test",
+    "typecheck": "pnpm -r --if-present typecheck",
+    "lint": "pnpm -r --if-present lint",
+    "contracts:build": "forge build --root contracts",
+    "contracts:test": "forge test --root contracts"
+  }
+}

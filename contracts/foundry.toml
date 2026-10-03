@@ -1,0 +1,65 @@
+[profile.default]
+src = "src"
+test = "test"
+script = "script"
+out = "out"
+cache_path = "cache"
+libs = ["lib"]
+solc_version = "0.8.30"
+evm_version = "cancun"
+optimizer = true
+optimizer_runs = 10_000
+bytecode_hash = "none"
+cbor_metadata = false
+auto_detect_remappings = false
+ffi = false
+fs_permissions = [{ access = "read", path = "./test/fixtures" }]
+
+remappings = [
+  "forge-std/=lib/forge-std/src/",
+  "base-std/=lib/base-std/src/",
+  "base-std-test/=lib/base-std/test/",
+  "morpho-blue/=lib/morpho-blue/src/",
+  "pre-liquidation/=lib/pre-liquidation/src/",
+  "aave-v4/=lib/aave-v4/src/",
+  "@openzeppelin/contracts/=lib/openzeppelin-contracts/contracts/"
+]
+
+[profile.default.fuzz]
+runs = 256
+
+[profile.default.invariant]
+runs = 128
+depth = 64
+fail_on_revert = false
+
+# Base's Foundry build (base-forge / base-anvil) understands `base = true` and
+# enables the B20, PolicyRegistry and ActivationRegistry precompiles locally.
+# Stock forge ignores the key; base-std's mocks are etched instead.
+[profile.base]
+base = true
+
+[profile.ci]
+fuzz.runs = 1024
+invariant.runs = 256
+invariant.depth = 64
+invariant.fail_on_revert = false
+
+[rpc_endpoints]
+base = "${BASE_RPC_URL}"
+base_sepolia = "${BASE_SEPOLIA_RPC_URL}"
+
+[etherscan]
+base = { key = "${BASESCAN_API_KEY}", chain = 8453 }
+base_sepolia = { key = "${BASESCAN_API_KEY}", chain = 84532 }
+
+[fmt]
+line_length = 120
+tab_width = 4
+bracket_spacing = false
+int_types = "long"
+quote_style = "double"
+number_underscore = "thousands"
+
+[lint]
+lint_on_build = false

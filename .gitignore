@@ -1,0 +1,30 @@
+# dependencies
+node_modules/
+.pnpm-store/
+
+# foundry
+contracts/out/
+contracts/cache/
+contracts/broadcast/**/dry-run/
+
+# cloudflare
+.wrangler/
+.dev.vars
+.dev.vars.*
+
+# env and keys
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# build
+dist/
+*.tsbuildinfo
+
+# os / editor
+.DS_Store
+.idea/
+.vscode/*
+!.vscode/extensions.json
