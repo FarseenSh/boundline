@@ -191,6 +191,20 @@
       "NVDAt feed": "0xca96f4b469a152e10d21e9f4acafc92af5b1228d0afa4728347ae81af81f55de",
       "TSLAt feed": "0x11e8d9c306e8e14e5f6961a879c309409e0f62670a83dc759e3fa26d8e440186",
       "MirrorOracleRegistry": "see the deployer's transactions on 3 Oct; owner() verified as the keeper"
+    },
+    "worker": {
+      "url": "https://boundline-keeper.papermind-ai.workers.dev",
+      "cron": "* * * * *",
+      "secret": "KEEPER_KEY",
+      "firstTick": {
+        "at": 1791043898,
+        "txs": {
+          "AAPLt setRoundData": "0x709b41580c0c893d85321bd8052224f542e9a1b2c0df239a0650265e38819652",
+          "NVDAt setRoundData": "0xca596ad0e7fe6e727e07947d5d802d8ce189e61c9b4d91233d12b9da17cee8d0",
+          "TSLAt setRoundData": "0x83663253950d9dae2c842099d59c6282b372d9e7722ee3df9ecd602b5770a5df",
+          "NVDAt setOracleParams (mainnet multiplier 1.000537939576369481)": "0x2d5d4666315c4b8aad860aacebf57f6d5b9d3348f7a957998cb3036af5fa4a84"
+        }
+      }
     }
   },
   "creditDesk": {
@@ -229,6 +243,52 @@
         ]
       }
     ],
-    "gasUsed": 5671255
+    "gasUsed": 5671255,
+    "lines": [
+      {
+        "lineId": "1",
+        "partner": "boundline-app",
+        "user": "0xB789aD318945B37566E2549F65526Cc269a482Fc",
+        "marketId": "0x4a03b124a170a913931f00ab87f7966d388370cf457c0a3c4fb6fcf4fbb88047",
+        "openLineTx": "0x91b80185acda93fbc0c886cb1aba7f226cf976221df1a7c60996f58b24c17206",
+        "block": 47637827,
+        "morphoAuthorizationTx": "0xd0d3391606356756b8b96266518665f5446e3fd747b21c78635870c528d3c279",
+        "note": "the user's 10 AAPLt sit in Morpho directly; a zero-draw quote through the API on 3 Oct returned reason MARKET_CLOSED, session WEEKEND, quoteHash 0xfe523dc9c20ad0c5e3ca561ed389653925c30fd96eda2cbb75fc060775c2c4a2"
+      }
+    ]
+  },
+  "services": {
+    "observatory": {
+      "url": "https://boundline-observatory.papermind-ai.workers.dev",
+      "d1": "dce1418d-1356-40ba-b6a8-5915ddbd95a7",
+      "kv": "aa7d8b27e629463da60008acfeccc30d",
+      "migrations": [
+        "0001_init",
+        "0002_captures"
+      ]
+    },
+    "keeper": {
+      "url": "https://boundline-keeper.papermind-ai.workers.dev"
+    },
+    "indexer": {
+      "url": "https://boundline-indexer.papermind-ai.workers.dev",
+      "d1": "dde9a6a8-e474-43a0-a809-b7f5e2e91ca4",
+      "migrations": [
+        "0001_init"
+      ]
+    },
+    "api": {
+      "url": "https://boundline-api.papermind-ai.workers.dev",
+      "d1": "9dee89e3-b1bd-42b3-b91c-adbcf9f58da9",
+      "migrations": [
+        "0001_init"
+      ],
+      "partners": [
+        {
+          "id": "boundline-app",
+          "keyFile": "~/.boundline/boundline-api-partner-keys.txt on the deployer's machine (hash in D1, key shown once)"
+        }
+      ]
+    }
   }
 }

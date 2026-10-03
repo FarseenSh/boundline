@@ -3,7 +3,7 @@
 Living record of everything built so far, where it lives, how it is verified, and what is open.
 **Start here** in any new session (human or Claude), then `docs/BUILD.md` for the schedule.
 Update this file at the end of every session together with the ledger in `docs/BUILD.md`.
-Last update: **Sat 3 Oct 2026, late evening IST** (commit `edd3dd4` plus this file).
+Last update: **Sat 3 Oct 2026, night IST** (after commit `cf03ac0`; see section 12).
 
 ## 1. What Boundline is, in one paragraph
 
@@ -20,7 +20,9 @@ manager, never a custodian.
 **The core claim, already proven on two venues:** a Morpho market whose oracle is a `SessionGuard`
 refuses `borrow`, `withdrawCollateral` and `liquidate` while the feed is held (weekend, holiday) and
 still accepts `repay` and `supplyCollateral`. Proven on a mainnet fork of the live Morpho (fork test)
-and live on Base Sepolia on 3 Oct 2026 (section 6).
+and live on Base Sepolia on 3 Oct 2026 (section 6), where the whole stack now runs end to end: real B20 test
+stocks mirrored from mainnet by a keeper, a session-safe Morpho market, the CreditDesk with a partner and a
+live line, and a partner API that quotes it.
 
 ## 2. Frame
 
@@ -44,13 +46,16 @@ and live on Base Sepolia on 3 Oct 2026 (section 6).
 | `contracts/src/desk/` | `CreditDesk.sol` (partner-scoped self-custody credit lines on Morpho, policy engine, decision hashes) | 24 tests on the etched mainnet Morpho bytecode |
 | `contracts/src/test/` | Sepolia simulators: `TestPriceFeed`, `MirrorOracleRegistry`, `MockB20`, `MockCLPool` | 20 tests |
 | `contracts/src/interfaces/`, `libraries/` | `IMarketCalendar`, `IPriceGate`, `IAggregatorV3`, `IOracleRegistry`, `ICLPool`, `IEligibility`; Uniswap `TickMath` (GPL-2.0-or-later, own header) | |
-| `contracts/script/` | `DeployCalendar`, `DeploySepoliaSimulators`, `DeployOracles` (Sepolia and mainnet paths), `CreateSessionSafeMarket` (`run`, `seed`), `IssueTestStocks` (B20 factory flow, `wire`), `README.md` with the recipe that worked | 6 tests on base-std's mocks; all dry-runnable keyless |
+| `contracts/script/` | `DeployCalendar`, `DeploySepoliaSimulators`, `DeployOracles` (Sepolia and mainnet paths), `CreateSessionSafeMarket` (`run`, `seed`), `IssueTestStocks` (B20 factory flow, `wire`), `DeployCreditDesk` (desk + market + partner + policy in one run), `wire-sepolia.sh` (the Cobalt wire as checked `cast` calls), `README.md` with the recipes that worked | 6 + 9 tests on base-std's mocks and the etched Morpho; all dry-runnable keyless |
 | `contracts/test/fixtures/` | `calendar-2026.json` (differential fixture), `morpho-blue-8453.runtime.hex` (mainnet Morpho runtime bytecode, etched in desk tests) | |
 | `contracts/broadcast/` | Foundry broadcast records of every real deploy (committed; `dry-run/` ignored) | |
 | `deployments/` | `base-sepolia.json` (addresses, txs, proofs), `README.md` | |
 | `packages/calendar` | `@boundline/calendar`: the calendar in TypeScript (`Intl`-based), fixture generator | 98 tests, zero disagreements with Solidity |
 | `packages/chain` | `@boundline/chain`: Base mainnet and Sepolia addresses, ABIs, viem client with RPC fallback, bigint TickMath and price math | 14 tests |
-| `apps/observatory` | `@boundline/observatory`: Cloudflare Worker, per-minute snapshot cron, JSON API, HTML page, D1 and KV | 29 tests, live |
+| `apps/observatory` | `@boundline/observatory`: Cloudflare Worker, per-minute snapshot cron, reopen capture runs, real Morpho positions with shadow health, JSON API, HTML page, D1 and KV | 78 tests, live |
+| `apps/keeper` | `@boundline/keeper`: cron that mirrors mainnet Chainlink rounds and OracleRegistry params onto the Sepolia simulators; status route | 30 tests, live |
+| `apps/indexer` | `@boundline/indexer`: events into D1 with per-source cursors, hash-chained daily roots, Morpho reconciliation, query routes | 43 tests, live |
+| `apps/api` | `@boundline/api`: partner API over the CreditDesk (keys, lines, quotes, obligations, decisions; correlation id, idempotency, policy version, quote hash) | 47 tests, live |
 | `scripts/gen-calendar-tests.py` | Python `zoneinfo` oracle that generates the Solidity calendar tests | |
 | `docs/BUILD.md` | day-by-day schedule to 10 Oct and the ledger | |
 | `.github/workflows/ci.yml` | contracts build/test/fmt, TypeScript build/typecheck/test, fork job gated on `BASE_RPC_URL` | not yet run (no remote) |
@@ -140,7 +145,14 @@ lists the venues on `SEIZE_EXEMPT_POLICY` (Cobalt only, not yet run). `DeployOra
 accepts `<SYMBOL>_TOKEN/_FEED/_POOL/_PRICE_E8`; `runMainnet()` binds all ten Coinbase feeds with
 SessionGuards and ShadowGuards for AAPLc and NVDAc (`DRY_RUN_ETCH` stubs are refused in a broadcast).
 `CreateSessionSafeMarket` is permissionless `createMarket` with the AdaptiveCurveIrm at 62.5% LLTV;
-the AAPLc/USDC mainnet market was simulated against the live Morpho (about 5.9M gas).
+the AAPLc/USDC mainnet market was simulated against the live Morpho (about 5.9M gas). `DeployCreditDesk`
+(`--tc DeployCreditDesk`, env `GATE`, `KEEPER`, `COLLATERAL`, `ORACLE`, `PARTNER_ID`, policy values) deploys the
+desk, registers the market, creates the partner and sets the ticker policy with named pre-check errors.
+**Size:** `CreditDesk` is 28,271 bytes at the project's 10,000 optimizer runs (EIP-170 allows 24,576); Sepolia
+was deployed with `FOUNDRY_OPTIMIZER_RUNS=200` (23,634 bytes). `forge build --sizes` fails on purpose until the
+desk is split into libraries. `wire-sepolia.sh` performs the Cobalt wire (allowlist the venues, composite
+`INTERSECT(blocklist, allowlist)` on the receiver scope, seize-exempt list) as `cast send` calls, each preceded by
+the identical `eth_call`, because base-forge's local simulation runs Beryl precompiles.
 
 ## 5. TypeScript
 
@@ -157,7 +169,22 @@ the AAPLc/USDC mainnet market was simulated against the live Morpho (about 5.9M 
   pause, multiplier, DEX price and TWAP into D1 (one row per token per tick) and writes KV `latest`
   only when the fingerprint changes or every 10 minutes (free-tier budget). `EXPORTS` (R2) is
   optional. Reads go through the RPC fallback list; a keyed RPC can be the secret
-  `BASE_RPC_URL_PRIVATE`.
+  `BASE_RPC_URL_PRIVATE`. Reopen capture: a window from 15 minutes before to 90 minutes after every feed
+  transition records each token's rounds, DEX price and TWAP and the first post-reopen print with its lag and gap
+  (`/v1/captures`). Real positions: borrowers of the mainnet B20 Morpho markets with venue health versus shadow
+  health at the Aerodrome TWAP and a protection flag (`/v1/positions`, `/v1/positions/:addr/shadow`).
+- **`@boundline/keeper`**: cron every minute; reads the mainnet rounds for AAPLc, NVDAc, TSLAc and the
+  OracleRegistry params, copies them with `setRoundData` and `setOracleParams` onto the Sepolia simulators when
+  they differ (pure plan functions, in-flight nonce guard, bounded receipts); `/v1/status`, `/v1/config`.
+- **`@boundline/indexer`**: cron every minute; Morpho events for the Sepolia market, calendar, gate, test feeds,
+  mirror registry and CreditDesk into D1 (bounded ranges, idempotent batches, per-source cursors); daily root
+  `keccak256(prev_root ‖ h1 ‖ …)` over canonical event hashes; market replay reconciled against `position` and
+  `market`; routes `/v1/events`, `/v1/cursors`, `/v1/roots`, `/v1/reconcile/latest`. Mainnet sources are phase 2.
+- **`@boundline/api`** (Hono, D1): hashed partner keys, bearer auth, idempotency with replay and conflict,
+  `X-Correlation-Id`, `X-Policy-Version`, `X-Quote-Hash`; `POST /v1/lines` returns the EIP-712
+  `LineAuthorization` typed data plus the `openLine` calldata (the user sends it; the API never signs);
+  `POST /v1/quotes` reads the desk, rounds capacity down and charges up, fails closed; `GET /v1/lines/:id`,
+  `/v1/obligations` (lines this API has seen), `/v1/decisions/:hash` (proxied to the indexer).
 
 ## 6. Deployments and live state
 
@@ -179,6 +206,9 @@ Deployer and owner `0x2f0d9B1f16CD702259C6cC259e8D5E5455282a4E`. Record: `deploy
 | Morpho Blue (same address as mainnet) | `0xBBBBBbbBBb9cC5e90e3b3Af64bdAF62C37EEFFCb` |
 | Market AAPLt/USDC, AdaptiveCurveIrm, LLTV 62.5% | id `0x4a03b124a170a913931f00ab87f7966d388370cf457c0a3c4fb6fcf4fbb88047`, seeded 10 USDC |
 | Circle USDC | `0x036CbD53842c5426634e7929541eC2318f3dCF7e` |
+| **CreditDesk** (owner deployer, keeper below, B20 enforcement on, verified at 200 runs) | `0x39aBaDc0aAa12D1F7e259b89536Aa1848997399a` |
+| Partner `boundline-app` (admin deployer, no signer, cap 1,000 USDC; AAPLt max LTV 0.5, draws 1–100 USDC, cap 500) | id `0x626f756e646c696e652d617070…` |
+| Keeper key (owns the feeds and the registry) | `0x28A50Eb7C2Db2B04638D3b226c724A1Cfe999894` |
 
 Holders of 1,000 shares of each stock: the deployer, the demo borrower
 `0xB789aD318945B37566E2549F65526Cc269a482Fc`, and `0xc709E654f322714261b65280A0f7121B3a0F0BE8`.
@@ -188,11 +218,15 @@ Live proofs (weekend session, 3 Oct): the borrower approved and supplied 10 AAPL
 `MarketClosed(WEEKEND)` (`0x3e363de9…05`); `SessionGuard.price()` and `SessionGate.priceOf(AAPLt)`
 revert the same way; `AAPLt.isPaused(feature)` answers `false` for features 0–3.
 
-Not yet on Sepolia: the `wire` step (Cobalt composite policy and seize exemption for Morpho, the
-desk and the keeper), the CreditDesk itself, and a feed mirror keeper. **The TestPriceFeeds hold
-their deploy-time answer (updatedAt 2026-10-03 14:27:20 UTC); with the default 24 h heartbeat plus
-2 h tolerance the gate reports `FEED_STALE` from Sun 4 Oct 16:27 UTC (21:57 IST) until something
-calls `setAnswer`.**
+Wired on 3 Oct (AAPLt only): `TRANSFER_RECEIVER_POLICY` = composite `216172782113783970` =
+`INTERSECT(blocklist 157, holders allowlist 72057594037928092 + Morpho, desk, keeper)`; `SEIZE_EXEMPT_POLICY` =
+allowlist `72057594037928099` of the three venues; every `eth_call` prediction matched the receipt. NVDAt and
+TSLAt keep the plain blocklist until they get markets. The borrower authorised the desk on Morpho
+(`setAuthorization`) and opened **line 1** under `boundline-app`; a zero-draw quote through the API returned
+`MARKET_CLOSED`, session `WEEKEND`, collateral 10 AAPLt. The keeper mirrors mainnet onto the test feeds every
+minute (first tick 3 Oct 16:11 UTC, four transactions, about 49k gas each), so the Sepolia gate holds, goes stale
+and reopens exactly as mainnet does: at the Sunday 20:00 ET reopen it shows `FEED_STALE` until the first mainnet
+print is mirrored, then `OPEN`.
 
 ### 6.2 Base mainnet (chain 8453)
 
@@ -212,6 +246,9 @@ AAPLc `0xb200000000000000000000C2e324d24d7eEcd1fb` with feed
 | Service | Where | Notes |
 | --- | --- | --- |
 | Observatory | https://boundline-observatory.papermind-ai.workers.dev | Worker `boundline-observatory` on Farseen's Cloudflare account; KV `SNAPSHOTS` `aa7d8b27e629463da60008acfeccc30d`; D1 `boundline-observatory` `dce1418d-1356-40ba-b6a8-5915ddbd95a7` (migration 0001 applied); cron every minute; no R2 (login lacks the scope). Redeploy: `cd apps/observatory && pnpm exec wrangler deploy`. |
+| Keeper | https://boundline-keeper.papermind-ai.workers.dev | Worker `boundline-keeper`; secret `KEEPER_KEY`; cron every minute; `/v1/status` shows both chains per pair. Redeploy: `cd apps/keeper && pnpm exec wrangler deploy` |
+| Indexer | https://boundline-indexer.papermind-ai.workers.dev | Worker `boundline-indexer`; D1 `boundline-indexer` `dde9a6a8-e474-43a0-a809-b7f5e2e91ca4` (migration 0001); cron every minute; `CREDIT_DESK_SEPOLIA` set |
+| Partner API | https://boundline-api.papermind-ai.workers.dev | Worker `boundline-api`; D1 `boundline-api` `9dee89e3-b1bd-42b3-b91c-adbcf9f58da9` (migration 0001); vars `CREDIT_DESK`, `INDEXER_URL`; partner `boundline-app` seeded, key in `~/.boundline/boundline-api-partner-keys.txt` (hash only in D1) |
 | boundline.xyz / boundline.app | same Cloudflare account | still serve the old v1 site; repointing is a human decision |
 
 ## 7. Keys, accounts and secrets (locations only, never values)
@@ -223,7 +260,10 @@ AAPLc `0xb200000000000000000000C2e324d24d7eEcd1fb` with feed
   once pasted in a chat, so Sepolia-only forever), `BOUNDLINE_TESTNET_RISK_SIGNER_KEY`
   (`0x592D…5B89`, unfunded), `BOUNDLINE_TESTNET_RECOVERY_OPERATOR_KEY` (`0x4490…7cAA`, unfunded),
   `BOUNDLINE_ETHERSCAN_API_KEY` (works as `BASESCAN_API_KEY` for `--verify` on both networks),
-  `BOUNDLINE_ALCHEMY_API_KEY`. Load with `set -a; . <file>; set +a` and pass
+  `BOUNDLINE_ALCHEMY_API_KEY`, `BOUNDLINE_TESTNET_KEEPER_KEY` (`0x28A5…9894`, generated 3 Oct with cast, 0.01 ETH,
+  owns the Sepolia feeds and registry, also stored as the Cloudflare secret `KEEPER_KEY` of the keeper Worker).
+  The API partner key for `boundline-app` is in `~/.boundline/boundline-api-partner-keys.txt` (shown once, hash in
+  D1). Load with `set -a; . <file>; set +a` and pass
   `--private-key "$VAR"`; never echo a value, never point these keys at chain 8453.
 - Cloudflare: `wrangler` holds an OAuth login on the deployer's machine (scopes: workers, KV, D1,
   pages, zone read; **no R2**). Account id `d1dc74d76398a3583271827dd3384c07`.
@@ -253,15 +293,16 @@ list; KV on the free tier allows 1,000 writes a day, hence the throttle; macOS h
 ## 9. Verification state (3 Oct 2026, late evening)
 
 ```sh
-forge test --root contracts     # 104 passed, 1 skipped (fork test without BASE_RPC_URL), 10 suites
-pnpm test                       # 141 vitest: calendar 98, chain 14, observatory 29
+forge test --root contracts     # 113 passed, 1 skipped (fork test without BASE_RPC_URL), 11 suites
+forge build --root contracts --sizes   # fails on purpose: CreditDesk 28,271 bytes at 10k runs (see 4.5)
+pnpm test                       # 310 vitest: calendar 98, chain 14, observatory 78, keeper 30, indexer 43, api 47
 pnpm typecheck                  # clean
 BASE_RPC_URL=<archive rpc> forge test --root contracts --match-path 'test/fork/*'   # live Morpho fork proof
 ```
 
 Per Foundry suite: MarketCalendar 18, MarketCalendarDifferential 2, SessionOracles 34, CreditDesk 24,
-IssueTestStocks 6, TestPriceFeed 6, MirrorOracleRegistry 5, MockB20 5, MockCLPool 4, fork 1 (skips
-without an RPC). Under base-forge v1.1.0: 101 passed, 4 skipped (fork plus three Cobalt-only cases).
+IssueTestStocks 6, DeployCreditDesk 9, TestPriceFeed 6, MirrorOracleRegistry 5, MockB20 5, MockCLPool 4, fork 1
+(skips without an RPC). Under base-forge v1.1.0: 101 passed, 4 skipped (fork plus three Cobalt-only cases).
 
 ## 10. Decisions, dated
 
@@ -277,18 +318,25 @@ without an RPC). Under base-forge v1.1.0: 101 passed, 4 skipped (fork plus three
   KV writes throttled; public RPC fallback list instead of a keyed RPC for now.
 - **3 Oct**: old-project Sepolia leftovers (15 USDC hub deposit, 2 USDC Morpho supply) withdrawn to
   the deployer and used to seed the new market.
+- **3 Oct, night**: a dedicated keeper key owns the Sepolia simulators and lives in Cloudflare as a secret; the
+  Sepolia feeds mirror mainnet's rounds verbatim (held, stale and reopening like the real thing) instead of being
+  kept artificially fresh. The desk went to Sepolia at 200 optimizer runs rather than waiting for the library
+  split. The Cobalt wire runs as `cast send` with an `eth_call` guard before each write. The API is
+  self-custody only: it prepares typed data and calldata and never signs. Indexer phase 1 is Sepolia only.
 
 ## 11. Open items
 
 **Clocked**
-- Sun 4 Oct before 16:27 UTC (21:57 IST): feed mirror keeper for the Sepolia TestPriceFeeds (mainnet
-  Chainlink answers mirrored on a cron; needs a keeper key and Cloudflare secret), or the Sepolia gate
-  shows `FEED_STALE` at the Sunday 20:00 ET reopen.
-- Sun 4 Oct 20:00 ET = Mon 5 Oct 05:30 IST: the mainnet reopen. The Observatory is live to capture it.
+- Sun 4 Oct 19:45 ET (Mon 5 Oct 05:15 IST): the Observatory arms the reopen capture run by itself; check
+  `/v1/captures` shows `armed_at`, and after 20:00 ET the per-token first print, lag and gap. The keeper then
+  mirrors the first mainnet prints onto Sepolia and the Sepolia gate opens.
+- Mon 5 Oct, first REGULAR session: the first in-session `draw` on line 1 through the desk (owner key), a repay,
+  and a quote with non-zero capacity through the API, all recorded as evidence.
 
-**Next build items (dependency order)**: Sepolia CreditDesk deploy plus `wire`; indexer Worker + D1
-with the hash-chained daily root and reconciliation; Hono API skeleton; Cobalt composite-policy and
-scheduled-multiplier drills; pre-liquidation contracts, Protector and keeper with validity
+**Next build items (dependency order)**: split `CreditDesk` into libraries so it fits at 10,000 runs and add
+`forge build --sizes` to CI; indexer phase 2 (mainnet feed aggregators, OracleRegistry, B20 Morpho markets, Aave
+spoke) and the API's obligations served from it; Observatory Aave V4 positions; NVDAt and TSLAt markets and
+wire; scheduled-multiplier drill; pre-liquidation contracts, Protector and keeper with validity
 transactions; AaveDesk and ProtectionVault; Reserve; fork replay harness; router, self-repaying and
 local-money legs; SDK, widget, app, console, x402, MCP; drills, evidence, docs, deck, videos.
 
@@ -315,6 +363,12 @@ top-ups for the Sepolia book.
 | `5bcd2f8` | Test-stock suite runs live under base-forge, Cobalt-only cases skip on Beryl |
 | `93f7bb6` | Sepolia test stocks, oracle stack and session-safe Morpho market deployed |
 | `edd3dd4` | Observatory live on Cloudflare with KV write throttle and RPC fallback |
+| `060f192` | docs/CONTEXT.md, the living build context |
+| `a1031f4` | Keeper Worker: mirror mainnet feed rounds and registry params onto the Sepolia simulators |
+| `e7fe38b` | CreditDesk deployed on Base Sepolia and AAPLt's Cobalt policies wired |
+| `3516b67` | Observatory: reopen capture runs and shadow health for real Morpho positions |
+| `962040d` | Indexer Worker: events into D1 with hash-chained daily roots and Morpho reconciliation |
+| `cf03ac0` | Partner API: lines, quotes, obligations and decisions over the CreditDesk |
 
 ## 13. How to keep this file true
 
