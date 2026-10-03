@@ -146,3 +146,80 @@ from it; send that calldata with `cast send`, which does not simulate.
 None of the local builds is Cobalt-exact. Keep `base-forge` at v1.1.0 (`base-foundryup --install v1.1.0`)
 and treat Base Sepolia, reached with `base-forge … --rpc-url base_sepolia`, as the only source of truth
 for Cobalt behaviour (composite policies, seize-exempt wiring, scheduled multipliers).
+
+## CreditDesk on Sepolia: `DeployCreditDesk.s.sol` and the Cobalt wire step
+
+`DeployCreditDesk` (`--tc DeployCreditDesk`) deploys the desk and, in the same run, registers the
+session-safe market, creates the first partner and sets that partner's ticker policy for the market's
+collateral. It needs an RPC (`registerMarket` reads the market from Morpho). The broadcaster becomes
+the desk owner and, unless `PARTNER_ADMIN` says otherwise, the partner admin, which is what allows the
+ticker policy in the same run (`setTickerPolicy` is partner-admin only; with another admin the script
+skips it and says so). Partner ids are the name's UTF-8 bytes left-aligned in a `bytes32`, the same
+encoding as a Solidity string literal (`partnerIdOf`). Tests: `test/script/DeployCreditDesk.t.sol`
+(9 tests on the etched mainnet Morpho, including the gate-mismatch, missing-market and LTV-above-LLTV
+refusals and the env parsing).
+
+| Env | Default |
+| --- | --- |
+| `GATE`, `KEEPER`, `COLLATERAL`, `ORACLE` | required |
+| `MORPHO`, `IRM`, `LLTV` | `0xBBBB…FFCb`, AdaptiveCurveIrm, `0.625e18` |
+| `LOAN_TOKEN` | USDC on 8453 and 84532, required elsewhere |
+| `ENFORCE_B20`, `POLICY_REGISTRY` | `true` on 8453 and 84532 (else `false`); the precompile when enforcing |
+| `PARTNER_ID`, `PARTNER_ADMIN`, `PARTNER_SIGNER`, `PARTNER_EXPOSURE_CAP` | `boundline-app`, broadcaster, none, `1_000e6` |
+| `MAX_LTV_WAD`, `MIN_DRAW`, `MAX_DRAW`, `TICKER_EXPOSURE_CAP` | `0.5e18`, `1e6`, `100e6`, `500e6` |
+
+**The desk is above the EIP-170 size limit at the project's 10,000 optimizer runs** (measured 3 Oct
+2026 with `forge build --sizes`), so deploy it with fewer runs through an env override; tests never
+enforce the limit, which is why the suite was green:
+
+| Setting | CreditDesk runtime bytes | Margin to 24,576 |
+| --- | --- | --- |
+| optimizer 10,000 runs (project default) | 28,271 | over by 3,695 |
+| 1,000 runs | 25,559 | over by 983 |
+| **200 runs** | **23,634** | 942 spare |
+| via-IR, 10,000 runs | 26,016 | over by 1,440 |
+| via-IR, 200 runs | 21,337 | 3,239 spare |
+
+Keyless simulation against Base Sepolia (Base's build, because the collateral is a real B20 asset) and
+the broadcast, both at 200 runs:
+
+```bash
+cd contracts
+export GATE=0x92f59437d4ef5CDcEAe2CcDE89B03A7B4B1Ae427 KEEPER=<keeper> \
+  COLLATERAL=0xB2000000000000000000000E063E65377cA34141 ORACLE=0x1589aAb40fF0b2E0C4c679e70865eb97A24e5854
+FOUNDRY_OPTIMIZER_RUNS=200 base-forge script script/DeployCreditDesk.s.sol --tc DeployCreditDesk \
+  --rpc-url base_sepolia --sender <deployer>                                   # simulate: ~7.4M gas
+FOUNDRY_OPTIMIZER_RUNS=200 base-forge script script/DeployCreditDesk.s.sol --tc DeployCreditDesk \
+  --rpc-url base_sepolia --broadcast --verify --private-key "$KEY"             # deploy + verify
+```
+
+`--verify` submits the settings of the same invocation, so the override must be on the verify run too.
+Every other contract keeps the project default; only the desk is compiled differently, and the
+mainnet deploy will need the same override until the desk is split.
+
+### Wire step: `wire-sepolia.sh`
+
+The Cobalt policy wiring (`IssueTestStocks.wire`) cannot be broadcast from `base-forge` v1.1.0: its
+local simulation runs Beryl precompiles, where `createCompositePolicy` reverts, so the script never
+reaches the chain. `wire-sepolia.sh` performs the same five writes as raw `cast send` calls, which do
+not simulate, and before each write makes the identical call as `eth_call` from the sender and aborts on
+a revert (eth_call executes the live Cobalt precompiles). Policy ids are read back from the
+`PolicyCreated` log of each receipt rather than predicted, because the registry's counters are shared
+with every other issuer on Sepolia. Without `DEPLOYER_KEY` the script only checks:
+
+```bash
+# check (no key): every write is tried as eth_call from SENDER
+TOKEN=0xB2000000000000000000000E063E65377cA34141 VENUES=0xBBBBBbbBBb9cC5e90e3b3Af64bdAF62C37EEFFCb,<desk>,<keeper> \
+  SENDER=<deployer> contracts/script/wire-sepolia.sh
+# write: key passed through the environment, never as a literal
+TOKEN=… VENUES=… DEPLOYER_KEY="$BOUNDLINE_TESTNET_DEPLOYER_KEY" contracts/script/wire-sepolia.sh
+```
+
+Verified read-only on Base Sepolia on 3 Oct 2026 from the deployer for AAPLt (allowlist
+72057594037928092, blocklist 157): `updateAllowlist` returns, `createCompositePolicy(INTERSECT,
+[157, allowlist])` would get id 216172782113783970, `createPolicyWithAccounts(ALLOWLIST, venues)` would
+get 72057594037928098, and `updatePolicy` on both `TRANSFER_RECEIVER_POLICY` and `SEIZE_EXEMPT_POLICY`
+returns, so the seize-exempt scope exists on Sepolia's Cobalt even though the nightly local build
+rejects it. A stranger is refused with `AccessControlUnauthorizedAccount`, and a composite with a
+bogus child reverts. Run it after the desk exists so the desk is among the venues; the order inside is
+allowlist first, so holders can keep receiving while the composite is bound.

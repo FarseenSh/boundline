@@ -7,9 +7,9 @@
   "toolchain": "base-forge 1.6.0-v1.1.0 (Beryl precompiles locally, Cobalt on chain), solc 0.8.30, cancun, optimizer 10000 runs",
   "notes": [
     "Test-only deployment. The broadcaster owns the calendar, registry, gate and feeds; no feed is locked.",
-    "The three stocks are real B20 assets created through the factory precompile with an allowlist of holders bound to MINT_RECEIVER_POLICY and an empty blocklist bound to both transfer scopes. Step 5 (`wire`: composite INTERSECT receiver policy and SEIZE_EXEMPT_POLICY for the venues) has not run yet.",
     "The TestPriceFeeds hold their deploy-time answer (updatedAt 1791037640); with the default 24h heartbeat + 2h tolerance the gate reports FEED_STALE from 2026-10-04T16:27:20Z until something calls setAnswer.",
-    "Verification: all nine Solidity contracts verified on sepolia.basescan.org through the Etherscan v2 API during the deploy."
+    "Verification: all nine Solidity contracts verified on sepolia.basescan.org through the Etherscan v2 API during the deploy.",
+    "The three stocks are real B20 assets created through the factory precompile. AAPLt is wired (composite receiver policy and seize exemption for Morpho, the desk and the keeper, 3 Oct); NVDAt and TSLAt still carry the plain blocklist on both transfer scopes until they get markets."
   ],
   "contracts": {
     "MarketCalendar": {
@@ -51,7 +51,24 @@
       "setFeedTx": "0xa3087529e7dc82a635c0e848e0feb1a3497ca13b8d55229cec16b98f4ce6daf8",
       "sessionGuard": "0x1589aAb40fF0b2E0C4c679e70865eb97A24e5854",
       "sessionGuardTx": "0xf6f297a456302bbd75f8e843e9b65bf67b7db84e42be4f3a1654da4a839537d5",
-      "shadowGuard": null
+      "shadowGuard": null,
+      "wire": {
+        "date": "2026-10-03",
+        "runbook": "contracts/script/wire-sepolia.sh",
+        "venues": [
+          "0xBBBBBbbBBb9cC5e90e3b3Af64bdAF62C37EEFFCb",
+          "0x39aBaDc0aAa12D1F7e259b89536Aa1848997399a",
+          "0x28A50Eb7C2Db2B04638D3b226c724A1Cfe999894"
+        ],
+        "updateAllowlistTx": "0x8677c03c8abe94c5e547d83b2c1bf5e62d9d1b1ac1331fbab1e73c8548723bfb",
+        "compositePolicyId": "216172782113783970",
+        "createCompositeTx": "0xfef401e631bf24be3d4eedbb25ed55772db4f27f29b9ebeb78a2a0139955a2ba",
+        "transferReceiverPolicyTx": "0x422f3d99d94f148afb3ba7b222f6a8932430b7bbeb3dfa25685299340ae37fdc",
+        "seizeExemptPolicyId": "72057594037928099",
+        "createSeizeExemptTx": "0x62c42d69fbc7b2830ef4fccf55e671e8222aa6bcb1727245f1338935211f89c6",
+        "seizeExemptPolicyTx": "0xda3fef1578444a99f3484bfb6c9d9d2f81c667d7af9276162ea1bf87cd8886f3",
+        "result": "TRANSFER_RECEIVER_POLICY = INTERSECT(blocklist 157, holders allowlist 72057594037928092 + venues); SEIZE_EXEMPT_POLICY = allowlist of the venues; every eth_call prediction matched the receipt"
+      }
     },
     "NVDAt": {
       "token": "0xB200000000000000000000AEd76Eae58870E2ae6",
@@ -175,5 +192,43 @@
       "TSLAt feed": "0x11e8d9c306e8e14e5f6961a879c309409e0f62670a83dc759e3fa26d8e440186",
       "MirrorOracleRegistry": "see the deployer's transactions on 3 Oct; owner() verified as the keeper"
     }
+  },
+  "creditDesk": {
+    "address": "0x39aBaDc0aAa12D1F7e259b89536Aa1848997399a",
+    "block": 47637594,
+    "deployTx": "0x7c344a30e4cec9f4c004ea2b3d72f83597000fb0e4be983aa821df0285b98e1a",
+    "verified": "sepolia.basescan.org, solc 0.8.30, optimizer runs 200 (the desk is 28,271 bytes at the project's 10,000 runs, over EIP-170; deployed with FOUNDRY_OPTIMIZER_RUNS=200 = 23,634 bytes)",
+    "owner": "0x2f0d9B1f16CD702259C6cC259e8D5E5455282a4E",
+    "keeper": "0x28A50Eb7C2Db2B04638D3b226c724A1Cfe999894",
+    "gate": "0x92f59437d4ef5CDcEAe2CcDE89B03A7B4B1Ae427",
+    "policyRegistry": "0x8453000000000000000000000000000000000002",
+    "enforceB20Policies": true,
+    "markets": [
+      {
+        "id": "0x4a03b124a170a913931f00ab87f7966d388370cf457c0a3c4fb6fcf4fbb88047",
+        "registerTx": "0xfa6e31b300acac61da48e336466d228d6bed53ee8b2d73d46e8e8480869ab114"
+      }
+    ],
+    "partners": [
+      {
+        "id": "0x626f756e646c696e652d61707000000000000000000000000000000000000000",
+        "name": "boundline-app",
+        "admin": "0x2f0d9B1f16CD702259C6cC259e8D5E5455282a4E",
+        "signer": null,
+        "exposureCapUsdc": "1000000000",
+        "createTx": "0x1ab56598b0c31e71c748fc5ed0b5af7822fd493a1a0d4efaa6ce8b4e39f59825",
+        "tickerPolicies": [
+          {
+            "collateral": "0xB2000000000000000000000E063E65377cA34141",
+            "maxLtvWad": "500000000000000000",
+            "minDraw": "1000000",
+            "maxDraw": "100000000",
+            "exposureCapUsdc": "500000000",
+            "setTx": "0xc8acb2995b04bd3744c9fd4c2bc9a7ffccf0efe81208fdf6944ad217beabac76"
+          }
+        ]
+      }
+    ],
+    "gasUsed": 5671255
   }
 }
