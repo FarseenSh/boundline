@@ -3,7 +3,7 @@
 Living record of everything built so far, where it lives, how it is verified, and what is open.
 **Start here** in any new session (human or Claude), then `docs/BUILD.md` for the schedule.
 Update this file at the end of every session together with the ledger in `docs/BUILD.md`.
-Last update: **Sat 3 Oct 2026, night IST** (after commit `e964a07`; see section 12).
+Last update: **Sat 3 Oct 2026, night IST** (after commit `bf48607`; see section 12).
 
 ## 1. What Boundline is, in one paragraph
 
@@ -251,8 +251,8 @@ AAPLc `0xb200000000000000000000C2e324d24d7eEcd1fb` with feed
 | --- | --- | --- |
 | Observatory | https://boundline-observatory.papermind-ai.workers.dev | Worker `boundline-observatory` on Farseen's Cloudflare account; KV `SNAPSHOTS` `aa7d8b27e629463da60008acfeccc30d`; D1 `boundline-observatory` `dce1418d-1356-40ba-b6a8-5915ddbd95a7` (migration 0001 applied); cron every minute; no R2 (login lacks the scope). Redeploy: `cd apps/observatory && pnpm exec wrangler deploy`. |
 | Keeper | https://boundline-keeper.papermind-ai.workers.dev | Worker `boundline-keeper`; secret `KEEPER_KEY`; cron every minute; `/v1/status` shows both chains per pair. Redeploy: `cd apps/keeper && pnpm exec wrangler deploy` |
-| Indexer | https://boundline-indexer.papermind-ai.workers.dev | Worker `boundline-indexer`; D1 `boundline-indexer` `dde9a6a8-e474-43a0-a809-b7f5e2e91ca4` (migration 0001); cron every minute; `CREDIT_DESK_SEPOLIA` set |
-| Partner API | https://boundline-api.papermind-ai.workers.dev | Worker `boundline-api`; D1 `boundline-api` `9dee89e3-b1bd-42b3-b91c-adbcf9f58da9` (migration 0001); vars `CREDIT_DESK`, `INDEXER_URL`; partner `boundline-app` seeded, key in `~/.boundline/boundline-api-partner-keys.txt` (hash only in D1) |
+| Indexer | https://boundline-indexer.papermind-ai.workers.dev | Worker `boundline-indexer`; D1 `boundline-indexer` `dde9a6a8-e474-43a0-a809-b7f5e2e91ca4` (migration 0001); `CREDIT_DESK_SEPOLIA` set. **Its own cron trigger never fired on this account** (40 minutes, re-registered once), so the Observatory's cron calls its `POST /__tick` through a service binding with the shared secret `TICK_TOKEN` (also `INDEXER_TICK_TOKEN` on the Observatory; value in `~/.boundline/cloudflare-internal.env`); verified: cursors advance every minute, 32 Sepolia events, reconciliation PASS 3/3 |
+| Partner API | https://boundline-api.papermind-ai.workers.dev | Worker `boundline-api`; D1 `boundline-api` `9dee89e3-b1bd-42b3-b91c-adbcf9f58da9` (migration 0001); vars `CREDIT_DESK`, `INDEXER_URL`, service binding `INDEXER` (Worker-to-Worker fetches over workers.dev are refused with Cloudflare error 1042); partner `boundline-app` seeded, key in `~/.boundline/boundline-api-partner-keys.txt` (hash only in D1). Verified live: `GET /v1/lines/1` (status OPEN, obligation HOLD_SESSION), `POST /v1/quotes` (MARKET_CLOSED, WEEKEND), `GET /v1/decisions/<hash>` resolving the openLine decision from the indexer |
 | boundline.xyz / boundline.app | same Cloudflare account | still serve the old v1 site; repointing is a human decision |
 
 ## 7. Keys, accounts and secrets (locations only, never values)
@@ -287,8 +287,12 @@ AAPLc `0xb200000000000000000000C2e324d24d7eEcd1fb` with feed
 | Python | `zoneinfo` as the independent calendar oracle (`scripts/gen-calendar-tests.py`) |
 | Profiles | `FOUNDRY_PROFILE=lane-a|lane-b|lane-c|lane-d` give each parallel session its own `out-lane-x/` and `cache-lane-x/` |
 
-Operational lessons: parallel Bash calls in one Claude session share the shell cwd, so always use
-absolute paths and `forge --root`; zsh needs quotes around globs like `--include=*.sol`; a view
+Operational lessons: a brand-new Worker's cron can take ten minutes to start, and one Worker's cron never
+started at all (drive it from a working cron through a service binding); a fresh workers.dev route can answer
+Cloudflare error 1042 (HTTP 404) for a minute after its first deploy, and the same 1042 is what a Worker gets when
+it fetches another Worker's workers.dev URL (use service bindings); parallel Bash calls in one Claude session
+share the shell cwd and the harness resets it between calls even mid-command, so always use absolute paths,
+`forge --root` and `pnpm --filter <pkg> exec`; zsh needs quotes around globs like `--include=*.sol`; a view
 called inside `vm.prank` consumes the prank; `sepolia.base.org` is load-balanced and its nodes
 disagree on the head for a few seconds, so run one broadcaster per key at a time, pass `--slow`, and
 retry a `nonce too low`; `mainnet.base.org` rate-limits Cloudflare egress, hence the RPC fallback
@@ -373,6 +377,8 @@ top-ups for the Sepolia book.
 | `962040d` | Indexer Worker: events into D1 with hash-chained daily roots and Morpho reconciliation |
 | `cf03ac0` | Partner API: lines, quotes, obligations and decisions over the CreditDesk |
 | `be9cb68` | Build context, ledger and deployment record for the five live lanes |
+| `0bec0f4` | API reaches the indexer through a service binding |
+| `bf48607` | Indexer tick driven from the Observatory cron through a service binding |
 | `e964a07` | CreditDesk split into the desk and an external CreditDeskLib (fits EIP-170 at 10,000 runs) |
 
 ## 13. How to keep this file true
