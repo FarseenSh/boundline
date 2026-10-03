@@ -1,0 +1,21 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "boundline-observatory",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-09-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "triggers": { "crons": ["* * * * *"] },
+  "kv_namespaces": [{ "binding": "SNAPSHOTS", "id": "REPLACE_ME" }],
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "boundline-observatory",
+      "database_id": "REPLACE_ME",
+      "migrations_dir": "migrations"
+    }
+  ],
+  "r2_buckets": [{ "binding": "EXPORTS", "bucket_name": "boundline-observatory-exports" }],
+  "vars": { "BASE_RPC_URL": "https://mainnet.base.org" },
+  "observability": { "enabled": true }
+  // Custom domain: add `"routes": [{ "pattern": "boundline.xyz", "custom_domain": true }]` once the zone is on this account.
+}
