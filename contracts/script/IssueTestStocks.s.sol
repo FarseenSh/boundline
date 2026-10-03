@@ -83,6 +83,7 @@ contract IssueTestStocks is Script {
 
     error PrecompilesMissing(string hint);
     error EtchMocksDuringBroadcast();
+    error CompositePoliciesUnavailable(string hint);
 
     // ================================================================= entry points
 
@@ -172,6 +173,9 @@ contract IssueTestStocks is Script {
         internal
         returns (uint64 compositeId, uint64 seizeExemptId)
     {
+        if (!PrecompileMocks.compositePoliciesSupported()) {
+            revert CompositePoliciesUnavailable("this policy registry predates Cobalt (base-forge v1.1.0 is a Beryl build): use a nightly or a Cobalt chain");
+        }
         IB20 t = IB20(token);
         IPolicyRegistry reg = StdPrecompiles.POLICY_REGISTRY;
 

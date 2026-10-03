@@ -4,6 +4,7 @@ pragma solidity ^0.8.28;
 import {Vm} from "forge-std/Vm.sol";
 import {IActivationRegistry} from "base-std/interfaces/IActivationRegistry.sol";
 import {IB20Factory} from "base-std/interfaces/IB20Factory.sol";
+import {IPolicyRegistry} from "base-std/interfaces/IPolicyRegistry.sol";
 import {StdPrecompiles} from "base-std/StdPrecompiles.sol";
 import {ActivationRegistryFeatureList} from "base-std-test/lib/mocks/ActivationRegistryFeatureList.sol";
 import {MockActivationRegistry} from "base-std-test/lib/mocks/MockActivationRegistry.sol";
@@ -34,6 +35,15 @@ library PrecompileMocks {
     function factoryLive() internal view returns (bool) {
         (bool ok, bytes memory ret) =
             StdPrecompiles.B20_FACTORY_ADDRESS.staticcall(abi.encodeCall(IB20Factory.isB20, (address(0))));
+        return ok && ret.length >= 32;
+    }
+
+    /// @notice True when the policy registry in this EVM understands Cobalt's composite policies.
+    ///         Base's Foundry build v1.1.0 ships Beryl precompiles, where `createCompositePolicy`
+    ///         reverts with its own selector; base-std's mocks and every Cobalt chain support it.
+    function compositePoliciesSupported() internal view returns (bool) {
+        (bool ok, bytes memory ret) = StdPrecompiles.POLICY_REGISTRY_ADDRESS
+            .staticcall(abi.encodeCall(IPolicyRegistry.MIN_COMPOSITE_CHILD_POLICIES, ()));
         return ok && ret.length >= 32;
     }
 

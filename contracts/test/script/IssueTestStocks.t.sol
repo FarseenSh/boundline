@@ -54,6 +54,14 @@ contract IssueTestStocksTest is Test {
         harness = new IssueTestStocksHarness();
     }
 
+    /// @dev `wire` needs Cobalt's composite policies. Base's Foundry build v1.1.0 runs Beryl
+    ///      precompiles, where `createCompositePolicy` reverts with its own selector, so the
+    ///      composite tests are skipped there (a `base-foundryup --install nightly` build or any
+    ///      Cobalt chain runs them); the mocks and stock forge always run them.
+    function _requireCompositePolicies() internal {
+        if (!PrecompileMocks.compositePoliciesSupported()) vm.skip(true);
+    }
+
     function _issue() internal returns (IssueTestStocks.Issued memory r) {
         address[] memory extra = new address[](1);
         extra[0] = alice;
@@ -128,6 +136,7 @@ contract IssueTestStocksTest is Test {
     }
 
     function test_wire_bindsCompositeReceiverPolicyAndSeizeExempt() public {
+        _requireCompositePolicies();
         IssueTestStocks.Issued memory r = _issue();
         address[] memory venues = new address[](3);
         venues[0] = morpho;
@@ -163,6 +172,7 @@ contract IssueTestStocksTest is Test {
     }
 
     function test_wire_blocklistStillBlocksAHolder() public {
+        _requireCompositePolicies();
         IssueTestStocks.Issued memory r = _issue();
         address[] memory venues = new address[](1);
         venues[0] = morpho;
@@ -178,6 +188,7 @@ contract IssueTestStocksTest is Test {
     }
 
     function test_wire_onForeignTokenCreatesFreshPolicies() public {
+        _requireCompositePolicies();
         // A token whose policies are the ALWAYS_ALLOW sentinel: wire must not try to compose id 0.
         IssueTestStocks.Issued memory r = _issue();
         vm.startPrank(address(harness));

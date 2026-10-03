@@ -69,7 +69,12 @@ Without it a keyless local `runMainnet()` stops with `FeedHasNoCode`.
 cannot execute them, not even against an RPC, because they have no bytecode; a real run
 needs Base's Foundry build: `base-forge script ... --rpc-url base_sepolia --broadcast`.
 `ETCH_MOCKS=true` etches base-std's reference mocks for a keyless local simulation and is
-refused in a broadcast (policy ids from the mocks would not match the chain). Per symbol it
+refused in a broadcast (policy ids from the mocks would not match the chain). Under Base's
+Foundry build (`~/.foundry/bin/base-forge`) the precompiles are live and cannot be etched, so
+the scripts and `test/script/IssueTestStocks.t.sol` detect them and use them directly. Note
+that base-forge v1.1.0 ships **Beryl** precompiles: `createCompositePolicy` (Cobalt) reverts
+there, so `wire` stops with `CompositePoliciesUnavailable` and the three composite tests are
+skipped; a `base-foundryup --install nightly` build or Base Sepolia itself runs them. Per symbol it
 creates an allowlist of holders (broadcaster plus `MINT_TO`) bound to `MINT_RECEIVER_POLICY`,
 an empty blocklist bound to both transfer scopes, then the asset with roles, supply cap and
 `batchMint` in the factory initCalls, and prints the predicted and actual token address.
@@ -107,3 +112,15 @@ COLLATERAL=<AAPLt> ORACLE=<AAPLt SessionGuard> forge script script/CreateSession
 base-forge script script/IssueTestStocks.s.sol --tc IssueTestStocks --sig "wire(address,address[])" \
   <AAPLt> "[0xBBBBBbbBBb9cC5e90e3b3Af64bdAF62C37EEFFCb,<desk>,<keeper>]" --rpc-url base_sepolia --broadcast --account <keystore>
 ```
+
+## Which Foundry build runs what (verified 3 Oct 2026)
+
+| Build | B20 precompiles | Composite policies (Cobalt) | `SEIZE_EXEMPT_POLICY` scope |
+| --- | --- | --- | --- |
+| stock `forge` 1.7.1 | none; tests etch base-std's reference mocks | yes (mocks) | yes (mocks) |
+| `base-forge` v1.1.0 (stable) | live, **Beryl** | no: `createCompositePolicy` reverts with its own selector, the three `wire` tests skip | yes |
+| `base-forge` nightly (1.6.0-nightly, 3 Oct) | live, Denim-leaning | yes | **no**: `updatePolicy(SEIZE_EXEMPT_POLICY, …)` reverts `UnsupportedPolicyType` |
+
+None of the local builds is Cobalt-exact. Keep `base-forge` at v1.1.0 (`base-foundryup --install v1.1.0`)
+and treat Base Sepolia, reached with `base-forge … --rpc-url base_sepolia`, as the only source of truth
+for Cobalt behaviour (composite policies, seize-exempt wiring, scheduled multipliers).
