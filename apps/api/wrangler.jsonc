@@ -5,6 +5,8 @@
   "compatibility_date": "2026-09-01",
   "compatibility_flags": ["nodejs_compat"],
   "observability": { "enabled": true },
+  // Service binding to the indexer: Worker-to-Worker fetches over workers.dev are refused (error 1042).
+  "services": [{ "binding": "INDEXER", "service": "boundline-indexer" }],
   // Create with `pnpm exec wrangler d1 create boundline-api`, paste the id here, then
   // `pnpm exec wrangler d1 migrations apply boundline-api --remote`.
   "d1_databases": [

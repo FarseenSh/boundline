@@ -18,6 +18,8 @@ function depsFrom(env: Env): AppDeps {
     now: () => Math.floor(Date.now() / 1000),
     uuid: () => crypto.randomUUID(),
     ...(env.INDEXER_URL ? { indexerUrl: env.INDEXER_URL } : {}),
+    // Worker-to-Worker fetches over workers.dev are refused (Cloudflare 1042); use the service binding when bound.
+    ...(env.INDEXER ? { fetchImpl: env.INDEXER.fetch.bind(env.INDEXER) as typeof fetch } : {}),
   };
 }
 

@@ -11,4 +11,6 @@ export interface Env {
   SESSION_GATE: string;
   /** Optional indexer base URL; `GET /v1/decisions/:hash` proxies to it when set, 501 otherwise. */
   INDEXER_URL?: string;
+  /** Service binding to the indexer Worker; the decisions proxy uses it when present. */
+  INDEXER?: Fetcher;
 }
