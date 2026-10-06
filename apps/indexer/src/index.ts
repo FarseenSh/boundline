@@ -1,18 +1,22 @@
 import { createBaseClient, type ChainId } from "@boundline/chain";
 import { createApp } from "./app.js";
-import { maxRangesPerTick, rpcUrlFor, type Env } from "./env.js";
+import { maxLogsPerTick, maxRangesPerTick, maxRangesTotalPerTick, rpcUrlFor, type Env } from "./env.js";
 import { viemLogClient } from "./ingest.js";
 import { viemChainReader } from "./reconcile.js";
-import { SEPOLIA, SEPOLIA_STACK, mainnetSources, sepoliaSources } from "./sources.js";
+import { SEPOLIA, SEPOLIA_STACK, mainnetSources, sepoliaSources, type Source } from "./sources.js";
 import { D1Store } from "./store-d1.js";
 import { runTick } from "./tick.js";
 
 export type { Env } from "./env.js";
 
-const app = createApp({ store: (env) => new D1Store(env.DB) });
+/** Every source this deployment follows: Sepolia always, mainnet behind INDEX_MAINNET. */
+export function activeSources(env: Env): Source[] {
+  return [...sepoliaSources(env), ...(env.INDEX_MAINNET === "true" ? mainnetSources(env) : [])];
+}
 
-export async function tick(env: Env): Promise<void> {
-  const sources = [...sepoliaSources(env), ...(env.INDEX_MAINNET === "true" ? mainnetSources() : [])];
+const app = createApp({ store: (env) => new D1Store(env.DB), sources: activeSources });
+
+export async function tick(env: Env): Promise<boolean> {
   const summary = await runTick(
     {
       store: new D1Store(env.DB),
@@ -21,12 +25,15 @@ export async function tick(env: Env): Promise<void> {
       now: () => Math.floor(Date.now() / 1000),
     },
     {
-      sources,
+      sources: activeSources(env),
       markets: [{ chainId: SEPOLIA, morpho: SEPOLIA_STACK.morpho, marketId: SEPOLIA_STACK.market.id }],
       maxRanges: maxRangesPerTick(env),
+      maxRangesTotal: maxRangesTotalPerTick(env),
+      maxLogs: maxLogsPerTick(env),
     },
   );
   if (summary.errors.length > 0) console.error(`tick errors: ${summary.errors.join(" | ")}`);
+  return summary.ran;
 }
 
 /** Fallback trigger: another Worker's cron calls this through a service binding with the shared TICK_TOKEN. */
@@ -35,8 +42,8 @@ app.post("/__tick", async (c) => {
   const auth = c.req.header("authorization") ?? "";
   if (!token || auth !== `Bearer ${token}`) return c.json({ error: "unauthorized" }, 401);
   const started = Date.now();
-  await tick(c.env);
-  return c.json({ ok: true, ms: Date.now() - started });
+  const ran = await tick(c.env);
+  return c.json({ ok: true, ran, ms: Date.now() - started });
 });
 
 export default {

@@ -38,6 +38,16 @@ export function viemLogClient(client: BaseClient): LogClient {
   };
 }
 
+/**
+ * A per-tick allowance shared by every source: ranges left to scan and logs left to decode. A range that starts is
+ * always finished (the cursor moves per range), so `logs` can go negative by one range's worth; no further range
+ * starts once either reaches zero. Keeps a tick inside the Workers Free plan's 10 ms of CPU.
+ */
+export interface TickBudget {
+  ranges: number;
+  logs: number;
+}
+
 export interface IngestOptions {
   /** Blocks per `eth_getLogs` call. */
   range: number;
@@ -46,6 +56,8 @@ export interface IngestOptions {
   /** Absolute `Date.now()` after which no new range starts. */
   deadlineMs: number;
   now: () => number;
+  /** Shared across the sources of one tick; omitted means unlimited. */
+  budget?: TickBudget;
 }
 
 export interface IngestResult {
@@ -58,6 +70,8 @@ export interface IngestResult {
   logs: number;
   inserted: number;
   names: Record<string, number>;
+  /** True when the tick's shared budget stopped this source before its ranges were done. */
+  budgetExhausted?: boolean;
   error?: string;
 }
 
@@ -93,7 +107,15 @@ export async function ingestSource(store: Store, client: LogClient, source: Sour
     };
     for (const r of ranges) {
       if (Date.now() > opts.deadlineMs) break;
+      if (opts.budget && (opts.budget.ranges <= 0 || opts.budget.logs <= 0)) {
+        result.budgetExhausted = true;
+        break;
+      }
       const logs = await client.getLogs({ addresses: source.addresses, topics: source.topics, fromBlock: r.from, toBlock: r.to });
+      if (opts.budget) {
+        opts.budget.ranges -= 1;
+        opts.budget.logs -= logs.length;
+      }
       const rows = [];
       for (const log of logs) {
         rows.push(decodeLog(source.abi, log, source.chainId, await timeOf(quantity(log.blockNumber))));

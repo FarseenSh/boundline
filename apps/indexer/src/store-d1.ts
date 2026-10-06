@@ -1,6 +1,6 @@
 import type { Hex } from "viem";
 import type { EventRow } from "./decode.js";
-import type { CursorRow, DailyRootRow, EventQuery, ReconciliationRow, ReconciliationStatus, Store } from "./store.js";
+import { queryAddresses, queryNames, type CursorRow, type DailyRootRow, type EventQuery, type ReconciliationRow, type ReconciliationStatus, type Store } from "./store.js";
 
 const EVENT_COLUMNS = "chain_id, block_number, block_time, tx_hash, log_index, address, topic0, name, args_json";
 const INSERT_EVENT = `INSERT OR IGNORE INTO events (${EVENT_COLUMNS}) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)`;
@@ -86,6 +86,52 @@ function toReconciliation(r: ReconciliationRecord): ReconciliationRow {
   };
 }
 
+/** The parameterised SELECT behind `queryEvents`: every filter is optional, pages run newest first. Exported for tests. */
+export function buildEventQuery(q: EventQuery): { sql: string; params: unknown[] } {
+  const where: string[] = ["chain_id = ?"];
+  const params: unknown[] = [q.chainId];
+  const addresses = queryAddresses(q);
+  if (addresses.length === 1) {
+    where.push("address = ?");
+    params.push(addresses[0]);
+  } else if (addresses.length > 1) {
+    where.push(`address IN (${addresses.map(() => "?").join(", ")})`);
+    params.push(...addresses);
+  }
+  const names = queryNames(q);
+  if (names.length === 1) {
+    where.push("name = ?");
+    params.push(names[0]);
+  } else if (names.length > 1) {
+    where.push(`name IN (${names.map(() => "?").join(", ")})`);
+    params.push(...names);
+  }
+  if (q.fromBlock !== undefined) {
+    where.push("block_number >= ?");
+    params.push(q.fromBlock);
+  }
+  if (q.toBlock !== undefined) {
+    where.push("block_number <= ?");
+    params.push(q.toBlock);
+  }
+  if (q.fromTime !== undefined) {
+    where.push("block_time >= ?");
+    params.push(q.fromTime);
+  }
+  if (q.argsContains !== undefined && q.argsContains !== "") {
+    // instr, not LIKE: the needle is a literal substring of the canonical JSON, and D1 rejects LIKE patterns
+    // longer than about 50 bytes ("LIKE or GLOB pattern too complex"), which a bytes32 argument always is.
+    where.push("instr(args_json, ?) > 0");
+    params.push(q.argsContains);
+  }
+  if (q.before !== undefined) {
+    where.push("(block_number < ? OR (block_number = ? AND log_index < ?))");
+    params.push(q.before.blockNumber, q.before.blockNumber, q.before.logIndex);
+  }
+  params.push(q.limit);
+  return { sql: `SELECT ${EVENT_COLUMNS} FROM events WHERE ${where.join(" AND ")} ORDER BY block_number DESC, log_index DESC LIMIT ?`, params };
+}
+
 /** The D1-backed Store. Every statement is parameterised; inserts run in batches of 100. */
 export class D1Store implements Store {
   constructor(private readonly db: D1Database) {}
@@ -125,25 +171,8 @@ export class D1Store implements Store {
     return added;
   }
   async queryEvents(q: EventQuery): Promise<EventRow[]> {
-    const { results } = await this.db
-      .prepare(
-        `SELECT ${EVENT_COLUMNS} FROM events
-         WHERE chain_id = ?1 AND (?2 IS NULL OR address = ?2) AND (?3 IS NULL OR name = ?3)
-           AND (?4 IS NULL OR block_number >= ?4) AND (?5 IS NULL OR block_number <= ?5)
-           AND (?6 IS NULL OR block_number < ?6 OR (block_number = ?6 AND log_index < ?7))
-         ORDER BY block_number DESC, log_index DESC LIMIT ?8`,
-      )
-      .bind(
-        q.chainId,
-        q.address?.toLowerCase() ?? null,
-        q.name ?? null,
-        q.fromBlock ?? null,
-        q.toBlock ?? null,
-        q.before?.blockNumber ?? null,
-        q.before?.logIndex ?? null,
-        q.limit,
-      )
-      .all<EventRecord>();
+    const { sql, params } = buildEventQuery(q);
+    const { results } = await this.db.prepare(sql).bind(...params).all<EventRecord>();
     return results.map(toEvent);
   }
   async eventsBetween(chainId: number, fromTime: number, toTime: number): Promise<EventRow[]> {

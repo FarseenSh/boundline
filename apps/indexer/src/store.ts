@@ -10,6 +10,9 @@ export interface CursorRow {
   updatedAt: number;
 }
 
+/** Cursor rows that are bookkeeping, not scan positions: they never gate the daily roots. */
+export const INTERNAL_CURSORS = new Set(["reconcile", "roots", "tick"]);
+
 export interface DailyRootRow {
   chainId: number;
   day: string;
@@ -36,10 +39,18 @@ export interface ReconciliationRow {
 
 export interface EventQuery {
   chainId: number;
+  /** One emitter, or several (`addresses`); both lowercase-compared. */
   address?: string;
+  addresses?: readonly string[];
   name?: string;
+  /** Several event names (OR). */
+  names?: readonly string[];
   fromBlock?: number;
   toBlock?: number;
+  /** Only events whose block_time is at or after this unix time. */
+  fromTime?: number;
+  /** A substring that must occur in the canonical args_json, e.g. `"lineId":"1"`. */
+  argsContains?: string;
   /** Newest first; `before` continues a page strictly below this (block_number, log_index). */
   before?: { blockNumber: number; logIndex: number };
   limit: number;
@@ -73,4 +84,20 @@ export function eventKey(e: { chainId: number; txHash: string; logIndex: number 
 
 export function byBlockAsc(a: EventRow, b: EventRow): number {
   return a.blockNumber - b.blockNumber || a.logIndex - b.logIndex;
+}
+
+/** The emitter set a query asks for, lowercased; empty when it asks for any emitter. */
+export function queryAddresses(q: EventQuery): string[] {
+  const set = new Set<string>();
+  if (q.address) set.add(q.address.toLowerCase());
+  for (const a of q.addresses ?? []) set.add(a.toLowerCase());
+  return [...set];
+}
+
+/** The event-name set a query asks for; empty when it asks for any name. */
+export function queryNames(q: EventQuery): string[] {
+  const set = new Set<string>();
+  if (q.name) set.add(q.name);
+  for (const n of q.names ?? []) set.add(n);
+  return [...set];
 }

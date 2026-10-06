@@ -1,5 +1,5 @@
 import { ZERO_ROOT, chainRoot, dayEnd, dayOf, dayStart, nextDay } from "./roots.js";
-import type { DailyRootRow, Store } from "./store.js";
+import { INTERNAL_CURSORS, type DailyRootRow, type Store } from "./store.js";
 
 /**
  * Roots every complete UTC day that has none yet. A day is complete when every source cursor of the chain has
@@ -7,7 +7,7 @@ import type { DailyRootRow, Store } from "./store.js";
  * each chained to the previous day's root, starting from the day of the earliest stored event.
  */
 export async function computeDailyRoots(store: Store, chainId: number, now: number): Promise<DailyRootRow[]> {
-  const cursors = (await store.listCursors()).filter((c) => c.chainId === chainId && c.source !== "reconcile");
+  const cursors = (await store.listCursors()).filter((c) => c.chainId === chainId && !INTERNAL_CURSORS.has(c.source));
   if (cursors.length === 0) return [];
   const minCursorTime = Math.min(...cursors.map((c) => c.lastBlockTime));
   let latest = await store.latestRoot(chainId);

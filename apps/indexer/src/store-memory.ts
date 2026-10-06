@@ -1,5 +1,5 @@
 import type { EventRow } from "./decode.js";
-import { byBlockAsc, eventKey, type CursorRow, type DailyRootRow, type EventQuery, type ReconciliationRow, type Store } from "./store.js";
+import { byBlockAsc, eventKey, queryAddresses, queryNames, type CursorRow, type DailyRootRow, type EventQuery, type ReconciliationRow, type Store } from "./store.js";
 
 /** In-memory Store with the same semantics as D1Store; used by the tests and local experiments. */
 export class MemoryStore implements Store {
@@ -28,13 +28,16 @@ export class MemoryStore implements Store {
     return added;
   }
   async queryEvents(q: EventQuery): Promise<EventRow[]> {
-    const address = q.address?.toLowerCase();
+    const addresses = queryAddresses(q);
+    const names = queryNames(q);
     const rows = [...this.events.values()]
       .filter((e) => e.chainId === q.chainId)
-      .filter((e) => address === undefined || e.address === address)
-      .filter((e) => q.name === undefined || e.name === q.name)
+      .filter((e) => addresses.length === 0 || addresses.includes(e.address))
+      .filter((e) => names.length === 0 || names.includes(e.name))
       .filter((e) => q.fromBlock === undefined || e.blockNumber >= q.fromBlock)
       .filter((e) => q.toBlock === undefined || e.blockNumber <= q.toBlock)
+      .filter((e) => q.fromTime === undefined || e.blockTime >= q.fromTime)
+      .filter((e) => !q.argsContains || e.argsJson.includes(q.argsContains))
       .filter(
         (e) =>
           q.before === undefined ||

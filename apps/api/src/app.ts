@@ -1,6 +1,6 @@
 import { Hono, type Context } from "hono";
 import type { ContentfulStatusCode } from "hono/utils/http-status";
-import { encodeFunctionData, getAddress, isAddress, isHex, stringToHex, type Address, type Hex } from "viem";
+import { encodeFunctionData, getAddress, hexToString, isAddress, isHex, stringToHex, type Address, type Hex } from "viem";
 import { creditDeskAbi } from "./abi/creditDesk.js";
 import { authenticate } from "./auth.js";
 import type { PartnerRecord, Store } from "./db.js";
@@ -317,30 +317,170 @@ export function createApp(deps: AppDeps): Hono<{ Variables: Vars }> {
     });
   });
 
+  // ------------------------------------------------------------------ indexer-backed reads
+
+  interface IndexerLine {
+    lineId: string;
+    user: string;
+    marketId: string;
+    policyVersion: number;
+    decisionHash: string;
+    blockNumber: number;
+    blockTime: number;
+    txHash: string;
+  }
+  interface IndexerEvent {
+    name: string;
+    blockNumber: number;
+    blockTime: number;
+    txHash: string;
+    logIndex: number;
+    args: Record<string, unknown>;
+  }
+
+  /** One GET against the indexer (service binding when bound); `null` when no indexer is configured. */
+  async function indexerGet<T>(path: string): Promise<{ ok: true; data: T } | { ok: false; status: number; detail: string } | null> {
+    if (!deps.indexerUrl) return null;
+    const url = `${deps.indexerUrl.replace(/\/+$/, "")}${path}`;
+    try {
+      const res = await fetchImpl(url);
+      if (!res.ok) return { ok: false, status: res.status, detail: `indexer answered ${res.status}` };
+      return { ok: true, data: (await res.json()) as T };
+    } catch (err) {
+      return { ok: false, status: 0, detail: errorMessage(err) };
+    }
+  }
+
+  /** bytes32 action names the desk emits (`"OPEN"`, `"DRAW"`, …) back to text; anything else stays hex. */
+  function actionName(value: unknown): string {
+    if (typeof value !== "string" || !isBytes32(value)) return String(value ?? "");
+    try {
+      const text = hexToString(value as Hex, { size: 32 });
+      return /^[\x20-\x7e]+$/.test(text) ? text : value;
+    } catch {
+      return value;
+    }
+  }
+
+  const str = (v: unknown): string => (typeof v === "string" || typeof v === "number" ? String(v) : "");
+
   app.get("/v1/obligations", async (c) => {
     const partner = c.get("partner");
     const asked = c.req.query("partnerId");
     if (asked !== undefined && toPartnerId(asked) !== partner.partnerId) return fail(c, 403, "partnerId does not match the authenticated partner");
     const limitRaw = Number(c.req.query("limit") ?? "50");
     const limit = Number.isInteger(limitRaw) ? Math.min(Math.max(limitRaw, 1), 100) : 50;
-    const rows = await store.listLines(partner.partnerId, limit);
-    const statuses = await Promise.all(
-      rows.map(async (row) => {
-        if (!desk) return "UNKNOWN";
-        try {
-          return enumName(OBLIGATION_STATUSES, await desk.obligationStatus(BigInt(row.lineId)));
-        } catch {
-          return "UNKNOWN";
+
+    // The indexer enumerates LineOpened events per partner; the API's own cache of lines it has seen is the fallback.
+    let source: "indexer" | "api-cache" = "indexer";
+    let sourceNote = "LineOpened events from the indexer, statuses read live from the desk";
+    let lines: { lineId: string; user: string; marketId: string; openedAt: number | null; openedBlock: number | null; openTx: string | null; decisionHash: string | null }[] = [];
+    const idx = await indexerGet<{ lines: IndexerLine[] }>(`/v1/desk/lines?chainId=${chainId}&partnerId=${partner.partnerId}&limit=${limit}`);
+    if (idx && idx.ok && Array.isArray(idx.data.lines)) {
+      lines = idx.data.lines.map((l) => ({
+        lineId: str(l.lineId),
+        user: str(l.user),
+        marketId: str(l.marketId),
+        openedAt: Number.isFinite(l.blockTime) ? l.blockTime : null,
+        openedBlock: Number.isFinite(l.blockNumber) ? l.blockNumber : null,
+        openTx: str(l.txHash) || null,
+        decisionHash: str(l.decisionHash) || null,
+      }));
+      const now = deps.now();
+      for (const l of lines) await store.rememberLine({ lineId: l.lineId, partnerId: partner.partnerId, user: l.user, marketId: l.marketId as Hex, firstSeen: now });
+    } else {
+      source = "api-cache";
+      sourceNote = idx === null ? "no indexer bound: lines this API has quoted or looked up" : `indexer unavailable (${idx.ok ? "" : idx.detail}): lines this API has quoted or looked up`;
+      lines = (await store.listLines(partner.partnerId, limit)).map((row) => ({ lineId: row.lineId, user: row.user, marketId: row.marketId, openedAt: null, openedBlock: null, openTx: null, decisionHash: null }));
+    }
+
+    const obligations = await Promise.all(
+      lines.map(async (l) => {
+        let lineStatus = "UNKNOWN";
+        let obligationStatus = "UNKNOWN";
+        let policyVersion: number | null = null;
+        let drawnPrincipal: { baseUnits: string; usdc: string } | null = null;
+        let holdReason: string | null = null;
+        if (desk) {
+          try {
+            const id = BigInt(l.lineId);
+            const [line, status] = await Promise.all([desk.line(id), desk.obligationStatus(id)]);
+            lineStatus = enumName(LINE_STATUSES, line.status);
+            obligationStatus = enumName(OBLIGATION_STATUSES, status);
+            policyVersion = line.policyVersion;
+            drawnPrincipal = money(line.drawnPrincipal);
+            holdReason = line.holdReason;
+          } catch {
+            // the line stays listed with UNKNOWN statuses; the desk read is retried on the next call
+          }
         }
+        return { ...l, lineStatus, obligationStatus, policyVersion, drawnPrincipal, holdReason };
       }),
     );
     return c.json({
       correlationId: c.get("correlationId"),
       policyVersion: partner.policyVersion,
       partnerId: partner.partnerId,
-      count: rows.length,
-      source: "lines this API has quoted or looked up; the desk keeps no enumeration, the indexer will",
-      obligations: rows.map((row, i) => ({ lineId: row.lineId, user: row.user, marketId: row.marketId, firstSeen: row.firstSeen, obligationStatus: statuses[i] })),
+      chainId,
+      count: obligations.length,
+      source,
+      sourceNote,
+      obligations,
+    });
+  });
+
+  app.get("/v1/lines/:id/decisions", async (c) => {
+    const partner = c.get("partner");
+    const lineId = parseBaseUnits(c.req.param("id"));
+    if (lineId === null || lineId === 0n) return fail(c, 400, "line id must be a positive integer");
+    if (!desk) return fail(c, 503, "desk not deployed");
+    let line: DeskLine;
+    try {
+      line = await desk.line(lineId);
+    } catch (err) {
+      if (isUnknownLine(err)) return fail(c, 404, "unknown line");
+      return fail(c, 502, "desk read failed", { detail: errorMessage(err) });
+    }
+    if (line.partnerId.toLowerCase() !== partner.partnerId) return fail(c, 404, "unknown line");
+    c.header("X-Policy-Version", String(line.policyVersion));
+    const idx = await indexerGet<{ events: IndexerEvent[] }>(`/v1/desk/lines/${lineId.toString()}/timeline?chainId=${chainId}`);
+    if (idx === null) return fail(c, 501, "not implemented", { plan: "served from the indexer once bound" });
+    if (!idx.ok) return fail(c, 502, "indexer unavailable", { status: idx.status, detail: idx.detail });
+    const events = Array.isArray(idx.data.events) ? idx.data.events : [];
+    const decisions = events
+      .filter((e) => e.name === "Decision")
+      .map((e) => ({
+        action: actionName(e.args.action),
+        hash: str(e.args.decisionHash),
+        amount: str(e.args.amount),
+        price8: str(e.args.price8),
+        blockNumber: e.blockNumber,
+        blockTime: e.blockTime,
+        txHash: e.txHash,
+        logIndex: e.logIndex,
+      }));
+    const timeline = events
+      .filter((e) => e.name !== "Decision")
+      .map((e) => ({
+        event: e.name,
+        hash: str(e.args.decisionHash) || null,
+        blockNumber: e.blockNumber,
+        blockTime: e.blockTime,
+        txHash: e.txHash,
+        logIndex: e.logIndex,
+        args: e.args,
+      }));
+    return c.json({
+      correlationId: c.get("correlationId"),
+      policyVersion: line.policyVersion,
+      chainId,
+      desk: desk.address,
+      lineId: lineId.toString(),
+      status: enumName(LINE_STATUSES, line.status),
+      source: "indexer",
+      count: decisions.length,
+      decisions,
+      timeline,
     });
   });
 

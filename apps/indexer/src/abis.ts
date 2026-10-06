@@ -395,3 +395,72 @@ export const boundlineStackAbi = [
 ] as const;
 
 export const creditDeskAbi = [...creditDeskEventsAbi, ...ownableEventsAbi] as const;
+
+// ---------------------------------------------------------------- phase 2 (Base mainnet)
+
+/** Coinbase's OracleRegistry on Base mainnet: the verified ABI (basescan, 6 Oct 2026) emits the pause flag and
+ *  AccessControl role events; multipliers are read from the tokens (`MultiplierUpdated` / `UIMultiplierUpdated`). */
+export const mainnetOracleRegistryEventsAbi = [
+  {
+    type: "event",
+    name: "OraclePausedSet",
+    inputs: [
+      { name: "token", type: "address", indexed: true },
+      { name: "paused", type: "bool", indexed: false },
+    ],
+  },
+  {
+    type: "event",
+    name: "RoleGranted",
+    inputs: [
+      { name: "role", type: "bytes32", indexed: true },
+      { name: "account", type: "address", indexed: true },
+      { name: "sender", type: "address", indexed: true },
+    ],
+  },
+  {
+    type: "event",
+    name: "RoleRevoked",
+    inputs: [
+      { name: "role", type: "bytes32", indexed: true },
+      { name: "account", type: "address", indexed: true },
+      { name: "sender", type: "address", indexed: true },
+    ],
+  },
+  {
+    type: "event",
+    name: "RoleAdminChanged",
+    inputs: [
+      { name: "role", type: "bytes32", indexed: true },
+      { name: "previousAdminRole", type: "bytes32", indexed: true },
+      { name: "newAdminRole", type: "bytes32", indexed: true },
+    ],
+  },
+] as const;
+
+/** Governance and corporate-action events of a B20 asset (base-std v1.1.0 IB20); Transfer and Approval are left out on purpose. */
+export const B20_TOKEN_EVENT_NAMES = [
+  "Paused",
+  "Unpaused",
+  "UIMultiplierUpdated",
+  "UIMultiplierUpdateCancelled",
+  "MultiplierUpdated",
+  "Announcement",
+  "EndAnnouncement",
+  "PolicyUpdated",
+  "RoleGranted",
+  "RoleRevoked",
+  "Seized",
+  "SupplyCapUpdated",
+] as const;
+
+/** Aave V4 spoke events the indexer follows (ISpoke v0.5.11). */
+export const AAVE_SPOKE_EVENT_NAMES = [
+  "Supply",
+  "Withdraw",
+  "Borrow",
+  "Repay",
+  "LiquidationCall",
+  "SetUserPositionManager",
+  "UpdatePositionManager",
+] as const;
