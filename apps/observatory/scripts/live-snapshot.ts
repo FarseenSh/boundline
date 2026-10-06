@@ -1,7 +1,7 @@
 // One real snapshot against Base mainnet, printed as JSON. Run from the repo root:
 //   pnpm exec tsx apps/observatory/scripts/live-snapshot.ts [SYMBOL]
 import type { CalendarPort } from "../src/calendar-port.js";
-import { createViemReader } from "../src/reader.js";
+import { createRpcReader } from "../src/reader.js";
 import { buildSnapshot } from "../src/snapshot.js";
 
 async function loadCalendar(): Promise<CalendarPort> {
@@ -22,7 +22,7 @@ async function loadCalendar(): Promise<CalendarPort> {
 const symbol = process.argv[2] ?? "AAPLc";
 const rpc = process.env["BASE_RPC_URL"] ?? "https://mainnet.base.org";
 const calendar = await loadCalendar();
-const reads = await createViemReader(rpc).read();
+const reads = await createRpcReader(rpc).read();
 const snapshot = buildSnapshot(reads, calendar, Math.floor(Date.now() / 1000));
 const row = snapshot.tokens.find((t) => t.symbol === symbol);
 console.log(JSON.stringify({ block: snapshot.block, takenAt: snapshot.takenAt, session: snapshot.session, row }, null, 2));

@@ -7,9 +7,12 @@
  * date's session.
  *
  * This is the reference implementation that the onchain `MarketCalendar.sol` is
- * differentially tested against, so it is written independently of that contract's
- * arithmetic: every ET conversion goes through `Intl.DateTimeFormat` and the host tz
- * database. No hard-coded UTC offset and no daylight-saving rule appears here.
+ * differentially tested against, so by default it is written independently of that
+ * contract's arithmetic: every ET conversion goes through `Intl.DateTimeFormat` and the
+ * host tz database. An arithmetic twin (`zoneFieldsArithmetic`: the US daylight-saving
+ * rule plus Hinnant civil-date math, no ICU) is differentially tested against the Intl
+ * path and can be selected with `setZoneResolver("arithmetic")` where the first
+ * `Intl.DateTimeFormat` costs too much, such as a Cloudflare Worker on a 10 ms CPU budget.
  *
  * `UNKNOWN` is the fail-closed answer for any instant whose session date falls in a
  * year the calendar has no verified data for. Callers must treat it as "not open".
@@ -192,6 +195,113 @@ export function zoneFields(epochSeconds: number): ZoneFields {
   };
 }
 
+// ---------------------------------------------------------------- arithmetic twin
+
+const DAY_SECONDS = 86_400;
+const STANDARD_OFFSET_SECONDS = -5 * 3600;
+const DAYLIGHT_OFFSET_SECONDS = -4 * 3600;
+
+/** Days since 1970-01-01 of a proleptic Gregorian civil date (Howard Hinnant's `days_from_civil`). */
+export function daysFromCivil(year: number, month: number, day: number): number {
+  const y = month <= 2 ? year - 1 : year;
+  const era = Math.floor(y / 400);
+  const yoe = y - era * 400;
+  const mp = month > 2 ? month - 3 : month + 9;
+  const doy = Math.floor((153 * mp + 2) / 5) + day - 1;
+  const doe = yoe * 365 + Math.floor(yoe / 4) - Math.floor(yoe / 100) + doy;
+  return era * 146_097 + doe - 719_468;
+}
+
+/** Civil date of a day count since 1970-01-01 (Hinnant's `civil_from_days`). */
+export function civilFromDays(days: number): { year: number; month: number; day: number } {
+  const z = days + 719_468;
+  const era = Math.floor(z / 146_097);
+  const doe = z - era * 146_097;
+  const yoe = Math.floor((doe - Math.floor(doe / 1460) + Math.floor(doe / 36_524) - Math.floor(doe / 146_096)) / 365);
+  const doy = doe - (365 * yoe + Math.floor(yoe / 4) - Math.floor(yoe / 100));
+  const mp = Math.floor((5 * doy + 2) / 153);
+  const day = doy - Math.floor((153 * mp + 2) / 5) + 1;
+  const month = mp < 10 ? mp + 3 : mp - 9;
+  return { year: yoe + era * 400 + (month <= 2 ? 1 : 0), month, day };
+}
+
+/** 0 = Sunday ... 6 = Saturday of a day count since 1970-01-01 (a Thursday). */
+function weekdayOfDays(days: number): number {
+  return (((days + 4) % 7) + 7) % 7;
+}
+
+/** Day of the month of the n-th Sunday (1-based) of `month`. */
+function nthSunday(year: number, month: number, n: number): number {
+  const first = weekdayOfDays(daysFromCivil(year, month, 1));
+  return 1 + ((7 - first) % 7) + (n - 1) * 7;
+}
+
+/**
+ * US daylight-saving window of `year` as UTC epoch seconds, under the rule in force since 2007:
+ * from the second Sunday of March 02:00 EST (07:00 UTC) until the first Sunday of November 02:00 EDT (06:00 UTC).
+ */
+export function usDaylightWindow(year: number): { start: number; end: number } {
+  return {
+    start: daysFromCivil(year, 3, nthSunday(year, 3, 2)) * DAY_SECONDS + 7 * 3600,
+    end: daysFromCivil(year, 11, nthSunday(year, 11, 1)) * DAY_SECONDS + 6 * 3600,
+  };
+}
+
+/**
+ * Arithmetic twin of `zoneFields`: the same fields from the US daylight-saving rule (2007 onward) and
+ * Hinnant date math, with no tz database. `test/zone-arithmetic.test.ts` proves it equal to the Intl
+ * path on the 5,643-instant differential fixture and around every DST boundary.
+ */
+export function zoneFieldsArithmetic(epochSeconds: number): ZoneFields {
+  const whole = Math.floor(epochSeconds);
+  // The DST window belongs to the year of the instant's standard-time date; DST never spans New Year.
+  const { year: standardYear } = civilFromDays(Math.floor((whole + STANDARD_OFFSET_SECONDS) / DAY_SECONDS));
+  const window = usDaylightWindow(standardYear);
+  const offsetSeconds = whole >= window.start && whole < window.end ? DAYLIGHT_OFFSET_SECONDS : STANDARD_OFFSET_SECONDS;
+  const local = whole + offsetSeconds;
+  const days = Math.floor(local / DAY_SECONDS);
+  const secondOfDay = local - days * DAY_SECONDS;
+  const { year, month, day } = civilFromDays(days);
+  const hour = Math.floor(secondOfDay / 3600);
+  const minute = Math.floor((secondOfDay % 3600) / 60);
+  return {
+    year,
+    month,
+    day,
+    hour,
+    minute,
+    second: secondOfDay % 60,
+    weekday: weekdayOfDays(days),
+    minutesOfDay: hour * 60 + minute,
+    dateKey: dateKey(year, month, day),
+    offsetSeconds,
+  };
+}
+
+export type ZoneResolver = (epochSeconds: number) => ZoneFields;
+
+let resolver: ZoneResolver = zoneFields;
+
+/**
+ * Selects how every function in this module projects instants onto ET: `"intl"` (the default: the host tz
+ * database through `Intl.DateTimeFormat`) or `"arithmetic"` (`zoneFieldsArithmetic`, no ICU), or any
+ * resolver. Returns the previous resolver so a caller can restore it.
+ */
+export function setZoneResolver(choice: "intl" | "arithmetic" | ZoneResolver): ZoneResolver {
+  const previous = resolver;
+  resolver = choice === "intl" ? zoneFields : choice === "arithmetic" ? zoneFieldsArithmetic : choice;
+  return previous;
+}
+
+/** The resolver currently in force. */
+export function currentZoneResolver(): ZoneResolver {
+  return resolver;
+}
+
+function zone(epochSeconds: number): ZoneFields {
+  return resolver(epochSeconds);
+}
+
 interface CivilDate {
   year: number;
   month: number;
@@ -214,7 +324,7 @@ export function wallClockToEpoch(year: number, month: number, day: number, minut
   const naive = Date.UTC(year, month - 1, day) / 1000 + minutesOfDay * 60;
   let instant = naive;
   for (let pass = 0; pass < 3; pass += 1) {
-    const corrected = naive - zoneFields(instant).offsetSeconds;
+    const corrected = naive - zone(instant).offsetSeconds;
     if (corrected === instant) return instant;
     instant = corrected;
   }
@@ -257,13 +367,13 @@ export function isEarlyClose(key: number, calendar: MarketCalendarData = NYSE_20
 /** yyyymmdd of a UTC instant's ET wall clock; 0 for instants the calendar refuses to place. */
 export function dateKeyOf(epochSeconds: number): number {
   if (!Number.isFinite(epochSeconds) || epochSeconds < MIN_EPOCH_SECONDS) return 0;
-  return zoneFields(epochSeconds).dateKey;
+  return zone(epochSeconds).dateKey;
 }
 
 /** Session plus the fields an operator needs to explain it. */
 export function describe(epochSeconds: number, calendar: MarketCalendarData = NYSE_2026): Fields {
   if (!Number.isFinite(epochSeconds) || epochSeconds < MIN_EPOCH_SECONDS) return { ...UNKNOWN_FIELDS };
-  const z = zoneFields(epochSeconds);
+  const z = zone(epochSeconds);
   const dst = z.offsetSeconds === -4 * 3600;
   const intoNextDate = z.minutesOfDay >= NEXT_SESSION_START;
   const sessionDate = intoNextDate
@@ -327,7 +437,7 @@ export function nextTransition(
   const now = Math.floor(epochSeconds);
   const from = sessionAt(now, calendar);
   if (from === "UNKNOWN") return { ...NO_TRANSITION };
-  const start = zoneFields(now);
+  const start = zone(now);
   for (let offset = 0; offset <= horizonDays; offset += 1) {
     const date = addDays(start.year, start.month, start.day, offset);
     for (const mark of BOUNDARY_MARKS) {
@@ -339,4 +449,19 @@ export function nextTransition(
     }
   }
   return { ...NO_TRANSITION };
+}
+
+/**
+ * First 20:00 ET instant strictly after `epochSeconds`: the only wall-clock mark at which the feeds'
+ * liveness can change (Friday close, Sunday reopen, holiday eve close, holiday-day reopen, end of
+ * coverage). 0 for instants the calendar refuses to place.
+ */
+export function nextFeedBoundary(epochSeconds: number): number {
+  if (!Number.isFinite(epochSeconds) || epochSeconds < MIN_EPOCH_SECONDS) return 0;
+  const now = Math.floor(epochSeconds);
+  const z = zone(now);
+  const today = wallClockToEpoch(z.year, z.month, z.day, POST_END);
+  if (today > now) return today;
+  const next = addDays(z.year, z.month, z.day, 1);
+  return wallClockToEpoch(next.year, next.month, next.day, POST_END);
 }

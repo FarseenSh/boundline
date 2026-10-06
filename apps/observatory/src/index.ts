@@ -5,15 +5,25 @@ import { liveCalendar } from "./calendar-impl.js";
 import type { CalendarPort } from "./calendar-port.js";
 import { findLivenessTransitions } from "./capture.js";
 import { appendSnapshot } from "./d1.js";
-import { rpcUrl, type Env } from "./env.js";
+import { logsRpcUrl, rpcUrl, type Env } from "./env.js";
 import { renderPage } from "./html.js";
 import { runCapture, runPositions } from "./jobs.js";
 import { KV_LATEST, storeLatest } from "./kv-latest.js";
 import { discoverB20Markets, readMarkets, type MarketRow } from "./morpho.js";
-import { CHAIN_ID, makeClient } from "./positions.js";
-import { createViemReader, type ChainReader } from "./reader.js";
+import { CHAIN_ID } from "./positions.js";
+import { createRpcReader, rpcUrlsOf, type ChainReader } from "./reader.js";
+import { ethCaller, logsGetter } from "./rpc.js";
 import { buildSnapshot, type Snapshot } from "./snapshot.js";
 import { d1Stores, type Stores } from "./stores.js";
+
+// Minutes between position scans. A second cron trigger (every fifth minute) never fired on this account (6 Oct 2026,
+// like the indexer's own cron before it), so the positions job rides on every fifth minute of the one cron that does fire.
+export const POSITIONS_EVERY_MINUTES = 5;
+
+/** True on the ticks that also run the positions job: wall-clock minutes divisible by five. */
+export function positionsDue(epochSeconds: number): boolean {
+  return Math.floor(epochSeconds / 60) % POSITIONS_EVERY_MINUTES === 0;
+}
 
 const KV_MORPHO = "morpho-markets";
 const KV_AAVE = "aave-reserves";
@@ -40,7 +50,7 @@ async function cachedJson<T>(env: Env, key: string, ttl: number, load: () => Pro
 const liveDeps: AppDeps = {
   stores: (env) => d1Stores(env.DB),
   calendar: liveCalendar,
-  reader: (env) => createViemReader(rpcUrl(env)),
+  reader: (env) => createRpcReader(rpcUrl(env)),
   fetchImpl: (input, init) => fetch(input, init),
   markets: (env) => cachedJson(env, KV_MORPHO, VENUE_CACHE_SECONDS, async () => readMarkets(rpcUrl(env), await discoverB20Markets())),
 };
@@ -68,18 +78,22 @@ export function createApp(overrides: Partial<AppDeps> = {}) {
     return cached ?? takeSnapshot(env, false);
   }
 
-  /** The reopen capture and the position refresh ride on the same tick as the snapshot; neither may break it. */
+  /** The reopen capture rides on the same tick as the snapshot; it may never break it. */
   async function afterSnapshot(env: Env, snapshot: Snapshot): Promise<void> {
-    const stores = deps.stores(env);
     try {
-      const c = await runCapture(stores.capture, deps.calendar, snapshot);
+      const c = await runCapture(deps.stores(env).capture, deps.calendar, snapshot);
       if (c.status !== "idle") console.log(`capture ${c.status} transition=${c.transitionAt} phase=${c.phase} ticks=${c.ticks}`);
     } catch (err) {
       console.error("capture job failed", err instanceof Error ? err.message : err);
     }
+  }
+
+  /** The real-position scan and refresh, every fifth minute. Raw JSON-RPC reads keep it to about a millisecond of CPU. */
+  async function refreshPositions(env: Env, snapshot: Snapshot): Promise<void> {
     try {
       const markets = await deps.markets(env);
-      const r = await runPositions({ store: stores.positions, client: makeClient(rpcUrl(env)), markets, fetchImpl: deps.fetchImpl, snapshot });
+      const rpc = { call: ethCaller(rpcUrlsOf(rpcUrl(env))), getLogs: logsGetter(rpcUrlsOf(logsRpcUrl(env))) };
+      const r = await runPositions({ store: deps.stores(env).positions, rpc, markets, fetchImpl: deps.fetchImpl, snapshot });
       console.log(`positions scanned=${r.scanned ? `${r.scanned.from}-${r.scanned.to}` : "none"} seeded=${r.seeded} new=${r.newBorrowers} refreshed=${r.refreshed ?? "skip"} errors=${r.errors.length}`);
     } catch (err) {
       console.error("positions job failed", err instanceof Error ? err.message : err);
@@ -138,9 +152,9 @@ export function createApp(overrides: Partial<AppDeps> = {}) {
   });
 
   app.get("/v1/captures", async (c) => {
-    const runs = await deps.stores(c.env).capture.listRuns(20);
-    const { next } = findLivenessTransitions(deps.calendar, Math.floor(Date.now() / 1000));
-    return c.json({ nextFeedTransition: next, runs });
+    const [runs, s] = await Promise.all([deps.stores(c.env).capture.listRuns(20), latest(c.env)]);
+    const { next } = findLivenessTransitions(deps.calendar, s.takenAt);
+    return c.json({ asOf: s.takenAt, nextFeedTransition: next, runs });
   });
 
   app.get("/v1/captures/:transitionAt", async (c) => {
@@ -179,17 +193,19 @@ export function createApp(overrides: Partial<AppDeps> = {}) {
 
   app.get("/v1/events", (c) => c.json({ error: "not implemented", plan: "M5 indexer: Morpho, Aave, B20, OracleRegistry and Chainlink events with hash-chained roots" }, 501));
 
+  /** One cron a minute: the snapshot, the reopen capture and the indexer kick; on every fifth minute also the positions. */
   async function scheduled(_controller: ScheduledController, env: Env, ctx: ExecutionContext): Promise<void> {
     ctx.waitUntil(
       (async () => {
         const snapshot = await takeSnapshot(env, true);
         await afterSnapshot(env, snapshot);
+        if (positionsDue(snapshot.takenAt)) await refreshPositions(env, snapshot);
       })(),
     );
     ctx.waitUntil(kickIndexer(env));
   }
 
-  return { app, scheduled, takeSnapshot, afterSnapshot };
+  return { app, scheduled, takeSnapshot, afterSnapshot, refreshPositions };
 }
 
 /** Fallback trigger for the indexer: its own cron has not fired on this account, so this cron calls its

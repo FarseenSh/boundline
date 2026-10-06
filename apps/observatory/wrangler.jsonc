@@ -4,6 +4,9 @@
   "main": "src/index.ts",
   "compatibility_date": "2026-09-01",
   "compatibility_flags": ["nodejs_compat"],
+  // One cron a minute: the snapshot, the reopen capture, the indexer kick, and on every fifth minute the real-position
+  // scan. A second trigger ("*/5 * * * *") was deployed on 6 Oct 2026 and never fired in 14 minutes on this account
+  // (the indexer's own cron never fired either), so src/index.ts gates the positions job on the wall-clock minute instead.
   "triggers": { "crons": ["* * * * *"] },
   "kv_namespaces": [{ "binding": "SNAPSHOTS", "id": "aa7d8b27e629463da60008acfeccc30d" }],
   "d1_databases": [

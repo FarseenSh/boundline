@@ -6,9 +6,11 @@ state, scheduled corporate actions, the 24/7 Aerodrome price with its 1h TWAP, t
 from the held feed, and the gap the feed will print at the next reopen. Served as a page at `/`
 and as JSON under `/v1`.
 
-A Cloudflare Worker (Hono) with a one-minute cron. Reads go through `src/reader.ts` (one
-multicall per snapshot), shaping is pure (`src/snapshot.ts`), the latest snapshot lives in KV,
-history is appended to D1.
+A Cloudflare Worker (Hono) with a one-minute cron: the snapshot, the reopen capture and the indexer
+kick every minute, the real-position scan and refresh on every fifth minute. Reads go through `src/reader.ts`
+(one Multicall3 `aggregate3` per snapshot, hand-encoded and hand-decoded in `src/encoding.ts`, sent as
+raw JSON-RPC with a fallback list in `src/rpc.ts`), shaping is pure (`src/snapshot.ts`), the latest
+snapshot lives in KV, history is appended to D1.
 
 ## Routes
 
@@ -81,7 +83,7 @@ store), and the routes through `createApp` with fake bindings.
 
 Live on the team's Cloudflare account at **https://boundline-observatory.papermind-ai.workers.dev**
 (deployed 3 Oct 2026 from this directory with `pnpm exec wrangler deploy`; the cron `* * * * *` is
-attached). Resources, all bound in `wrangler.jsonc`:
+attached; a second `*/5 * * * *` trigger never fired on this account, see `wrangler.jsonc`). Resources, all bound in `wrangler.jsonc`:
 
 | Resource | Name | Id |
 | --- | --- | --- |
@@ -115,7 +117,17 @@ pnpm exec wrangler secret put BASE_RPC_URL_PRIVATE   # paste the full URL with t
 
 ### Free-tier budget
 
-The Worker is sized for the Workers Free plan. The cron fires 1,440 times a day while free KV allows
+The Worker is sized for the Workers Free plan, whose hard limit is **10 ms of CPU per invocation**. On
+6 Oct 2026 `wrangler tail` showed nearly every cron event ending `exceededCpu`: viem's generic multicall
+decode cost about 17 ms warm and 90 ms cold, and the first `Intl.DateTimeFormat` for America/New_York
+another 10 ms, so a cold isolate died every minute and the D1 history had hour-long holes, including the
+Sunday 4 Oct reopen. The tick is now CPU-lean by construction: the aggregate calldata is built once at
+module scope, the response is decoded word by word, the calendar projects ET arithmetically
+(`setZoneResolver("arithmetic")`, proven equal to the Intl path on 5,643 instants), the next liveness
+flip is found by walking 20:00 ET marks and cached, and the position scan (raw `eth_getLogs` plus one aggregate)
+runs on every fifth minute only. Measure
+with `pnpm exec tsx scripts/bench-cpu.ts` (also under `NODE_OPTIONS=--jitless`): decode plus shaping
+plus snapshot is under 1 ms cold. The cron fires 1,440 times a day while free KV allows
 1,000 writes a day, so `src/kv-latest.ts` rewrites the `latest` key only when something a reader must
 see at once has changed (session state, a feed print, the frozen flag, registry or issuer pauses,
 multipliers, a scheduled corporate action, read errors) or when the stored copy is 10 minutes old.
@@ -123,8 +135,8 @@ Block number, feed age and the DEX price therefore lag by up to 10 minutes on th
 when nothing else moves; D1 still receives every minute's rows (10 a minute, 14,400 a day, inside the
 100,000-a-day free write limit). The two venue routes cache in KV for 15 minutes for the same reason.
 The reopen capture adds about 1,100 rows per run plus one `capture_runs` write per tick inside the
-window; the position scan adds one cursor batch per tick and one `positions` row per borrower every
-10 minutes; neither writes KV.
+window (its summary also records the recorder's own missed ticks and gaps); the position scan adds one
+cursor batch every fifth minute and one `positions` row per borrower every 10 minutes; neither writes KV.
 
 R2 is not bound: the deploy login has no r2 scope and nothing exports yet. `Env.EXPORTS` is optional;
 re-add the binding in `wrangler.jsonc` when exports land.

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Env } from "../src/env.js";
-import { createApp } from "../src/index.js";
+import { createApp, positionsDue } from "../src/index.js";
 import type { PositionRow } from "../src/positions.js";
 import { buildSnapshot } from "../src/snapshot.js";
 import { memoryStores, type CaptureRunRecord } from "../src/stores.js";
@@ -129,5 +129,15 @@ describe("json routes", () => {
     const body = (await (await app.request("/v1/sessions", {}, env)).json()) as { state: string; nextFeedTransition: { at: number; kind: string } };
     expect(body.state).toBe("WEEKEND");
     expect(body.nextFeedTransition).toEqual({ at: REOPEN, from: "WEEKEND", to: "OVERNIGHT", kind: "reopen" });
+  });
+});
+
+describe("positionsDue", () => {
+  it("is true on wall-clock minutes divisible by five, whatever the second", () => {
+    const t = Date.UTC(2026, 9, 6, 12, 5, 30) / 1000;
+    expect(positionsDue(t)).toBe(true);
+    expect(positionsDue(t + 60)).toBe(false); // 12:06:30
+    expect(positionsDue(t + 3 * 60)).toBe(false); // 12:08:30
+    expect(positionsDue(t + 4 * 60 + 59)).toBe(true); // 12:10:29
   });
 });

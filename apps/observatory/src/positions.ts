@@ -1,8 +1,10 @@
 // Real positions on the B20 Morpho markets: who borrowed (Borrow events, seeded from Morpho's API),
 // what they owe, and their health at the venue's price versus the 24/7 DEX TWAP.
-import { MAINNET, createBaseClient, morphoAbi, morphoOracleAbi, price36ToHuman } from "@boundline/chain";
+import { MAINNET, TOPICS, price36ToHuman } from "@boundline/chain";
 import type { Address, Hex } from "viem";
+import { MULTICALL3, SELECTOR, callData, decodeAggregate3, decodeMarket, decodePosition, decodeUint, encodeAggregate3, wordAddress, wordBytes32, type Call } from "./encoding.js";
 import { MORPHO_GRAPHQL, type MarketRow } from "./morpho.js";
+import type { EthCall, GetLogs } from "./rpc.js";
 
 /** Blocks per getLogs call: publicnode serves 5,000 at the head; `mainnet.base.org` 2,000. */
 export const SCAN_SPAN = 2000;
@@ -112,28 +114,27 @@ export async function fetchApiBorrowers(fetchImpl: typeof fetch, marketIds: read
   return parsePositionsDiscovery((await res.json()) as Parameters<typeof parsePositionsDiscovery>[0], new Set(marketIds.map((m) => m.toLowerCase())), block);
 }
 
-export type Client = ReturnType<typeof createBaseClient>;
+/** The two RPC reads the positions job makes, both over raw JSON-RPC (rpc.ts) so the job stays CPU-light. */
+export interface PositionsRpc {
+  call: EthCall;
+  getLogs: GetLogs;
+}
 
-const BORROW_EVENT = morphoAbi.find((e) => e.type === "event" && e.name === "Borrow");
+/** Morpho `Borrow(bytes32 indexed id, address caller, address indexed onBehalf, address indexed receiver, uint256 assets, uint256 shares)`. */
+export const BORROW_TOPIC: Hex = TOPICS.morphoBorrow;
 
-/** Borrow events on the given markets between two blocks, in getLogs-sized chunks. */
-export async function scanBorrowLogs(client: Client, marketIds: readonly Hex[], plan: ScanPlan): Promise<Borrower[]> {
-  if (!BORROW_EVENT || BORROW_EVENT.type !== "event") throw new Error("Borrow event missing from morphoAbi");
+/** Borrow events on the given markets between two blocks, in getLogs-sized chunks; `id` and `onBehalf` come straight from the topics. */
+export async function scanBorrowLogs(getLogs: GetLogs, marketIds: readonly Hex[], plan: ScanPlan): Promise<Borrower[]> {
   const out = new Map<string, Borrower>();
   for (const c of chunks(plan)) {
-    const logs = await client.getLogs({
-      address: MAINNET.morpho,
-      event: BORROW_EVENT,
-      args: { id: [...marketIds] },
-      fromBlock: BigInt(c.from),
-      toBlock: BigInt(c.to),
-    });
+    const logs = await getLogs({ address: MAINNET.morpho, topics: [BORROW_TOPIC, [...marketIds]], fromBlock: c.from, toBlock: c.to });
     for (const l of logs) {
-      const id = (l.args.id as Hex | undefined)?.toLowerCase();
-      const onBehalf = l.args.onBehalf as Address | undefined;
-      if (!id || !onBehalf) continue;
-      const key = `${id}:${onBehalf.toLowerCase()}`;
-      if (!out.has(key)) out.set(key, { chainId: CHAIN_ID, marketId: id as Hex, address: onBehalf, firstSeenBlock: Number(l.blockNumber ?? c.from), source: "logs" });
+      const id = l.topics[1]?.toLowerCase();
+      const onBehalfTopic = l.topics[2];
+      if (!id || !onBehalfTopic || onBehalfTopic.length !== 66) continue;
+      const onBehalf = `0x${onBehalfTopic.slice(26)}` as Address;
+      const key = `${id}:${onBehalf}`;
+      if (!out.has(key)) out.set(key, { chainId: CHAIN_ID, marketId: id as Hex, address: onBehalf, firstSeenBlock: l.blockNumber ? Number(BigInt(l.blockNumber)) : c.from, source: "logs" });
     }
   }
   return [...out.values()];
@@ -188,9 +189,20 @@ export function shapePosition(i: PositionInput): PositionRow {
   };
 }
 
-/** One multicall: market totals and oracle price per market, position per borrower. Rows with nothing in them are dropped. */
+function attempt<T>(fn: () => T): T | null {
+  try {
+    return fn();
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * One aggregate3 call: market totals and oracle price per market, position per borrower. Rows with nothing
+ * in them are dropped. Hand-encoded and hand-decoded (encoding.ts) for the same reason as the snapshot reader.
+ */
 export async function readPositions(
-  client: Client,
+  call: EthCall,
   markets: readonly MarketRow[],
   borrowers: readonly Borrower[],
   shadowPrice36BySymbol: ReadonlyMap<string, bigint>,
@@ -201,36 +213,34 @@ export async function readPositions(
   const active = borrowers.filter((b) => byId.has(b.marketId.toLowerCase()));
   if (active.length === 0) return [];
   const marketIds = [...new Set(active.map((b) => b.marketId.toLowerCase() as Hex))];
-  const results = await client.multicall({
-    allowFailure: true,
-    contracts: [
-      ...marketIds.flatMap((id) => {
-        const m = byId.get(id) as MarketRow;
-        return [
-          { address: MAINNET.morpho, abi: morphoAbi, functionName: "market", args: [id] } as const,
-          { address: m.oracle, abi: morphoOracleAbi, functionName: "price" } as const,
-        ];
-      }),
-      ...active.map((b) => ({ address: MAINNET.morpho, abi: morphoAbi, functionName: "position", args: [b.marketId, b.address] }) as const),
-    ],
-  });
+  const calls: Call[] = [
+    ...marketIds.flatMap((id): Call[] => {
+      const m = byId.get(id) as MarketRow;
+      return [
+        { target: MAINNET.morpho, callData: callData(SELECTOR.market, wordBytes32(id)) },
+        { target: m.oracle, callData: SELECTOR.price },
+      ];
+    }),
+    ...active.map((b): Call => ({ target: MAINNET.morpho, callData: callData(SELECTOR.position, wordBytes32(b.marketId.toLowerCase() as Hex), wordAddress(b.address)) })),
+  ];
+  const results = decodeAggregate3(await call(MULTICALL3, encodeAggregate3(calls)));
   const marketState = new Map<string, { totalBorrowAssets: bigint; totalBorrowShares: bigint; price36: bigint | null }>();
   marketIds.forEach((id, i) => {
     const mk = results[i * 2];
     const px = results[i * 2 + 1];
-    const state = mk?.status === "success" ? (mk.result as { totalBorrowAssets: bigint; totalBorrowShares: bigint }) : null;
+    const state = mk?.success ? attempt(() => decodeMarket(mk.data)) : null;
     marketState.set(id, {
       totalBorrowAssets: state?.totalBorrowAssets ?? 0n,
       totalBorrowShares: state?.totalBorrowShares ?? 0n,
-      price36: px?.status === "success" ? (px.result as bigint) : null,
+      price36: px?.success ? attempt(() => decodeUint(px.data)) : null,
     });
   });
   const base = marketIds.length * 2;
   const rows: PositionRow[] = [];
   active.forEach((b, i) => {
     const r = results[base + i];
-    if (!r || r.status !== "success") return;
-    const p = r.result as { supplyShares: bigint; borrowShares: bigint; collateral: bigint };
+    const p = r?.success ? attempt(() => decodePosition(r.data)) : null;
+    if (!p) return;
     if (p.borrowShares === 0n && p.collateral === 0n) return;
     const id = b.marketId.toLowerCase();
     const m = byId.get(id) as MarketRow;
@@ -255,8 +265,4 @@ export async function readPositions(
     );
   });
   return rows;
-}
-
-export function makeClient(rpcUrl: string): Client {
-  return createBaseClient({ chainId: 8453, rpcUrl });
 }

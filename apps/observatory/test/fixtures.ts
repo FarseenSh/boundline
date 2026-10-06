@@ -51,6 +51,7 @@ export function calendar(state: Session, nextAt: number | null = 1791158400): Ca
     sessionAt: () => state,
     isFeedLive: () => live,
     nextTransition: () => ({ to: live ? "WEEKEND" : "OVERNIGHT", at: nextAt }),
+    feedBoundaryAfter: (t) => (nextAt !== null && nextAt > t ? nextAt : null),
     source: "test calendar",
   };
 }

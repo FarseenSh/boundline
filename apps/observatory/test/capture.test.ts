@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { liveCalendar } from "../src/calendar-impl.js";
 import type { CalendarPort, Session } from "../src/calendar-port.js";
 import {
   CAPTURE_AFTER_SECONDS,
@@ -10,6 +11,7 @@ import {
   firstUpdateAt,
   gapBps,
   isComplete,
+  nextLivenessTransition,
   phaseFor,
   updateSummary,
 } from "../src/capture.js";
@@ -41,6 +43,8 @@ export function weekendCalendar(): CalendarPort {
       const at = boundaries.find((b) => b > t);
       return at === undefined ? { to: "UNKNOWN", at: null } : { to: sessionAt(at), at };
     },
+    // 20:00 ET marks: CLOSE is one, and every 24 h after it (no DST inside this synthetic week).
+    feedBoundaryAfter: (t) => CLOSE + (Math.floor((t - CLOSE) / 86400) + 1) * 86400,
     source: "weekend test calendar",
   };
 }
@@ -56,7 +60,7 @@ describe("findLivenessTransitions", () => {
 
   it("skips live-to-live boundaries: after the reopen the next flip is the Friday close, not PRE", () => {
     const { next } = findLivenessTransitions(cal, REOPEN + 3600);
-    expect(next).toBeNull(); // the test calendar has no close after REOPEN inside 12 boundaries
+    expect(next).toBeNull(); // the test calendar stays REGULAR for ever after REOPEN: no flip inside the 14-day lookahead
     const { next: beforeClose } = findLivenessTransitions(cal, CLOSE - 6 * 3600);
     expect(beforeClose).toEqual({ at: CLOSE, from: "POST", to: "WEEKEND", kind: "close" });
   });
@@ -143,5 +147,70 @@ describe("summary across a synthetic reopen", () => {
     expect(rows[0]?.twapPrice).not.toBeNull();
     const withErrors = captureRows(tick(REOPEN + 30, { errors: ["latestRoundData"] }), transition, "at");
     expect(withErrors[0]?.note).toBe("read errors: latestRoundData");
+  });
+});
+
+const iso = (s: string): number => Date.parse(s) / 1000;
+
+describe("findLivenessTransitions on the real 2026 calendar", () => {
+  it("sees the Friday close from a Tuesday morning (the mid-week null is gone)", () => {
+    const { next, last } = findLivenessTransitions(liveCalendar, iso("2026-10-06T07:21:00-04:00"));
+    expect(next).toEqual({ at: 1791590400, from: "POST", to: "WEEKEND", kind: "close" });
+    expect(iso("2026-10-09T20:00:00-04:00")).toBe(1791590400);
+    expect(last).toBeNull();
+  });
+
+  it("at Friday 19:59 the close is 60 seconds away; at Sunday 19:45 the reopen is the next flip and nothing is behind", () => {
+    expect(findLivenessTransitions(liveCalendar, iso("2026-10-09T19:59:00-04:00")).next).toMatchObject({ at: 1791590400, kind: "close" });
+    const sunday = findLivenessTransitions(liveCalendar, REOPEN - 15 * 60);
+    expect(sunday.next).toEqual({ at: REOPEN, from: "WEEKEND", to: "OVERNIGHT", kind: "reopen" });
+    expect(sunday.last).toBeNull();
+    const after = findLivenessTransitions(liveCalendar, REOPEN + 10 * 60);
+    expect(after.last).toEqual({ at: REOPEN, from: "WEEKEND", to: "OVERNIGHT", kind: "reopen" });
+    expect(after.next?.at).toBe(1791590400);
+  });
+
+  it("walks the Thanksgiving week: eve close, holiday reopen, no flip at the half day's 13:00, weekend close at 20:00", () => {
+    expect(findLivenessTransitions(liveCalendar, iso("2026-11-25T12:00:00-05:00")).next).toEqual({ at: iso("2026-11-25T20:00:00-05:00"), from: "POST", to: "HOLIDAY", kind: "close" });
+    expect(findLivenessTransitions(liveCalendar, iso("2026-11-26T12:00:00-05:00")).next).toEqual({ at: iso("2026-11-26T20:00:00-05:00"), from: "HOLIDAY", to: "OVERNIGHT", kind: "reopen" });
+    expect(findLivenessTransitions(liveCalendar, iso("2026-11-27T12:00:00-05:00")).next).toEqual({ at: iso("2026-11-27T20:00:00-05:00"), from: "OVERNIGHT", to: "WEEKEND", kind: "close" });
+    expect(liveCalendar.sessionAt(iso("2026-11-27T13:00:00-05:00"))).toBe("POST");
+  });
+
+  it("finds the Labor Day reopen across a three-day weekend and the end of coverage", () => {
+    expect(findLivenessTransitions(liveCalendar, iso("2026-09-05T13:00:00-04:00")).next).toEqual({ at: iso("2026-09-07T20:00:00-04:00"), from: "HOLIDAY", to: "OVERNIGHT", kind: "reopen" });
+    expect(findLivenessTransitions(liveCalendar, iso("2026-12-30T12:00:00-05:00")).next).toEqual({ at: iso("2026-12-31T20:00:00-05:00"), from: "POST", to: "UNKNOWN", kind: "close" });
+    expect(findLivenessTransitions(liveCalendar, iso("2027-01-05T12:00:00-05:00")).next).toBeNull();
+  });
+
+  it("reuses the cached answer until the flip has passed", () => {
+    const cal: CalendarPort = { ...liveCalendar };
+    let walks = 0;
+    const counting: CalendarPort = { ...cal, feedBoundaryAfter: (t) => (walks += 1, cal.feedBoundaryAfter(t)) };
+    const tuesday = iso("2026-10-06T07:21:00-04:00");
+    const first = nextLivenessTransition(counting, tuesday);
+    const walksAfterFirst = walks;
+    expect(walksAfterFirst).toBeGreaterThan(0);
+    expect(nextLivenessTransition(counting, tuesday + 3600)).toBe(first);
+    expect(nextLivenessTransition(counting, 1791590400 - 1)).toBe(first);
+    expect(walks).toBe(walksAfterFirst);
+    const next = nextLivenessTransition(counting, 1791590400);
+    expect(next?.at).toBe(REOPEN + 7 * 86400); // Sun 11 Oct 20:00 ET reopen
+    expect(walks).toBeGreaterThan(walksAfterFirst);
+    // moving backwards recomputes rather than serving a later answer
+    expect(nextLivenessTransition(counting, tuesday)?.at).toBe(1791590400);
+  });
+
+  it("records missed ticks and gaps in the running summary", () => {
+    const transition = { at: REOPEN, from: "WEEKEND" as Session, to: "OVERNIGHT" as Session, kind: "reopen" as const };
+    const snap = (at: number) => buildSnapshot({ ...reads([token()], [pool()]), blockTimestamp: at }, weekendCalendar(), at);
+    let s = emptySummary();
+    s = updateSummary(s, transition, snap(REOPEN - 600));
+    s = updateSummary(s, transition, snap(REOPEN - 540));
+    s = updateSummary(s, transition, snap(REOPEN - 180)); // five ticks missing
+    expect(s.missedTicks).toBe(5);
+    expect(s.gaps).toEqual([{ from: REOPEN - 540, to: REOPEN - 180 }]);
+    const legacy = updateSummary({ perToken: {}, ticks: 3, lastTickAt: REOPEN - 300 }, transition, snap(REOPEN));
+    expect(legacy.missedTicks).toBe(4);
   });
 });

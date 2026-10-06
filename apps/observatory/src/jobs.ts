@@ -4,7 +4,7 @@ import type { Hex } from "viem";
 import type { CalendarPort } from "./calendar-port.js";
 import { activeTransition, captureRows, emptySummary, firstUpdateAt, isComplete, phaseFor, updateSummary, type CaptureSummary } from "./capture.js";
 import type { MarketRow } from "./morpho.js";
-import { CHAIN_ID, POSITIONS_EVERY_SECONDS, fetchApiBorrowers, planScan, readPositions, scanBorrowLogs, type Borrower, type Client, type PositionRow } from "./positions.js";
+import { CHAIN_ID, POSITIONS_EVERY_SECONDS, fetchApiBorrowers, planScan, readPositions, scanBorrowLogs, type Borrower, type PositionRow, type PositionsRpc } from "./positions.js";
 import type { Snapshot } from "./snapshot.js";
 import type { CaptureRunRecord, CaptureStore, PositionStore } from "./stores.js";
 
@@ -58,7 +58,7 @@ export async function runCapture(store: CaptureStore, calendar: CalendarPort, sn
 
 export interface PositionsDeps {
   store: PositionStore;
-  client: Client;
+  rpc: PositionsRpc;
   markets: readonly MarketRow[];
   fetchImpl: typeof fetch;
   snapshot: Snapshot;
@@ -74,9 +74,9 @@ export interface PositionsResult {
   errors: string[];
 }
 
-/** Advances the Borrow-event scan by a bounded range, seeds from Morpho's API when the cursor is missing or fell behind, and refreshes positions every 10 minutes. */
+/** Advances the Borrow-event scan by a bounded range, seeds from Morpho's API when the cursor is missing or fell behind, and refreshes positions every 10 minutes. Runs on every fifth minute's tick (index.ts). */
 export async function runPositions(deps: PositionsDeps): Promise<PositionsResult> {
-  const { store, client, markets, fetchImpl, snapshot } = deps;
+  const { store, rpc, markets, fetchImpl, snapshot } = deps;
   const log = deps.log ?? console;
   const result: PositionsResult = { scanned: null, skippedFrom: null, seeded: 0, newBorrowers: 0, refreshed: null, errors: [] };
   const marketIds = markets.map((m) => m.id.toLowerCase() as Hex);
@@ -94,7 +94,7 @@ export async function runPositions(deps: PositionsDeps): Promise<PositionsResult
       if (plan?.skippedFrom !== null && plan?.skippedFrom !== undefined) log.error(`borrow scan skipped blocks ${plan.skippedFrom}..${plan.from - 1} (archive cutoff); reseeded from the API`);
     }
     if (plan) {
-      const found = await scanBorrowLogs(client, marketIds, plan);
+      const found = await scanBorrowLogs(rpc.getLogs, marketIds, plan);
       result.newBorrowers = await store.addBorrowers(found);
       await store.setCursor(CHAIN_ID, marketIds, plan.to, now);
       result.scanned = { from: plan.from, to: plan.to };
@@ -110,7 +110,7 @@ export async function runPositions(deps: PositionsDeps): Promise<PositionsResult
       const borrowers: Borrower[] = await store.borrowers(CHAIN_ID);
       const shadow = new Map<string, bigint>();
       for (const t of snapshot.tokens) if (t.dexTwapPrice36) shadow.set(t.symbol, BigInt(t.dexTwapPrice36));
-      const rows: PositionRow[] = borrowers.length === 0 ? [] : await readPositions(client, markets, borrowers, shadow, head, now);
+      const rows: PositionRow[] = borrowers.length === 0 ? [] : await readPositions(rpc.call, markets, borrowers, shadow, head, now);
       await store.addPositions(rows);
       result.refreshed = rows.length;
     }

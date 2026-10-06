@@ -1,6 +1,9 @@
 // Morpho Blue B20 markets on Base: discovered from Morpho's public GraphQL API, then read onchain.
-import { B20_BY_ADDRESS, MAINNET, createBaseClient, morphoAbi, morphoOracleAbi } from "@boundline/chain";
+import { B20_BY_ADDRESS, MAINNET } from "@boundline/chain";
 import { encodeAbiParameters, keccak256, type Address, type Hex } from "viem";
+import { MULTICALL3, SELECTOR, callData, decodeAggregate3, decodeMarket, decodeUint, encodeAggregate3, wordBytes32, type Call } from "./encoding.js";
+import { rpcUrlsOf } from "./reader.js";
+import { ethCaller, type RpcOptions } from "./rpc.js";
 
 export const MORPHO_GRAPHQL = "https://blue-api.morpho.org/graphql";
 
@@ -79,20 +82,26 @@ export async function discoverB20Markets(fetchImpl: typeof fetch = fetch): Promi
   return parseDiscovery((await res.json()) as Parameters<typeof parseDiscovery>[0]);
 }
 
-export async function readMarkets(rpcUrl: string, markets: DiscoveredMarket[]): Promise<MarketRow[]> {
-  const client = createBaseClient({ chainId: 8453, rpcUrl });
-  const results = await client.multicall({
-    allowFailure: true,
-    contracts: markets.flatMap((m) => [
-      { address: MAINNET.morpho, abi: morphoAbi, functionName: "market", args: [m.id] } as const,
-      { address: m.oracle, abi: morphoOracleAbi, functionName: "price" } as const,
-    ]),
-  });
+function attempt<T>(fn: () => T): T | null {
+  try {
+    return fn();
+  } catch {
+    return null;
+  }
+}
+
+/** Market totals and the oracle price of every market in one aggregate3 call, decoded word by word (encoding.ts). */
+export async function readMarkets(rpcUrl: string, markets: DiscoveredMarket[], opts: RpcOptions = {}): Promise<MarketRow[]> {
+  const calls: Call[] = markets.flatMap((m): Call[] => [
+    { target: MAINNET.morpho, callData: callData(SELECTOR.market, wordBytes32(m.id)) },
+    { target: m.oracle, callData: SELECTOR.price },
+  ]);
+  const results = calls.length === 0 ? [] : decodeAggregate3(await ethCaller(rpcUrlsOf(rpcUrl), opts)(MULTICALL3, encodeAggregate3(calls)));
   return markets.map((m, i) => {
     const mk = results[i * 2];
     const px = results[i * 2 + 1];
-    const market = mk?.status === "success" ? (mk.result as { totalSupplyAssets: bigint; totalBorrowAssets: bigint }) : null;
-    const price = px?.status === "success" ? (px.result as bigint) : null;
+    const market = mk?.success ? attempt(() => decodeMarket(mk.data)) : null;
+    const price = px?.success ? attempt(() => decodeUint(px.data)) : null;
     const supply = market?.totalSupplyAssets ?? 0n;
     const borrow = market?.totalBorrowAssets ?? 0n;
     return {

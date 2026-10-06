@@ -41,11 +41,23 @@ export interface TokenCaptureSummary {
   first: FirstPrint | null;
 }
 
+/** A hole in the recorder's own one-minute cadence, so the run states its uptime honestly. */
+export interface TickGap {
+  from: number;
+  to: number;
+}
+
 export interface CaptureSummary {
   perToken: Record<string, TokenCaptureSummary>;
   ticks: number;
   lastTickAt: number | null;
+  /** Ticks the cron should have delivered but did not (gaps longer than MISSED_TICK_SECONDS). */
+  missedTicks?: number;
+  gaps?: TickGap[];
 }
+
+/** A gap between consecutive ticks longer than this counts as missed ticks. */
+export const MISSED_TICK_SECONDS = 90;
 
 export interface CaptureRow {
   transitionAt: number;
@@ -64,48 +76,71 @@ export interface CaptureRow {
 }
 
 export function emptySummary(): CaptureSummary {
-  return { perToken: {}, ticks: 0, lastTickAt: null };
+  return { perToken: {}, ticks: 0, lastTickAt: null, missedTicks: 0, gaps: [] };
 }
 
+/** Days ahead to look for the next liveness flip: any US long weekend with margin to spare. */
+export const MAX_FLIP_LOOKAHEAD_DAYS = 14;
+/** How long a "no flip within the lookahead" answer is reused before the walk runs again. */
+const NULL_CACHE_SECONDS = 600;
+
+interface NextCache {
+  computedAt: number;
+  next: LivenessTransition | null;
+}
+
+/** Per calendar: the first flip strictly after `computedAt` is also the first flip after any later `now` before it. */
+const nextCache = new WeakMap<CalendarPort, NextCache>();
+
 /**
- * The next boundary after `now` where feed liveness flips, and the last one within the capture
- * window behind `now` (so a Worker deployed minutes after a reopen still joins the run).
+ * The next instant after `now` where feed liveness flips. Liveness changes only at 20:00 ET, so the walk
+ * visits one boundary per day (14 at most) instead of every session boundary, and the answer is cached per
+ * calendar until it has passed: a warm isolate pays nothing, a cold one a few dozen arithmetic conversions.
  */
-export function findLivenessTransitions(
-  calendar: CalendarPort,
-  now: number,
-  maxBoundaries = 12,
-): { next: LivenessTransition | null; last: LivenessTransition | null } {
+export function nextLivenessTransition(calendar: CalendarPort, now: number, maxDays = MAX_FLIP_LOOKAHEAD_DAYS): LivenessTransition | null {
+  const hit = nextCache.get(calendar);
+  if (hit && hit.computedAt <= now && (hit.next ? now < hit.next.at : now - hit.computedAt < NULL_CACHE_SECONDS)) return hit.next;
   let next: LivenessTransition | null = null;
   let t = now;
-  for (let i = 0; i < maxBoundaries; i += 1) {
-    const n = calendar.nextTransition(t);
-    if (n.at === null || n.at <= t) break;
-    const liveBefore = calendar.isFeedLive(n.at - 1);
-    const liveAfter = calendar.isFeedLive(n.at);
+  for (let day = 0; day < maxDays; day += 1) {
+    const b = calendar.feedBoundaryAfter(t);
+    if (b === null || b <= t) break;
+    const liveBefore = calendar.isFeedLive(b - 1);
+    const liveAfter = calendar.isFeedLive(b);
     if (liveBefore !== liveAfter) {
-      next = { at: n.at, from: calendar.sessionAt(n.at - 1), to: n.to, kind: liveAfter ? "reopen" : "close" };
+      next = { at: b, from: calendar.sessionAt(b - 1), to: calendar.sessionAt(b), kind: liveAfter ? "reopen" : "close" };
       break;
     }
-    t = n.at;
+    t = b;
   }
+  nextCache.set(calendar, { computedAt: now, next });
+  return next;
+}
 
-  let last: LivenessTransition | null = null;
+/** The liveness flip within the capture window behind `now`, to the second (so a Worker deployed minutes after a reopen still joins the run). */
+export function lastLivenessTransition(calendar: CalendarPort, now: number): LivenessTransition | null {
   const liveNow = calendar.isFeedLive(now);
   // Look one second past the window so a flip exactly CAPTURE_AFTER_SECONDS ago (the completing tick) is still found.
   const earliest = now - CAPTURE_AFTER_SECONDS - 1;
-  if (calendar.isFeedLive(earliest) !== liveNow) {
-    // One liveness flip at most inside 90 minutes: binary-search its exact second.
-    let lo = earliest;
-    let hi = now;
-    while (hi - lo > 1) {
-      const mid = Math.floor((lo + hi) / 2);
-      if (calendar.isFeedLive(mid) === liveNow) hi = mid;
-      else lo = mid;
-    }
-    last = { at: hi, from: calendar.sessionAt(hi - 1), to: calendar.sessionAt(hi), kind: liveNow ? "reopen" : "close" };
+  if (calendar.isFeedLive(earliest) === liveNow) return null;
+  // One liveness flip at most inside 90 minutes: binary-search its exact second.
+  let lo = earliest;
+  let hi = now;
+  while (hi - lo > 1) {
+    const mid = Math.floor((lo + hi) / 2);
+    if (calendar.isFeedLive(mid) === liveNow) hi = mid;
+    else lo = mid;
   }
-  return { next, last };
+  return { at: hi, from: calendar.sessionAt(hi - 1), to: calendar.sessionAt(hi), kind: liveNow ? "reopen" : "close" };
+}
+
+/** The next liveness flip after `now`, and the last one within the capture window behind it. */
+export function findLivenessTransitions(
+  calendar: CalendarPort,
+  now: number,
+  maxDays = MAX_FLIP_LOOKAHEAD_DAYS,
+): { next: LivenessTransition | null; last: LivenessTransition | null } {
+  return { next: nextLivenessTransition(calendar, now, maxDays), last: lastLivenessTransition(calendar, now) };
 }
 
 /** Phase of `now` relative to a transition, or null outside the capture window. */
@@ -177,7 +212,13 @@ export function updateSummary(summary: CaptureSummary, transition: LivenessTrans
     }
     perToken[t.symbol] = updated;
   }
-  return { perToken, ticks: summary.ticks + 1, lastTickAt: snapshot.takenAt };
+  let missedTicks = summary.missedTicks ?? 0;
+  let gaps = summary.gaps ?? [];
+  if (summary.lastTickAt !== null && snapshot.takenAt - summary.lastTickAt > MISSED_TICK_SECONDS) {
+    missedTicks += Math.max(1, Math.round((snapshot.takenAt - summary.lastTickAt) / 60) - 1);
+    gaps = [...gaps, { from: summary.lastTickAt, to: snapshot.takenAt }];
+  }
+  return { perToken, ticks: summary.ticks + 1, lastTickAt: snapshot.takenAt, missedTicks, gaps };
 }
 
 /** Earliest post-transition feed print across tokens, or null when none printed yet. */

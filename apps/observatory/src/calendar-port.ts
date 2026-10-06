@@ -12,6 +12,11 @@ export interface CalendarPort {
   sessionAt(epochSeconds: number): Session;
   isFeedLive(epochSeconds: number): boolean;
   nextTransition(epochSeconds: number): Transition;
+  /**
+   * First 20:00 ET instant strictly after `epochSeconds`, the only mark at which feed liveness can change
+   * (Friday close, Sunday reopen, holiday eve and holiday day, end of coverage). Null when unknown.
+   */
+  feedBoundaryAfter(epochSeconds: number): number | null;
   readonly source: string;
 }
 
