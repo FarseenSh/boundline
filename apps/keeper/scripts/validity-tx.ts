@@ -32,7 +32,14 @@ const sequencerUrl = args.get("sequencer") ?? rpcUrl;
 let id = 0;
 async function rpc(url: string, method: string, params: unknown[]): Promise<unknown> {
   const res = await fetch(url, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ jsonrpc: "2.0", id: ++id, method, params }) });
-  const body = (await res.json()) as { result?: unknown; error?: { code: number; message: string } };
+  const text = await res.text();
+  let body: { result?: unknown; error?: { code: number; message: string } };
+  try {
+    body = JSON.parse(text) as typeof body;
+  } catch {
+    // Public RPCs answer rate limits and outages with an HTML page; surface it as an RPC error, not a crash.
+    throw new Error(`${method}: HTTP ${res.status} non-JSON answer from ${new URL(url).host}: ${text.slice(0, 60).replace(/\s+/g, " ")}`);
+  }
   if (body.error) throw new Error(`${method}: ${body.error.code} ${body.error.message}`);
   return body.result;
 }
@@ -108,20 +115,25 @@ async function main(): Promise<void> {
     const deadline = Date.now() + Number(args.get("deadline") ?? "5400") * 1000;
     let submissions = 1;
     for (;;) {
-      const r = (await rpc(rpcUrl, "eth_getTransactionReceipt", [hash])) as { blockNumber: Hex; status: Hex; gasUsed: Hex } | null;
-      if (r) {
-        const slotNow = (await rpc(rpcUrl, "eth_getStorageAt", [feed, slot, r.blockNumber])) as Hex;
-        console.log(JSON.stringify({ hash, included: true, block: Number(r.blockNumber), status: r.status === "0x1" ? "success" : "reverted", gasUsed: Number(r.gasUsed), slotValueInThatBlock: slotNow, submissions, at: new Date().toISOString() }));
-        return;
+      // One failed read (rate limit, outage) must not end the watch: log it and try again next cycle.
+      try {
+        const r = (await rpc(rpcUrl, "eth_getTransactionReceipt", [hash])) as { blockNumber: Hex; status: Hex; gasUsed: Hex } | null;
+        if (r) {
+          const slotNow = (await rpc(rpcUrl, "eth_getStorageAt", [feed, slot, r.blockNumber])) as Hex;
+          console.log(JSON.stringify({ hash, included: true, block: Number(r.blockNumber), status: r.status === "0x1" ? "success" : "reverted", gasUsed: Number(r.gasUsed), slotValueInThatBlock: slotNow, submissions, at: new Date().toISOString() }));
+          return;
+        }
+      } catch (err) {
+        console.log(JSON.stringify({ readFailed: true, error: err instanceof Error ? err.message : String(err), at: new Date().toISOString() }));
       }
       if (Date.now() > deadline) {
         console.log(JSON.stringify({ hash, included: false, submissions, note: "deadline passed" }));
         return;
       }
       await new Promise((r) => setTimeout(r, every));
-      const h = BigInt((await rpc(rpcUrl, "eth_blockNumber", [])) as Hex);
-      const cur = (await rpc(rpcUrl, "eth_getStorageAt", [feed, slot, "latest"])) as Hex;
       try {
+        const h = BigInt((await rpc(rpcUrl, "eth_blockNumber", [])) as Hex);
+        const cur = (await rpc(rpcUrl, "eth_getStorageAt", [feed, slot, "latest"])) as Hex;
         hash = await submit(h + expiresIn);
         submissions += 1;
         console.log(JSON.stringify({ rearmed: true, submissions, head: Number(h), bound: Number(h + expiresIn), slotNow: cur, satisfiedNow: op === "=" ? cur === value : cur !== value, at: new Date().toISOString() }));
