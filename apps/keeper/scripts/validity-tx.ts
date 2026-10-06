@@ -16,7 +16,7 @@
 //                                   that must wait for a state change is re-submitted with a fresh bound every
 //                                   --loop seconds until it lands or --deadline seconds pass. Same nonce, same
 //                                   signed bytes, same hash: only the predicate window moves.
-import { encodeFunctionData, type Address, type Hex } from "viem";
+import { encodeFunctionData, keccak256, type Address, type Hex } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 
 const args = new Map<string, string>();
@@ -91,8 +91,18 @@ async function main(): Promise<void> {
     const v = [validity[0], { type: "block_number", params: { op: "<=", value: hex(bound) } }];
     return (await rpc(sequencerUrl, "base_sendRawTransactionValidity", [raw, { validity: v }])) as Hex;
   };
-  let hash = await submit(head + expiresIn);
-  console.log(JSON.stringify({ accepted: true, hash, at: new Date().toISOString() }));
+  // A restart while the previous arming is still alive answers "already known": the transaction is armed under its
+  // old bound, so carry on with the same hash (keccak of the signed bytes) and re-arm from the loop.
+  let hash: Hex;
+  try {
+    hash = await submit(head + expiresIn);
+    console.log(JSON.stringify({ accepted: true, hash, at: new Date().toISOString() }));
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    if (!/already known/i.test(msg)) throw err;
+    hash = keccak256(raw);
+    console.log(JSON.stringify({ accepted: true, alreadyKnown: true, hash, at: new Date().toISOString() }));
+  }
   if (args.has("loop")) {
     const every = Number(args.get("loop")) * 1000;
     const deadline = Date.now() + Number(args.get("deadline") ?? "5400") * 1000;
