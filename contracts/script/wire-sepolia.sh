@@ -54,13 +54,20 @@ log() { printf '%s\n' "$*" >&2; }
 # eth_call from the sender; aborts on revert. Prints the decoded return value when a type is given.
 check() {
   local what=$1; shift
-  local out
-  if ! out=$(call --from "$SENDER" "$@" 2>&1); then
-    log "ABORT: $what would revert: $out"
-    exit 1
-  fi
-  log "ok   $what${out:+ -> $out}"
-  printf '%s' "$out"
+  local out attempt
+  # sepolia.base.org is load-balanced and its nodes trail each other by a few seconds: a policy created by the
+  # previous send can be PolicyNotFound on the node that answers this eth_call. Retry before aborting
+  # (6 Oct 2026: the NVDAt wire aborted on exactly that, with the policy already mined).
+  for attempt in 1 2 3 4 5 6; do
+    if out=$(call --from "$SENDER" "$@" 2>&1); then
+      printf '%s\n' "$out"
+      return 0
+    fi
+    log "retry $attempt/6: $what reverted on this node ($(printf '%s' "$out" | tail -1 | cut -c1-120)); waiting 4 s"
+    sleep 4
+  done
+  log "ABORT: $what would revert: $out"
+  exit 1
 }
 
 # Sends after a successful check. In check mode it stops after the eth_call. Prints the tx hash.

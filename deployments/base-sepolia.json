@@ -9,7 +9,7 @@
     "Test-only deployment. The broadcaster owns the calendar, registry, gate and feeds; no feed is locked.",
     "The TestPriceFeeds hold their deploy-time answer (updatedAt 1791037640); with the default 24h heartbeat + 2h tolerance the gate reports FEED_STALE from 2026-10-04T16:27:20Z until something calls setAnswer.",
     "Verification: all nine Solidity contracts verified on sepolia.basescan.org through the Etherscan v2 API during the deploy.",
-    "The three stocks are real B20 assets created through the factory precompile. AAPLt is wired (composite receiver policy and seize exemption for Morpho, the desk and the keeper, 3 Oct); NVDAt and TSLAt still carry the plain blocklist on both transfer scopes until they get markets."
+    "The three stocks are real B20 assets created through the factory precompile. All three are wired (composite receiver policy and seize exemption for Morpho, the desk and the keeper): AAPLt on 3 Oct, NVDAt and TSLAt on 6 Oct 2026."
   ],
   "contracts": {
     "MarketCalendar": {
@@ -86,7 +86,24 @@
       "setFeedTx": "0x38cd9d77a00694135b9a90e646c39b0ab997df3712c48f76277a34bc8d08df79",
       "sessionGuard": "0xcEDcD908aB8B12766147459fb34F8C6Da4aA7518",
       "sessionGuardTx": "0x86e01f0bef6c33c61af6a123521173adc1ca561faf433a4ebcf4d39653744459",
-      "shadowGuard": null
+      "shadowGuard": null,
+      "wire": {
+        "date": "2026-10-06",
+        "runbook": "contracts/script/wire-sepolia.sh (first run aborted on a PolicyNotFound from a lagging RPC node right after createCompositePolicy; finished with the same calls and a retrying guard, now built into the script)",
+        "venues": [
+          "0xBBBBBbbBBb9cC5e90e3b3Af64bdAF62C37EEFFCb",
+          "0x39aBaDc0aAa12D1F7e259b89536Aa1848997399a",
+          "0x28A50Eb7C2Db2B04638D3b226c724A1Cfe999894"
+        ],
+        "updateAllowlistTx": "0x2e0b8091a1d26b80ccc97353aaba3fbbdd3e892ed358075c20e1bc8b285de3b9",
+        "compositePolicyId": "216172782113783972",
+        "createCompositeTx": "0xd3ce352a9527eec1ff4bee1ae4d39e68e8a150737bb865fff1306914933008a8",
+        "transferReceiverPolicyTx": "0xc048497581460e4ba17e8797f370c9b24ce57e17341b07f748400053891ec039",
+        "seizeExemptPolicyId": "72057594037928103",
+        "createSeizeExemptTx": "0xce66019fd7cb3dac6a77e0af73cb9bcb7ed98cfe71b33ffefa5bd0d64ffa75f7",
+        "seizeExemptPolicyTx": "0x77cf40a399f05fda5d1aaba1b999f855ae2806ab6cd74ffc955a130614aba441",
+        "result": "TRANSFER_RECEIVER_POLICY = INTERSECT(blocklist 159, holders allowlist 72057594037928094 + venues); SEIZE_EXEMPT_POLICY = allowlist 72057594037928103 of the venues; policyId reads confirm both"
+      }
     },
     "TSLAt": {
       "token": "0xb200000000000000000000Af3FB2181a8772F804",
@@ -104,7 +121,24 @@
       "setFeedTx": "0xd896be8eb1796ed27261f26e8fd8ade165002503e8aad83e81ed5e60209b4dc6",
       "sessionGuard": "0xcADf92BBDC997fDb5920FF0Ba95B4d2d2b8389B3",
       "sessionGuardTx": "0x50c13e14b6507d56febbdbacdf83a0242ce221eaf8c5cf283841b7538fcafed8",
-      "shadowGuard": null
+      "shadowGuard": null,
+      "wire": {
+        "date": "2026-10-06",
+        "runbook": "contracts/script/wire-sepolia.sh (aborted once on the same lagging-node PolicyNotFound before the seize-exempt bind; finished by hand)",
+        "venues": [
+          "0xBBBBBbbBBb9cC5e90e3b3Af64bdAF62C37EEFFCb",
+          "0x39aBaDc0aAa12D1F7e259b89536Aa1848997399a",
+          "0x28A50Eb7C2Db2B04638D3b226c724A1Cfe999894"
+        ],
+        "updateAllowlistTx": "0xb0429376f3748d6214c8af4448b61717f5e6b7da475a2d0f011c4f7cdceb25c2",
+        "compositePolicyId": "216172782113783973",
+        "createCompositeTx": "0xbccdbfc634ef63e47d585e76aae170f5a339d02bf14f6637abb23171a7cb5109",
+        "transferReceiverPolicyTx": "0x2476e6978b80ca2918a358019b25d498faae711b0f4e516e02f60c7317651cd5",
+        "seizeExemptPolicyId": "72057594037928102",
+        "createSeizeExemptTx": "0x94953c697f574c00f0235245fc45298dc1070027754963434bc6c990bfa37c41",
+        "seizeExemptPolicyTx": "0x76074f6558007b62c260163a2d82a54e726535182bf2824696074359aed9e624",
+        "result": "TRANSFER_RECEIVER_POLICY = INTERSECT(blocklist 161, holders allowlist 72057594037928096 + venues); SEIZE_EXEMPT_POLICY = allowlist 72057594037928102 of the venues; policyId reads confirm both"
+      }
     }
   },
   "holders": {
@@ -143,6 +177,34 @@
         "block": 47634977,
         "supplier": "0x2f0d9B1f16CD702259C6cC259e8D5E5455282a4E"
       }
+    },
+    "NVDAt/USDC": {
+      "id": "0x7cb7fcc828a7296f8ea18256e0f5763a5588cfe22df9c943088021c762e58cc9",
+      "params": {
+        "loanToken": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+        "collateralToken": "0xB200000000000000000000AEd76Eae58870E2ae6",
+        "oracle": "0xcEDcD908aB8B12766147459fb34F8C6Da4aA7518",
+        "irm": "0x46415998764C29aB2a25CbeA6254146D50D22687",
+        "lltv": "625000000000000000"
+      },
+      "createTx": "0x1ff784b0832354334ef9fd7296dd7e6326d874267374784587a6c95eff446d73",
+      "block": 47760103,
+      "seed": null,
+      "note": "created 6 Oct 2026; unseeded (no USDC left on the deployer): quotes work, draws need liquidity"
+    },
+    "TSLAt/USDC": {
+      "id": "0xb0e8d25d1c9b822cc718c89666b887698922a7b49fdb00dbdecd70dd4ed9e2f1",
+      "params": {
+        "loanToken": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+        "collateralToken": "0xb200000000000000000000Af3FB2181a8772F804",
+        "oracle": "0xcADf92BBDC997fDb5920FF0Ba95B4d2d2b8389B3",
+        "irm": "0x46415998764C29aB2a25CbeA6254146D50D22687",
+        "lltv": "625000000000000000"
+      },
+      "createTx": "0x9c95627bfe23ea7e5ae6636c397ac54a050955956f85ca298bb606a74898e6ad",
+      "block": 47760113,
+      "seed": null,
+      "note": "created 6 Oct 2026; unseeded (no USDC left on the deployer): quotes work, draws need liquidity"
     }
   },
   "proofs": [
@@ -190,6 +252,13 @@
     {
       "what": "partner API over the drawn line (same minute)",
       "result": "GET /v1/lines/1: status OPEN, obligation OPEN, drawnPrincipal 3.000000 USDC; POST /v1/quotes {lineId 1, amount 1 USDC}: 200, reason NONE, session PRE, capacity 1,660.35 USDC, X-Quote-Hash 0x023d1eb219bd408ecd5f623299010d6627881066c34772ed0a61221074c25d78, block 47759482; indexer /v1/events?source=credit-desk lists Drawn, Repaid and both Decision events"
+    },
+    {
+      "what": "validity transaction (Cobalt) on Sepolia: repay 0.1 USDC on line 1 from the test key 0xEcC07A1D6306B56f9684F5555C2dE87174Dc6AAE, submitted with base_sendRawTransactionValidity to https://sepolia-sequencer.base.org with predicates storage(AAPLt feed 0xa652\u2026e52a, slot 5 = _updatedAt) = 0x\u20266ac3e55b and block_number <= head+30",
+      "from": "0xEcC07A1D6306B56f9684F5555C2dE87174Dc6AAE",
+      "tx": "0x6b17288ff94723934a83a308ad4d350fd4403c639777bb2317646f3834c949dd",
+      "block": 47760060,
+      "result": "included in the next block, status success, 183,098 gas (Repaid on line 1). A first attempt with block_number <= head+3000 was refused: 'expires too far in the future: last satisfiable block 47763039 exceeds the maximum permitted block 47760071', i.e. the sequencer accepts a bound at most 32 blocks (about 64 s) ahead, so a waiting transaction has to be re-armed every minute (apps/keeper/scripts/validity-tx.ts --loop)"
     }
   ],
   "gas": {
@@ -239,6 +308,14 @@
       {
         "id": "0x4a03b124a170a913931f00ab87f7966d388370cf457c0a3c4fb6fcf4fbb88047",
         "registerTx": "0xfa6e31b300acac61da48e336466d228d6bed53ee8b2d73d46e8e8480869ab114"
+      },
+      {
+        "id": "0x7cb7fcc828a7296f8ea18256e0f5763a5588cfe22df9c943088021c762e58cc9",
+        "registerTx": "0xbe94c73b729d2800068e103ac52899f81b9f3407be35ade8a6f11d2d58ed6c85"
+      },
+      {
+        "id": "0xb0e8d25d1c9b822cc718c89666b887698922a7b49fdb00dbdecd70dd4ed9e2f1",
+        "registerTx": "0x4c44c6becfdcf5363a94c7a5b02a5504cd749e2fb52a38cce63fb948fa5b1501"
       }
     ],
     "partners": [
@@ -257,6 +334,22 @@
             "maxDraw": "100000000",
             "exposureCapUsdc": "500000000",
             "setTx": "0xc8acb2995b04bd3744c9fd4c2bc9a7ffccf0efe81208fdf6944ad217beabac76"
+          },
+          {
+            "collateral": "0xB200000000000000000000AEd76Eae58870E2ae6",
+            "maxLtvWad": "500000000000000000",
+            "minDraw": "1000000",
+            "maxDraw": "100000000",
+            "exposureCapUsdc": "500000000",
+            "setTx": "0xa9337aa2ae0b9f0247b192ca5427e2ac2c4f911d3b3b5c44ad5767a67551a93b"
+          },
+          {
+            "collateral": "0xb200000000000000000000Af3FB2181a8772F804",
+            "maxLtvWad": "500000000000000000",
+            "minDraw": "1000000",
+            "maxDraw": "100000000",
+            "exposureCapUsdc": "500000000",
+            "setTx": "0x3a0187244f994f5a5c8dcabee7487c3c806d7821e0367559953c456e9c599383"
           }
         ]
       }
@@ -276,6 +369,38 @@
         "firstDrawBlock": 47759305,
         "partialRepayTx": "0xe3bc2f0b3a58975b5870d624fd4772656deab41ef9fbc3b5c0f727d3f464771b",
         "state": "6 Oct 2026 07:40 ET: 10 AAPLt collateral, 3 USDC debt outstanding (5 drawn in the PRE session, 2 repaid); kept open as the live position for the protection drills"
+      },
+      {
+        "lineId": "2",
+        "partner": "boundline-app",
+        "user": "0xB789aD318945B37566E2549F65526Cc269a482Fc",
+        "marketId": "0x7cb7fcc828a7296f8ea18256e0f5763a5588cfe22df9c943088021c762e58cc9",
+        "openLineTx": "0x07c0fdf3b619011f336a5cf3fd7b7d0514f94dc8dcc143c70a52d3633d2b4ef0",
+        "block": 47760270,
+        "collateral": {
+          "amount": "500000000",
+          "symbol": "NVDAt",
+          "approveTx": "0x10ff9331213e500bb8768e2b74505a0abcbd42530e297860e4ec9cc7fff92d61",
+          "addCollateralTx": "0x8039101ca4554670b4d7b5a4dbb6f86a83fb235dc2eeec1256fbe7fe35204936",
+          "block": 47760277
+        },
+        "state": "6 Oct 2026: 5 NVDAt collateral through desk.addCollateral (the desk pulled under the composite receiver policy), no debt; quote(2, 1 USDC) = reason NONE, PRE, price 241.2375, capacity 603.09 USDC; the market is unseeded so a draw waits for liquidity"
+      },
+      {
+        "lineId": "3",
+        "partner": "boundline-app",
+        "user": "0xB789aD318945B37566E2549F65526Cc269a482Fc",
+        "marketId": "0xb0e8d25d1c9b822cc718c89666b887698922a7b49fdb00dbdecd70dd4ed9e2f1",
+        "openLineTx": "0xffa850d1938623896ac32205cd92ced522d37a38c8a22c16d8bf05f78e7452bb",
+        "block": 47760281,
+        "collateral": {
+          "amount": "500000000",
+          "symbol": "TSLAt",
+          "approveTx": "0xf32d2f7d2454a9add7a70b03ad6268a746e812395538fcdfb110a841f303a163",
+          "addCollateralTx": "0x330d51dcb0c9454f3e476511e5828e7e76512fdcea3b845d72c9cca8d0cca8fe",
+          "block": 47760288
+        },
+        "state": "6 Oct 2026: 5 TSLAt collateral, no debt; quote(3, 1 USDC) = reason NONE, PRE, price 383.19, capacity 957.98 USDC; unseeded market"
       }
     ]
   },
