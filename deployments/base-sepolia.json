@@ -266,6 +266,13 @@
       "tx": "0x982c7327efa9f0460b92501a4322ec5dc730e5faaca3ce1d87dc80f708dfb695",
       "block": 47760683,
       "result": "shadow LTV 0.6012 -> 0.5800 (preLltv), partial sized by Protector.sizing on chain, 486,363 gas"
+    },
+    {
+      "what": "validity transaction 2 (Cobalt): repay 0.1 USDC on line 1 with predicate storage(AAPLt feed, slot 5) != the held round, re-armed every ~65 s for two hours from the test key 0xEcC0\u20266AAE (67 submissions)",
+      "from": "0xEcC07A1D6306B56f9684F5555C2dE87174Dc6AAE",
+      "tx": "0xbbd8463132d3863f135ce30e5618d92919e4c3832b80b76510e97f18b99cb2fb",
+      "block": 47763777,
+      "result": "included 14:10:42 UTC, success, 183,098 gas, Repaid(1, 100000); slot in that block 0x\u20266ac500c1 (mainnet round \u2026520 mirrored in block 47763713). The predicate had flipped at 13:55:34 (round \u2026519) while the operator machine was offline (13:50\u201314:02); after reconnecting, seven accepted re-arms with a satisfied predicate were not included before the eighth was; base fee flat at 0.005 gwei. Lesson: 'not before', not 'as soon as'; re-sign with a new hash per re-arm next. Details: docs/evidence/validity-transactions-sepolia.md"
     }
   ],
   "gas": {

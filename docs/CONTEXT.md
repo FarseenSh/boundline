@@ -427,7 +427,9 @@ plan upgrade or Cloudflare leniency; the lean paths stay either way. **Validity 
 `base_sendRawTransactionValidity` on `https://sepolia-sequencer.base.org` accepts a `block_number` bound at most **32
 blocks (about 64 s) ahead** ("maximum permitted block"), answers `already known` while a previous bound is alive, and
 `replacement transaction underpriced` when another transaction shares the nonce, so each job signs with its own key and
-re-arms every tick. **Logs:** `eth_getLogs` is capped at 500 blocks on mainnet.base.org and sepolia.base.org; the Alchemy
+re-arms every tick. Measured on the live `!=` case: a re-submitted known hash with a satisfied predicate was accepted
+seven times without inclusion before the eighth landed (base fee flat), so a validity transaction guarantees "not
+before", not "as soon as"; next experiment: a new hash per re-arm (same nonce, higher tip). **Logs:** `eth_getLogs` is capped at 500 blocks on mainnet.base.org and sepolia.base.org; the Alchemy
 free tier allows 10-block windows (unusable); publicnode refuses archive ranges and multi-address filters; Tenderly's
 public gateway serves 500-block windows back to September. **D1** rejects `LIKE` patterns over about 50 bytes (use
 `instr`). **RPC node lag:** `sepolia.base.org` nodes trail each other by seconds, so an `eth_call` right after a send can
@@ -495,10 +497,10 @@ Live: the keeper's ticks end `ok` at 7–15 ms CPU (mirror) and the protection j
 ## 11. Open items
 
 **Clocked**
-- The `!=` validity transaction (`0xbbd84631…b2fb`, repay 0.1 USDC on line 1 "only once the AAPLt feed prints a new
-  round") is re-armed every 15 s by `apps/keeper/scripts/validity-tx.ts`; it lands in the block where the keeper mirrors
-  the next AAPLc round (the Tuesday open or the 24 h heartbeat at the latest). Record the block in
-  `docs/evidence/validity-transactions-sepolia.md`.
+- Done 14:10 UTC: the `!=` validity transaction (`0xbbd84631…b2fb`, repay 0.1 USDC on line 1 "only once the AAPLt feed
+  prints a new round") landed in block 47763777, about 15 minutes after the predicate flipped; seven accepted re-arms
+  with a true predicate were not included first, and the laptop loop was offline when the flip happened. Lessons and
+  the next experiment (re-sign per re-arm) are in `docs/evidence/validity-transactions-sepolia.md`.
 - Fri 9 Oct 20:00 ET close / Sun 11 Oct 20:00 ET reopen: the repaired Observatory captures it live; stage a Sepolia
   position just above the band before the close so the keeper's protection runs as the **Saturday rescue** (on a
   SessionGuard market only a close-out can pass while closed: stage it as such, or use a held-price market).

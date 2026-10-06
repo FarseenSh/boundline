@@ -47,3 +47,31 @@ shadow LTV, the band edge the contract enforces, and the Protector kept 757 raw 
 
 Lesson from the first two ticks: the protection signer shared a key with the waiting `!=` transaction above, so the
 sequencer answered `replacement transaction underpriced` on the colliding nonce. Each job now has its own key.
+
+## Result of transaction 2 (the "once the feed prints" repay)
+
+Included in block 47763777 at 14:10:42 UTC, status success, 183,098 gas, `Repaid(1, 100000)`:
+[`0xbbd84631…b2fb`](https://sepolia.basescan.org/tx/0xbbd8463132d3863f135ce30e5618d92919e4c3832b80b76510e97f18b99cb2fb). In that block the
+feed's slot held `0x…6ac500c1` = 1791295681, the `updatedAt` of mainnet AAPLc round …520 (14:08:01 UTC), mirrored by the
+keeper in block 47763713. The predicate had been `!=` the held round since the earlier print …519 (`0x…6ac4fdb3`,
+13:54:59 UTC, mirrored in block 47763323 at 13:55:34).
+
+What the log shows between the flip and the inclusion (67 submissions over two hours in total):
+
+| UTC | Event |
+| --- | --- |
+| ~13:50 to 14:02 | the operator machine lost network (`fetch failed`); no arming could be renewed, so the arming alive at 13:50 expired within a minute and **none was alive when the slot flipped at 13:55:34** |
+| 14:02:41, 14:03:46, 14:04:51, 14:05:55, 14:07:00, 14:08:04, 14:09:09 | seven re-arms accepted by the sequencer with the predicate already satisfied and a fresh 30-block bound; **none was included** |
+| 14:09:57 | eighth re-arm accepted (bound 47763784) |
+| 14:10:42 | included in block 47763777; the next re-arm answered `nonce too low: next nonce 3` |
+
+The base fee was 0.005 gwei in every sampled block from 47763323 to 47763790 and the transaction's cap was 0.021
+gwei, so fees were not the gate. Two lessons for the keeper, both now reflected in its design notes:
+
+1. **A validity transaction guarantees "not before", not "as soon as".** Re-submitting the same signed bytes after a
+   bound expires is accepted (`already known` while the old bound lives, a fresh hash acknowledgement after) but did
+   not lead to inclusion seven times in a row with a true predicate; how the sequencer re-evaluates a re-submitted known
+   hash is not documented. The next experiment is to re-sign each re-arm with a new hash (same nonce, slightly higher
+   tip) instead of identical bytes, and to measure inclusion latency per re-arm.
+2. **The arming must be renewed from infrastructure that stays online.** The keeper Worker re-arms every minute from
+   Cloudflare; the laptop loop here missed the flip because of a twelve-minute network outage.
