@@ -51,7 +51,7 @@
       "setFeedTx": "0xa3087529e7dc82a635c0e848e0feb1a3497ca13b8d55229cec16b98f4ce6daf8",
       "sessionGuard": "0x1589aAb40fF0b2E0C4c679e70865eb97A24e5854",
       "sessionGuardTx": "0xf6f297a456302bbd75f8e843e9b65bf67b7db84e42be4f3a1654da4a839537d5",
-      "shadowGuard": null,
+      "shadowGuard": "0x7a53b459be6e5e9a12324cc3417bb027daf73f65",
       "wire": {
         "date": "2026-10-03",
         "runbook": "contracts/script/wire-sepolia.sh",
@@ -437,5 +437,66 @@
         }
       ]
     }
+  },
+  "protection": {
+    "deployedAt": "2026-10-06",
+    "deployer": "0x2f0d9B1f16CD702259C6cC259e8D5E5455282a4E",
+    "verified": true,
+    "runbook": "contracts/script/DeployProtection.s.sol (broadcast in contracts/broadcast/DeployProtection.s.sol/84532), then contracts/script/wire-protection-sepolia.sh",
+    "mockSwapPool": {
+      "address": "0x5069f3753961efcaea8c7f6ec49a182e2c40081b",
+      "tx": "0xffd1e554\u20266c6a",
+      "block": 47760173,
+      "note": "token0 USDC, token1 AAPLt; TWAP tick -12021 = $332.69 (price36 3.3267e36); holds 2 USDC; the TWAP source of the ShadowGuard and the sale venue of the Protector (fixed-price swap, owner-set); TWAP setters are open as on MockCLPool"
+    },
+    "shadowGuardAAPLt": {
+      "address": "0x7a53b459be6e5e9a12324cc3417bb027daf73f65",
+      "tx": "0x502a48a7\u2026d467",
+      "haircutBps": 200,
+      "maxDeviationBps": 3000,
+      "note": "feed in session, pool TWAP less 200 bps while the feed is held; built via-IR with the vendored pre-liquidation profile, same source"
+    },
+    "preLiquidationFactory": {
+      "address": "0x09af92fbfd4bad4a138a9093f08606db02c50c75",
+      "tx": "0x80dc81c6\u20261414",
+      "note": "vendored morpho-org/pre-liquidation (GPL-2.0-or-later), constructor Morpho 0xBBBB\u2026FFCb"
+    },
+    "preLiquidationAAPLtUSDC": {
+      "address": "0xdcae709341aab652144e8afcb47479fe49e133a1",
+      "createTx": "0x84445011\u202654e4",
+      "block": 47760182,
+      "marketId": "0x4a03b124a170a913931f00ab87f7966d388370cf457c0a3c4fb6fcf4fbb88047",
+      "params": {
+        "preLltv": "580000000000000000",
+        "preLCF1": "1000000000000000000",
+        "preLCF2": "1000000000000000000",
+        "preLIF1": "1010000000000000000",
+        "preLIF2": "1020000000000000000",
+        "preLiquidationOracle": "0x7a53b459be6e5e9a12324cc3417bb027daf73f65"
+      }
+    },
+    "protector": {
+      "address": "0x5c546946c909718040dd686f63df6cb5e4df442c",
+      "tx": "0x9f90df05\u2026183d",
+      "owner": "0x2f0d9B1f16CD702259C6cC259e8D5E5455282a4E",
+      "keeper": "0x28A50Eb7C2Db2B04638D3b226c724A1Cfe999894",
+      "routeTx": "0xd4ee4cbc\u20269c61",
+      "note": "operators: owner and keeper; sells seized collateral on the route pool inside onPreLiquidate; sizing(preLiq, borrower, targetLtv) is the on-chain cap"
+    },
+    "wire": {
+      "updateAllowlistTx": "0xdede9b78\u202627ce",
+      "seizeExemptTx": "0xa0a47153\u20263e1a",
+      "result": "Protector, PreLiquidation and MockSwapPool admitted to AAPLt's holders allowlist 72057594037928092 and seize-exempt list 72057594037928099; isAuthorized true for all three"
+    },
+    "optIns": [
+      {
+        "borrower": "0xB789aD318945B37566E2549F65526Cc269a482Fc",
+        "tx": "0xe66aeda3\u20264ac5",
+        "block": 47760267,
+        "what": "Morpho.setAuthorization(preLiquidation, true): the user authorises Morpho's audited contract, never Boundline's"
+      }
+    ],
+    "liveReads": "Protector.sizing(preLiq, 0xB789\u202682Fc) on 6 Oct: BELOW_BAND, 10 AAPLt, 2.900001 USDC debt",
+    "designFact": "PreLiquidation.onMorphoRepay calls Morpho.withdrawCollateral, which re-checks health through the MARKET oracle: on a SessionGuard market while closed a partial pre-liquidation reverts MarketClosed and only a full close-out (borrowShares -> 0, Morpho skips the oracle) can execute; partials run at any hour on held-price markets (the mainnet Steakhouse targets) and in session everywhere"
   }
 }

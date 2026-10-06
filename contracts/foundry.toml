@@ -82,3 +82,16 @@ number_underscore = "thousands"
 [lint]
 lint_on_build = false
 ignore = ["lib/**"]
+
+# The vendored Morpho pre-liquidation contracts (src/protection/vendor) are built the way upstream builds them:
+# via-IR at 999,999 optimizer runs (morpho-org/pre-liquidation foundry.toml). Under the default pipeline
+# PreLiquidation.preLiquidate is stack-too-deep. Everything else keeps the project settings. Appended 6 Oct 2026.
+[[profile.default.additional_compiler_profiles]]
+name = "preliq-via-ir"
+via_ir = true
+optimizer_runs = 999_999
+
+[[profile.default.compilation_restrictions]]
+paths = "src/protection/vendor/**"
+via_ir = true
+optimizer_runs = 999_999

@@ -236,3 +236,70 @@ returns, so the seize-exempt scope exists on Sepolia's Cobalt even though the ni
 rejects it. A stranger is refused with `AccessControlUnauthorizedAccount`, and a composite with a
 bogus child reverts. Run it after the desk exists so the desk is among the venues; the order inside is
 allowlist first, so holders can keep receiving while the composite is bound.
+
+## Protected mode on Morpho: `DeployProtection.s.sol`, `wire-protection-sepolia.sh` (6 Oct 2026)
+
+`src/protection/` holds Boundline's pre-liquidator and a vendored copy of Morpho's audited pre-liquidation
+contracts (`vendor/`, GPL-2.0-or-later, morpho-org/pre-liquidation at 6f15d20; only the pragma and import paths
+changed, and they are built the way upstream builds them, via-IR at 999,999 runs, through a `compilation_restrictions`
+entry in `foundry.toml`). On Base mainnet the official `PreLiquidationFactory` `0x8cd16b62E170Ee0bA83D80e1F80E6085367e2aef`
+is used; Base Sepolia has none, so `DeployProtection` deploys the copy.
+
+**What the Protector does.** `protect(preLiquidation, borrower, seizedAssets, repaidShares, maxCollateralSold, deadline)`
+(owner or keeper) runs `PreLiquidation.preLiquidate` with ShadowGuard as the pre-liquidation oracle, so the action is
+priced at the fresh feed in session and at the Aerodrome time-weighted price less a haircut while the feed is held.
+Inside `onPreLiquidate` the seized collateral is already in the Protector; it sells exactly enough on the collateral's
+own Slipstream pool (`swap` with exact output, the Uniswap v3 callback pays the pool; no router, so nothing has to
+match the pool's factory) to cover `repaidAssets`, approves the pre-liquidation contract and keeps the remainder (the
+incentive, preLIF 1.01 to 1.02 versus Morpho's 12.7% liquidation at 62.5% LLTV) for the Reserve. `sizing(preLiq,
+borrower, targetLtv)` is the keeper's view and the contract's own cap: a partial action may never seize more than
+brings the shadow LTV back to `preLltv`, and a close-out (`repaidShares == borrowShares`) is accepted only when no
+partial can run. Every action emits `Protected(..., decisionHash)` with `keccak256(abi.encode(Decision))`.
+
+**The fact that shapes the design.** Morpho's `withdrawCollateral`, which the pre-liquidation calls to hand over the
+seized collateral, re-checks health through the *market's* oracle. On a SessionGuard market while Wall Street is
+closed that oracle reverts, so a partial pre-liquidation cannot run there; a repay of every share can, because Morpho
+skips the oracle when `borrowShares == 0`. On markets whose oracle serves a held price (the live Steakhouse markets,
+MorphoChainlinkOracleV2) partial actions run at any hour. `sizing` reports both (`venueOracleLive`, `maxSeizedAssets`,
+`fullCloseAllowed`) and `protect` enforces them. Boundline's pre-liquidation parameters: `preLltv` 0.58 (4.5 points under
+the 0.625 LLTV), `preLCF` 1.0 at both ends (the keeper sizes each action itself: small steps in session, one close-out
+while the venue oracle is shut), `preLIF` 1.01 to 1.02.
+
+Tests: `test/protection/Protector.t.sol` (18, on the etched mainnet Morpho: two markets on one collateral, one
+through SessionGuard and one through a held-price oracle, both pre-liquidating through one ShadowGuard on a mock
+pool) and `test/fork/ProtectionFork.t.sol` (4 on a Base mainnet fork: a pre-liquidation created on the official
+factory for the Steakhouse AAPLc/USDC market `0xae1a…3c28` with ShadowGuard on the real feed, registry and Aerodrome
+pool; a real borrower staged inside the band; on a Saturday the venue answers "position is healthy" at the held feed
+while the Protector trims the position at the TWAP, selling the seized AAPLc on the real pool). The execution tests
+need `base-forge` (the seized collateral is a B20 transfer; stock forge cannot execute the precompile on a fork and
+skips them):
+
+```bash
+BASE_RPC_URL=<archive rpc> forge test --match-contract ProtectionForkTest            # 3 pass, 1 skip
+BASE_RPC_URL=<archive rpc> FOUNDRY_BASE=true ~/.foundry/bin/base-forge test --match-contract ProtectionForkTest   # 4 pass
+```
+
+**Base Sepolia (6 Oct 2026), all verified.** `DeployProtection` (stock forge is enough; it calls no precompile) deployed
+`MockSwapPool` `0x5069f3753961efcaea8c7f6ec49a182e2c40081b` (token0 USDC, token1 AAPLt; `slot0` and the 1h TWAP scripted
+at tick −12021, the feed's $332.67; `price36` 3.3267e36 for the sale; funded with 2 USDC; the TWAP setters are open,
+as on `MockCLPool`, the price is owner-set), `ShadowGuard` AAPLt `0x7a53b459be6e5e9a12324cc3417bb027daf73f65`,
+`PreLiquidationFactory` `0x09af92fbfd4bad4a138a9093f08606db02c50c75`, the AAPLt/USDC `PreLiquidation`
+`0xdcae709341aab652144e8afcb47479fe49e133a1` (market `0x4a03…8047`) and the `Protector`
+`0x5c546946c909718040dd686f63df6cb5e4df442c` (owner the deployer, keeper `0x28A5…9894`, route AAPLt → the pool).
+Broadcast: `broadcast/DeployProtection.s.sol/84532/run-latest.json`.
+
+```bash
+cd contracts
+export GATE=0x92f59437d4ef5CDcEAe2CcDE89B03A7B4B1Ae427 COLLATERAL=0xB2000000000000000000000E063E65377cA34141 \
+  MARKET_ID=0x4a03b124a170a913931f00ab87f7966d388370cf457c0a3c4fb6fcf4fbb88047 KEEPER=0x28A50Eb7C2Db2B04638D3b226c724A1Cfe999894
+forge script script/DeployProtection.s.sol --tc DeployProtection --rpc-url base_sepolia --sender <deployer>   # simulate
+forge script script/DeployProtection.s.sol --tc DeployProtection --rpc-url base_sepolia --broadcast --verify --slow --private-key "$KEY"
+# admit the three new holders to AAPLt's Cobalt allowlists (receiver composite's allowlist and the seize-exempt list)
+TOKEN=0xB2000000000000000000000E063E65377cA34141 ACCOUNTS=<protector>,<preLiquidation>,<pool> DEPLOYER_KEY="$KEY" script/wire-protection-sepolia.sh
+# a borrower opts in with one authorisation of Morpho's audited contract, never of Boundline's
+cast send 0xBBBBBbbBBb9cC5e90e3b3Af64bdAF62C37EEFFCb 'setAuthorization(address,bool)' <preLiquidation> true --private-key "$BORROWER_KEY"
+```
+
+Note on artifacts: because `DeployProtection` imports the vendored files, forge compiled that script's whole unit under
+the via-IR profile, so the Sepolia `ShadowGuard` and `MockSwapPool` bytecode comes from that build (the broadcast lists
+them as `ShadowGuard.preliq-via-ir`); same source, verified, different pipeline from the 3 Oct oracles.

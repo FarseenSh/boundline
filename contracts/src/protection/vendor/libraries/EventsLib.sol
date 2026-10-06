@@ -1,0 +1,24 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
+pragma solidity ^0.8.0;
+
+// Vendored from morpho-org/pre-liquidation (commit 6f15d20, 8 Sep 2026); only the morpho-blue import path changed.
+import {Id} from "morpho-blue/interfaces/IMorpho.sol";
+import {PreLiquidationParams} from "../interfaces/IPreLiquidation.sol";
+
+/// @title EventsLib
+/// @author Morpho Labs
+/// @custom:contact security@morpho.org
+/// @notice Library exposing events.
+library EventsLib {
+    /// @dev This event is emitted after calling `onPreLiquidate` which can tamper with the order of events.
+    event PreLiquidate(
+        Id indexed id,
+        address indexed liquidator,
+        address indexed borrower,
+        uint256 repaidAssets,
+        uint256 repaidShares,
+        uint256 seizedAssets
+    );
+
+    event CreatePreLiquidation(address indexed preLiquidation, Id id, PreLiquidationParams preLiquidationParams);
+}
