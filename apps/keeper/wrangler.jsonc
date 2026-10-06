@@ -12,7 +12,14 @@
   // The signing key is the secret KEEPER_KEY (`wrangler secret put KEEPER_KEY`), never a var here.
   "vars": {
     "BASE_RPC_URL": "https://base-rpc.publicnode.com,https://base.drpc.org,https://mainnet.base.org",
-    "BASE_SEPOLIA_RPC_URL": "https://sepolia.base.org,https://base-sepolia-rpc.publicnode.com,https://base-sepolia.drpc.org"
+    "BASE_SEPOLIA_RPC_URL": "https://sepolia.base.org,https://base-sepolia-rpc.publicnode.com,https://base-sepolia.drpc.org",
+    // Protection job (src/protect-job.ts): the Sepolia Protector (deployments/base-sepolia.json → protection) and the
+    // borrowers it watches as preLiq:borrower:feed:slot (slot 5 = TestPriceFeed._updatedAt). Signs with the secret
+    // PROTECT_KEY and submits through the sequencer as validity transactions (predicate: the feed still shows the round
+    // the decision was made on; bound 30 blocks, re-armed every tick).
+    "PROTECTOR": "0x5c546946c909718040dd686f63df6cb5e4df442c",
+    "PROTECT_TARGETS": "0xdcae709341aab652144e8afcb47479fe49e133a1:0xB789aD318945B37566E2549F65526Cc269a482Fc:0xa652b75CA90084FA16D4F18Fd96B5dd7069ee52a:5,0xdcae709341aab652144e8afcb47479fe49e133a1:0x2f0d9B1f16CD702259C6cC259e8D5E5455282a4E:0xa652b75CA90084FA16D4F18Fd96B5dd7069ee52a:5",
+    "BASE_SEPOLIA_SEQUENCER_URL": "https://sepolia-sequencer.base.org"
   },
   "observability": { "enabled": true }
 }
