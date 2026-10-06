@@ -1,0 +1,34 @@
+{
+  "name": "@boundline/app",
+  "version": "0.1.0",
+  "private": true,
+  "description": "The Boundline app: Boundline's own partner #1 and the SDK's reference implementation. Borrow USDC against your tokenized stocks on Base, protected while Wall Street is closed. Vite + React + wagmi, served by a Worker that proxies the partner API.",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.worker.json --noEmit",
+    "deploy": "vite build && wrangler deploy",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@base-org/account": "^2.5.13",
+    "@boundline/calendar": "workspace:*",
+    "@boundline/chain": "workspace:*",
+    "@boundline/sdk": "workspace:*",
+    "@tanstack/react-query": "^5.90.0",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "viem": "2.57.2",
+    "wagmi": "^3.7.0"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "latest",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "@vitejs/plugin-react": "^6.0.0",
+    "vite": "^8.0.0",
+    "wrangler": "4.147.0"
+  }
+}
