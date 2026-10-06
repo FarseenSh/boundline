@@ -40,3 +40,16 @@ describe("maxTxPerTick", () => {
     expect(body.maxTxPerTick).toBe(2);
   });
 });
+
+
+describe("/v1/protect", () => {
+  it("answers disabled without the protection vars", async () => {
+    const res = await app.request("/v1/protect", {}, { BASE_RPC_URL: "https://a.example", BASE_SEPOLIA_RPC_URL: "https://sepolia.base.org" });
+    expect(res.status).toBe(200);
+    expect(((await res.json()) as { enabled: boolean }).enabled).toBe(false);
+  });
+  it("serialises bigints as decimal strings", async () => {
+    const { jsonWithBigints } = await import("../src/index.js");
+    expect(jsonWithBigints({ a: 10n ** 20n, b: [1n, { c: 2n }], d: "x" })).toBe('{"a":"100000000000000000000","b":["1",{"c":"2"}],"d":"x"}');
+  });
+});

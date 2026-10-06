@@ -37,7 +37,8 @@ app.get("/v1/protect", async (c) => {
   const deps = protectDeps(c.env);
   if (!deps) return c.json({ enabled: false, note: "set PROTECTOR and PROTECT_TARGETS to turn the protection job on" });
   const report = await runProtect({ ...deps, account: null });
-  return c.json({ enabled: true, protector: deps.protector, ...report, signer: protectAccount(protectKey(c.env))?.address ?? null }, 200);
+  // Sizing carries bigints: serialise them as decimal strings (JSON.stringify would throw and answer 500).
+  return c.body(jsonWithBigints({ enabled: true, protector: deps.protector, ...report, signer: protectAccount(protectKey(c.env))?.address ?? null }), 200, { "content-type": "application/json" });
 });
 
 app.get("/v1/config", (c) =>
@@ -55,6 +56,11 @@ app.get("/v1/config", (c) =>
     protection: { protector: c.env.PROTECTOR ?? null, targets: parseTargetsSafe(c.env.PROTECT_TARGETS).length, sequencer: redact(sequencerUrl(c.env)) },
   }),
 );
+
+/** JSON with every bigint as a decimal string. */
+export function jsonWithBigints(value: unknown): string {
+  return JSON.stringify(value, (_key, v: unknown) => (typeof v === "bigint" ? v.toString() : v));
+}
 
 function parseTargetsSafe(list: string | undefined) {
   try {
