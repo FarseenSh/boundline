@@ -29,9 +29,11 @@ Keeper key address: `0x28A50Eb7C2Db2B04638D3b226c724A1Cfe999894` (owner of the t
 3. Nothing to do → stop. No `KEEPER_KEY` → report only.
 4. Read the keeper's `latest` and `pending` nonces; if `pending > latest` a previous tick is still in flight →
    skip this tick (no duplicate sends).
-5. Send every feed update, then every registry update, with explicit contiguous nonces from the pending nonce,
-   waiting for each receipt (15 s cap). A rejected send, a reverted receipt or a receipt timeout stops the tick;
-   the next tick starts from the chain's nonce again. A tick never throws.
+5. Send feed updates first, then registry updates, with explicit contiguous nonces from the pending nonce, at
+   most `MAX_TX_PER_TICK` of them (default 1; the var `MAX_TX_PER_TICK` overrides). A tick never waits for a
+   receipt: the next tick's nonce check covers a transaction still in flight, and a revert shows up as the plan
+   still differing a minute later. A rejected send stops the tick; the next tick starts from the chain's nonce
+   again. A tick never throws.
 6. Log one JSON line per tick (`skipped`, `planned`, `sent`, per-tx hash and status, per-symbol plans).
 
 ## Routes
@@ -115,3 +117,17 @@ immediately (`cast call <SessionGate> "priceOf(address)(uint256)" $AAPLT`).
 with contiguous nonces, in-flight skip, no-key mode, rejected send, receipt timeout, reverted receipt, failed
 reads, pure `planAll`), the status builder (`test/status.test.ts`) and the routes (`test/smoke.test.ts`).
 `pnpm --filter @boundline/keeper typecheck` for the types.
+
+## CPU budget (why the adapter is hand-rolled)
+
+The account runs on the Workers Free plan: **10 ms of CPU per invocation**. On 6 Oct 2026 every cron tick of this
+Worker was ending `outcome: exceededCpu` (`wrangler tail`), and the Sepolia feeds lagged mainnet by one round for
+hours. Measured in Node (JIT on): viem's `privateKeyToAccount` costs 17.8 ms the first time an isolate uses it
+(noble-curves builds its base-point tables), a signature 1.6 ms, and viem's generic multicall decode 17 ms warm.
+So `src/chain.ts` keeps only viem's transport (RPC fallback) and local signer, and `src/raw.ts` builds the few
+calls by hand: Multicall3 `aggregate3` for the reads, `setRoundData` / `setOracleParams` calldata for the writes,
+EIP-1559 fields filled from one `eth_gasPrice` read (tip 0.001 gwei, max fee 3x gas price, 160k gas), then
+`eth_sendRawTransaction`. The signer's one-time cost is paid at module evaluation (its own startup budget) with a
+non-secret warm-up key, and clients and the account are memoised per isolate. `test/raw.test.ts` checks every
+encoder and decoder against viem's. Watch it with `pnpm exec wrangler tail boundline-keeper --format json`: the
+`outcome` and `cpuTime` fields per event are the truth.

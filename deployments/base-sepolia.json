@@ -172,6 +172,24 @@
     {
       "what": "AAPLt isPaused(feature) for features 0..3 on the live chain",
       "result": "false, false, false, false (Cobalt B20 asset answers the selector)"
+    },
+    {
+      "what": "first in-session draw on line 1: 5 USDC during the PRE session (Tue 6 Oct 2026 07:36 ET), gate OPEN, SessionGuard price 332.67",
+      "from": "0xB789aD318945B37566E2549F65526Cc269a482Fc",
+      "tx": "0x661ebb1abc30e1fffe987b4598b006004ed746943afcc1e67ea82595854b8bac",
+      "block": 47759305,
+      "result": "Morpho Borrow of 5,000,000 USDC units (5e12 borrow shares) with the user as onBehalf and receiver; desk Decision hash 0xdaa6562f61aad4bb3b55411491c6c2c5132c44508c6d3fbd5b860a862a81c816 (action DRAW, amount 5000000, price8 33267000000, session PRE); quote before the draw: reason NONE, maxDebt 1,663.35 USDC, available 1,663.35; borrower USDC 3 -> 8; 306,032 gas"
+    },
+    {
+      "what": "partial repay on line 1: 2 USDC from the borrower",
+      "from": "0xB789aD318945B37566E2549F65526Cc269a482Fc",
+      "tx": "0xe3bc2f0b3a58975b5870d624fd4772656deab41ef9fbc3b5c0f727d3f464771b",
+      "block": 47759332,
+      "result": "Repaid(lineId 1, amount 2000000, full false), Decision hash 0x2b40f9370a7822267fb20a152bc6b74023f0d71e8e49d44a038ab5566d0fd2a8; debt now 3 USDC against 10 AAPLt (LTV 0.09%); quote after: available 1,660.35 USDC; approve tx 0x13fad2ede17f483526f3244145d4b98784b77d62e91847d2aec2935490bdd251; 175,498 gas"
+    },
+    {
+      "what": "partner API over the drawn line (same minute)",
+      "result": "GET /v1/lines/1: status OPEN, obligation OPEN, drawnPrincipal 3.000000 USDC; POST /v1/quotes {lineId 1, amount 1 USDC}: 200, reason NONE, session PRE, capacity 1,660.35 USDC, X-Quote-Hash 0x023d1eb219bd408ecd5f623299010d6627881066c34772ed0a61221074c25d78, block 47759482; indexer /v1/events?source=credit-desk lists Drawn, Repaid and both Decision events"
     }
   ],
   "gas": {
@@ -253,7 +271,11 @@
         "openLineTx": "0x91b80185acda93fbc0c886cb1aba7f226cf976221df1a7c60996f58b24c17206",
         "block": 47637827,
         "morphoAuthorizationTx": "0xd0d3391606356756b8b96266518665f5446e3fd747b21c78635870c528d3c279",
-        "note": "the user's 10 AAPLt sit in Morpho directly; a zero-draw quote through the API on 3 Oct returned reason MARKET_CLOSED, session WEEKEND, quoteHash 0xfe523dc9c20ad0c5e3ca561ed389653925c30fd96eda2cbb75fc060775c2c4a2"
+        "note": "the user's 10 AAPLt sit in Morpho directly; a zero-draw quote through the API on 3 Oct returned reason MARKET_CLOSED, session WEEKEND, quoteHash 0xfe523dc9c20ad0c5e3ca561ed389653925c30fd96eda2cbb75fc060775c2c4a2 On 6 Oct 2026 (PRE session, gate OPEN at 332.67) the user drew 5 USDC and repaid 2: Decision hashes 0xdaa6562f\u2026c816 (DRAW) and 0x2b40f937\u2026d2a8 (REPAY); see proofs.",
+        "firstDrawTx": "0x661ebb1abc30e1fffe987b4598b006004ed746943afcc1e67ea82595854b8bac",
+        "firstDrawBlock": 47759305,
+        "partialRepayTx": "0xe3bc2f0b3a58975b5870d624fd4772656deab41ef9fbc3b5c0f727d3f464771b",
+        "state": "6 Oct 2026 07:40 ET: 10 AAPLt collateral, 3 USDC debt outstanding (5 drawn in the PRE session, 2 repaid); kept open as the live position for the protection drills"
       }
     ]
   },

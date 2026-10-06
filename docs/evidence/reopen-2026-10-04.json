@@ -1,0 +1,257 @@
+{
+  "chainId": 8453,
+  "close": 1790985600,
+  "reopen": 1791158400,
+  "generatedAt": 1791287803,
+  "feeds": [
+    {
+      "symbol": "AAPLc",
+      "feed": "0x787f13dEa48Db0897CbCDD985de77809D837F988",
+      "phase": 2,
+      "held": {
+        "roundId": 36893488147419103512,
+        "answer": 33366495000,
+        "startedAt": 1790959185,
+        "updatedAt": 1790959199,
+        "answeredInRound": 36893488147419103512
+      },
+      "roundsInsideClosedWindow": [],
+      "firstAfterReopen": {
+        "roundId": 36893488147419103513,
+        "answer": 33341500000,
+        "startedAt": 1791158430,
+        "updatedAt": 1791158445,
+        "answeredInRound": 36893488147419103513
+      },
+      "lagSeconds": 45,
+      "gapBps": -7.4910475313634235,
+      "heldAgeAtReopenSeconds": 199201
+    },
+    {
+      "symbol": "AMZNc",
+      "feed": "0x06A8E4b3aBB3B7543d8396FB2B763d22820cB295",
+      "phase": 2,
+      "held": {
+        "roundId": 36893488147419103556,
+        "answer": 25128100000,
+        "startedAt": 1790953573,
+        "updatedAt": 1790953587,
+        "answeredInRound": 36893488147419103556
+      },
+      "roundsInsideClosedWindow": [],
+      "firstAfterReopen": {
+        "roundId": 36893488147419103557,
+        "answer": 25175000000,
+        "startedAt": 1791158414,
+        "updatedAt": 1791158427,
+        "answeredInRound": 36893488147419103557
+      },
+      "lagSeconds": 27,
+      "gapBps": 18.66436379988937,
+      "heldAgeAtReopenSeconds": 204813
+    },
+    {
+      "symbol": "GOOGLc",
+      "feed": "0x5bF49E0ffA937CE2FfF033c739aD7C634c4D34F2",
+      "phase": 2,
+      "held": {
+        "roundId": 36893488147419103570,
+        "answer": 34280422914,
+        "startedAt": 1790968324,
+        "updatedAt": 1790968339,
+        "answeredInRound": 36893488147419103570
+      },
+      "roundsInsideClosedWindow": [],
+      "firstAfterReopen": {
+        "roundId": 36893488147419103571,
+        "answer": 34442484006,
+        "startedAt": 1791158431,
+        "updatedAt": 1791158445,
+        "answeredInRound": 36893488147419103571
+      },
+      "lagSeconds": 45,
+      "gapBps": 47.27511454761395,
+      "heldAgeAtReopenSeconds": 190061
+    },
+    {
+      "symbol": "METAc",
+      "feed": "0x6526aE6797A76123638b863AeE4dD27Ba4E4b27D",
+      "phase": 2,
+      "held": {
+        "roundId": 36893488147419103953,
+        "answer": 72792369519,
+        "startedAt": 1790965671,
+        "updatedAt": 1790965685,
+        "answeredInRound": 36893488147419103953
+      },
+      "roundsInsideClosedWindow": [],
+      "firstAfterReopen": {
+        "roundId": 36893488147419103954,
+        "answer": 72863856944,
+        "startedAt": 1791158414,
+        "updatedAt": 1791158429,
+        "answeredInRound": 36893488147419103954
+      },
+      "lagSeconds": 29,
+      "gapBps": 9.820730589260542,
+      "heldAgeAtReopenSeconds": 192715
+    },
+    {
+      "symbol": "MSFTc",
+      "feed": "0xeB10A6c9aa7E537aEd766C08c35Dae35B321b18c",
+      "phase": 2,
+      "held": {
+        "roundId": 36893488147419103555,
+        "answer": 51620085000,
+        "startedAt": 1790948488,
+        "updatedAt": 1790948503,
+        "answeredInRound": 36893488147419103555
+      },
+      "roundsInsideClosedWindow": [],
+      "firstAfterReopen": {
+        "roundId": 36893488147419103556,
+        "answer": 51765500000,
+        "startedAt": 1791158436,
+        "updatedAt": 1791158451,
+        "answeredInRound": 36893488147419103556
+      },
+      "lagSeconds": 51,
+      "gapBps": 28.170236449630025,
+      "heldAgeAtReopenSeconds": 209897
+    },
+    {
+      "symbol": "MSTRc",
+      "feed": "0xB3cE282CD188b35DA0E38D8Bc7d58e33173D202a",
+      "phase": 2,
+      "held": {
+        "roundId": 36893488147419105587,
+        "answer": 16062500000,
+        "startedAt": 1790971602,
+        "updatedAt": 1790971617,
+        "answeredInRound": 36893488147419105587
+      },
+      "roundsInsideClosedWindow": [],
+      "firstAfterReopen": {
+        "roundId": 36893488147419105588,
+        "answer": 16516000000,
+        "startedAt": 1791158438,
+        "updatedAt": 1791158453,
+        "answeredInRound": 36893488147419105588
+      },
+      "lagSeconds": 53,
+      "gapBps": 282.3346303501946,
+      "heldAgeAtReopenSeconds": 186783
+    },
+    {
+      "symbol": "NVDAc",
+      "feed": "0x04689a41629776563E6822F76f2e57D148d28513",
+      "phase": 2,
+      "held": {
+        "roundId": 36893488147419103717,
+        "answer": 23468592897,
+        "startedAt": 1790960877,
+        "updatedAt": 1790960891,
+        "answeredInRound": 36893488147419103717
+      },
+      "roundsInsideClosedWindow": [],
+      "firstAfterReopen": {
+        "roundId": 36893488147419103718,
+        "answer": 23513642117,
+        "startedAt": 1791158428,
+        "updatedAt": 1791158443,
+        "answeredInRound": 36893488147419103718
+      },
+      "lagSeconds": 43,
+      "gapBps": 19.19553515530906,
+      "heldAgeAtReopenSeconds": 197509
+    },
+    {
+      "symbol": "SNDKc",
+      "feed": "0x388b0dC46C0Fb05A74BeE0994fa5b02c6Fcca2eA",
+      "phase": 2,
+      "held": {
+        "roundId": 36893488147419105573,
+        "answer": 172269999999,
+        "startedAt": 1790959255,
+        "updatedAt": 1790959269,
+        "answeredInRound": 36893488147419105573
+      },
+      "roundsInsideClosedWindow": [],
+      "firstAfterReopen": {
+        "roundId": 36893488147419105574,
+        "answer": 173388500000,
+        "startedAt": 1791158409,
+        "updatedAt": 1791158423,
+        "answeredInRound": 36893488147419105574
+      },
+      "lagSeconds": 23,
+      "gapBps": 64.92714930089352,
+      "heldAgeAtReopenSeconds": 199131
+    },
+    {
+      "symbol": "SPCXc",
+      "feed": "0x6A634B235903C4ad6376892180d6fF8612e3Fa68",
+      "phase": 2,
+      "held": {
+        "roundId": 36893488147419104629,
+        "answer": 15879500000,
+        "startedAt": 1790971698,
+        "updatedAt": 1790971713,
+        "answeredInRound": 36893488147419104629
+      },
+      "roundsInsideClosedWindow": [],
+      "firstAfterReopen": {
+        "roundId": 36893488147419104630,
+        "answer": 15925000000,
+        "startedAt": 1791158409,
+        "updatedAt": 1791158423,
+        "answeredInRound": 36893488147419104630
+      },
+      "lagSeconds": 23,
+      "gapBps": 28.653295128939828,
+      "heldAgeAtReopenSeconds": 186687
+    },
+    {
+      "symbol": "TSLAc",
+      "feed": "0xFaf869185383a24F8cb00e27BdA6b63B9905DCb4",
+      "phase": 2,
+      "held": {
+        "roundId": 36893488147419103919,
+        "answer": 37036000000,
+        "startedAt": 1790970923,
+        "updatedAt": 1790970937,
+        "answeredInRound": 36893488147419103919
+      },
+      "roundsInsideClosedWindow": [],
+      "firstAfterReopen": {
+        "roundId": 36893488147419103920,
+        "answer": 37228999999,
+        "startedAt": 1791158424,
+        "updatedAt": 1791158437,
+        "answeredInRound": 36893488147419103920
+      },
+      "lagSeconds": 37,
+      "gapBps": 52.111458850847825,
+      "heldAgeAtReopenSeconds": 187463
+    }
+  ],
+  "blockBeforeReopen": 52184526,
+  "dex": {
+    "AAPLc": {
+      "spot": 333.4867627951355,
+      "twap1h": 333.5890846261394,
+      "tick": 115792089237316195423570985008687907853269984665640564039457584007913112850675,
+      "heldFeed": 333.66495,
+      "spotVsHeldBps": -5.340303345150795,
+      "twapVsHeldBps": -2.2736992261414244
+    },
+    "NVDAc": {
+      "spot": 235.63500204253646,
+      "twap1h": 235.7630567466088,
+      "tick": 115792089237316195423570985008687907853269984665640564039457584007913112854148,
+      "heldFeed": 234.68592897,
+      "spotVsHeldBps": 40.44013532050252,
+      "twapVsHeldBps": 45.896564030752295
+    }
+  }
+}

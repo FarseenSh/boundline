@@ -1,7 +1,7 @@
 // One cron tick: read both chains, plan, send what differs with contiguous nonces, report. Never throws.
 import type { Address, Hex } from "viem";
 import type { MirrorChain, Receipt, SideReads } from "./chain.js";
-import { RECEIPT_TIMEOUT_MS, type MirrorPair } from "./config.js";
+import { MAX_TX_PER_TICK, type MirrorPair } from "./config.js";
 import { planFeedMirror, planRegistryMirror, shouldSend, type FeedPlan, type RegistryPlan } from "./plan.js";
 
 export interface TxReport {
@@ -30,6 +30,8 @@ export interface TickReport {
   blocks: { mainnet: string; sepolia: string } | null;
   planned: number;
   sent: number;
+  /** Planned transactions left for the next tick (the per-tick cap, or a rejected send). */
+  deferred: number;
   symbols: SymbolReport[];
   txs: TxReport[];
   errors: string[];
@@ -43,7 +45,8 @@ interface PlannedTx {
 }
 
 export interface TickOptions {
-  receiptTimeoutMs?: number;
+  /** Transactions signed and sent in this tick; see MAX_TX_PER_TICK. */
+  maxTxPerTick?: number;
   now?: () => number;
 }
 
@@ -102,6 +105,7 @@ export async function runTick(chain: MirrorChain, pairs: readonly MirrorPair[], 
     blocks: null,
     planned: 0,
     sent: 0,
+    deferred: 0,
     symbols: [],
     txs: [],
     errors: [],
@@ -148,8 +152,10 @@ export async function runTick(chain: MirrorChain, pairs: readonly MirrorPair[], 
     return finish();
   }
 
+  const limit = Math.max(0, Math.floor(opts.maxTxPerTick ?? MAX_TX_PER_TICK));
   let nonce = nonces.pending;
   for (const tx of txs) {
+    if (report.sent >= limit) break;
     const row: TxReport = { symbol: tx.symbol, kind: tx.kind, to: tx.to, nonce: nonce.toString() };
     report.txs.push(row);
     try {
@@ -160,19 +166,12 @@ export async function runTick(chain: MirrorChain, pairs: readonly MirrorPair[], 
       report.errors.push(`${tx.symbol} ${tx.kind}: ${row.error}`);
       break;
     }
+    // Never wait for the receipt inside a tick: the next tick's nonce check (pending > latest) covers a transaction
+    // still in flight, and a revert shows up as the plan still differing a minute later.
+    row.receipt = "pending";
     report.sent += 1;
     nonce += 1n;
-    const receipt = await chain.waitForReceipt(row.hash, opts.receiptTimeoutMs ?? RECEIPT_TIMEOUT_MS);
-    if (receipt === null) {
-      // Still in the mempool: the next tick sees pending > latest and waits.
-      row.receipt = "pending";
-      break;
-    }
-    row.receipt = { block: receipt.blockNumber.toString(), status: receipt.status, gasUsed: receipt.gasUsed.toString() };
-    if (receipt.status === "reverted") {
-      report.errors.push(`${tx.symbol} ${tx.kind}: reverted in block ${receipt.blockNumber}`);
-      break;
-    }
   }
+  report.deferred = txs.length - report.txs.length;
   return finish();
 }

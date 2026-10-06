@@ -30,10 +30,11 @@ describe("runTick", () => {
     s.sepolia.rounds.set("NVDAt", ok(round(1n, 18_750_000_000n, 1_791_037_640n)));
     s.mainnet.registry.set("NVDAt", ok({ multiplier: 2n * ONE, paused: true }));
     const chain = fakeChain({ ...s, nonces: { latest: 3n, pending: 3n } });
-    const r = await runTick(chain, PAIRS2);
+    const r = await runTick(chain, PAIRS2, { maxTxPerTick: 10 });
     expect(r.skipped).toBeNull();
     expect(r.planned).toBe(3);
     expect(r.sent).toBe(3);
+    expect(r.deferred).toBe(0);
     expect(chain.sent.map((t) => [t.kind, t.nonce])).toEqual([
       ["feed", 3n],
       ["feed", 4n],
@@ -46,9 +47,36 @@ describe("runTick", () => {
     const reg = chain.sent[2]!;
     expect(reg.to).toBe(PAIRS2[1].sepoliaToken);
     expect(reg.args).toEqual([2n * ONE, true]);
-    expect(chain.waited).toHaveLength(3);
-    expect(r.txs.every((t) => typeof t.receipt === "object" && t.receipt.status === "success")).toBe(true);
+    // A tick never waits for receipts (CPU budget): every sent row is reported pending.
+    expect(chain.waited).toHaveLength(0);
+    expect(r.txs.every((t) => t.receipt === "pending")).toBe(true);
     expect(r.errors).toEqual([]);
+  });
+
+  it("sends one transaction per tick by default and defers the rest", async () => {
+    const s = inSync();
+    s.sepolia.rounds.set("AAPLt", ok(round(1n, 33_366_495_000n, 1_791_037_640n)));
+    s.sepolia.rounds.set("NVDAt", ok(round(1n, 18_750_000_000n, 1_791_037_640n)));
+    s.mainnet.registry.set("NVDAt", ok({ multiplier: 2n * ONE, paused: true }));
+    const chain = fakeChain({ ...s, nonces: { latest: 3n, pending: 3n } });
+    const r = await runTick(chain, PAIRS2);
+    expect(r.planned).toBe(3);
+    expect(r.sent).toBe(1);
+    expect(r.deferred).toBe(2);
+    expect(chain.sent.map((t) => [t.kind, t.nonce])).toEqual([["feed", 3n]]);
+    expect(r.txs).toHaveLength(1);
+    expect(r.txs[0]?.receipt).toBe("pending");
+  });
+
+  it("sends nothing with a zero cap but still plans", async () => {
+    const s = inSync();
+    s.sepolia.rounds.set("AAPLt", ok(round(1n, 1n, 1n)));
+    const chain = fakeChain(s);
+    const r = await runTick(chain, PAIRS2, { maxTxPerTick: 0 });
+    expect(r.planned).toBe(1);
+    expect(r.sent).toBe(0);
+    expect(r.deferred).toBe(1);
+    expect(chain.sent).toEqual([]);
   });
 
   it("skips the whole tick while a previous transaction is still pending", async () => {
@@ -77,35 +105,13 @@ describe("runTick", () => {
     s.sepolia.rounds.set("AAPLt", ok(round(1n, 1n, 1n)));
     s.sepolia.rounds.set("NVDAt", ok(round(1n, 1n, 1n)));
     const chain = fakeChain({ ...s, failSendAt: 0 });
-    const r = await runTick(chain, PAIRS2);
+    const r = await runTick(chain, PAIRS2, { maxTxPerTick: 10 });
     expect(r.planned).toBe(2);
     expect(r.sent).toBe(0);
     expect(chain.sent).toEqual([]);
     expect(r.txs).toHaveLength(1);
     expect(r.txs[0]?.error).toContain("rejected");
     expect(r.errors).toHaveLength(1);
-  });
-
-  it("leaves the rest to the next tick when a receipt times out", async () => {
-    const s = inSync();
-    s.sepolia.rounds.set("AAPLt", ok(round(1n, 1n, 1n)));
-    s.sepolia.rounds.set("NVDAt", ok(round(1n, 1n, 1n)));
-    const chain = fakeChain({ ...s, receipts: { [`0x${"1".padStart(64, "0")}`]: "timeout" } });
-    const r = await runTick(chain, PAIRS2);
-    expect(r.sent).toBe(1);
-    expect(r.txs[0]?.receipt).toBe("pending");
-    expect(chain.sent).toHaveLength(1);
-  });
-
-  it("stops after a reverted transaction and records it", async () => {
-    const s = inSync();
-    s.sepolia.rounds.set("AAPLt", ok(round(1n, 1n, 1n)));
-    s.sepolia.rounds.set("NVDAt", ok(round(1n, 1n, 1n)));
-    const chain = fakeChain({ ...s, receipts: { [`0x${"1".padStart(64, "0")}`]: "reverted" } });
-    const r = await runTick(chain, PAIRS2);
-    expect(r.sent).toBe(1);
-    expect(r.errors[0]).toContain("reverted");
-    expect(chain.sent).toHaveLength(1);
   });
 
   it("skips a symbol whose mainnet read failed and still serves the others", async () => {

@@ -11,6 +11,8 @@ export interface Env {
    * TestPriceFeeds and the MirrorOracleRegistry; never a mainnet key. Absent → the Worker only reads and reports.
    */
   KEEPER_KEY?: string;
+  /** Transactions per tick (default 1; see config.ts MAX_TX_PER_TICK). */
+  MAX_TX_PER_TICK?: string;
 }
 
 function join(...parts: (string | undefined)[]): string {

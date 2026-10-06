@@ -42,5 +42,18 @@ export const KEEPER_ADDRESS: Address = "0x28A50Eb7C2Db2B04638D3b226c724A1Cfe9998
 
 export const CHAINS = { mainnet: CHAIN_IDS.base, sepolia: CHAIN_IDS.baseSepolia } as const;
 
-/** How long one tick waits for each receipt before leaving the rest to the next tick. */
+/** How long the status tooling waits for a receipt; a cron tick never waits (see tick.ts). */
 export const RECEIPT_TIMEOUT_MS = 15_000;
+
+/**
+ * Transactions signed per tick. One by default: the Workers Free plan allows 10 ms of CPU per invocation and a
+ * signature costs about 1.6 ms, so a backlog drains one transaction a minute (the next tick sees `pending ==
+ * latest` once it is mined, about two seconds later). Raise with the var MAX_TX_PER_TICK on a paid plan.
+ */
+export const MAX_TX_PER_TICK = 1;
+
+/** Gas for `setRoundData` / `setOracleParams` (observed 51,542 on warm slots; cold slots cost more). */
+export const GAS_LIMIT = 160_000n;
+/** EIP-1559 fees on Base Sepolia: base fee is about 0.005 gwei (6 Oct 2026); the tip is nominal. */
+export const PRIORITY_FEE_WEI = 1_000_000n;
+export const MIN_MAX_FEE_WEI = 20_000_000n;

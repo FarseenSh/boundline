@@ -1,14 +1,23 @@
 import { Hono } from "hono";
-import { createViemMirrorChain, type MirrorChain } from "./chain.js";
-import { CHAINS, KEEPER_ADDRESS, MAINNET_REGISTRY, PAIRS, RECEIPT_TIMEOUT_MS, SEPOLIA_REGISTRY } from "./config.js";
+import { getMirrorChain, type MirrorChain } from "./chain.js";
+import { CHAINS, KEEPER_ADDRESS, MAINNET_REGISTRY, MAX_TX_PER_TICK, PAIRS, SEPOLIA_REGISTRY } from "./config.js";
 import { keeperKey, mainnetRpc, sepoliaRpc, type Env } from "./env.js";
 import { collectStatus } from "./status.js";
 import { runTick } from "./tick.js";
 
 export type { Env } from "./env.js";
 
+/** Memoised per isolate: clients and the signing account are built once (CPU budget, see chain.ts). */
 function chainFor(env: Env): MirrorChain {
-  return createViemMirrorChain({ mainnetRpc: mainnetRpc(env), sepoliaRpc: sepoliaRpc(env), keeperKey: keeperKey(env) });
+  return getMirrorChain({ mainnetRpc: mainnetRpc(env), sepoliaRpc: sepoliaRpc(env), keeperKey: keeperKey(env) });
+}
+
+/** The var MAX_TX_PER_TICK when it is a whole number (0 means plan only), else the default. */
+export function maxTxPerTick(env: Pick<Env, "MAX_TX_PER_TICK">): number {
+  const raw = env.MAX_TX_PER_TICK?.trim();
+  if (!raw) return MAX_TX_PER_TICK;
+  const n = Number(raw);
+  return Number.isInteger(n) && n >= 0 ? n : MAX_TX_PER_TICK;
 }
 
 const nowSeconds = (): number => Math.floor(Date.now() / 1000);
@@ -25,7 +34,7 @@ app.get("/v1/config", (c) =>
     service: "boundline-keeper",
     jobs: ["sepolia-feed-mirror", "sepolia-registry-mirror"],
     cron: "* * * * *",
-    receiptTimeoutMs: RECEIPT_TIMEOUT_MS,
+    maxTxPerTick: maxTxPerTick(c.env),
     keeperAddress: KEEPER_ADDRESS,
     chains: {
       mainnet: { chainId: CHAINS.mainnet, registry: MAINNET_REGISTRY, rpc: mainnetRpc(c.env).split(",").map(redact) },
@@ -47,13 +56,14 @@ function redact(url: string): string {
 /** One mirror tick, logged as one JSON line; never throws (the cron must not crashloop). */
 export async function tick(env: Env): Promise<void> {
   try {
-    const report = await runTick(chainFor(env), PAIRS);
+    const report = await runTick(chainFor(env), PAIRS, { maxTxPerTick: maxTxPerTick(env) });
     const line = {
       tick: report.at,
       ms: report.durationMs,
       skipped: report.skipped,
       planned: report.planned,
       sent: report.sent,
+      deferred: report.deferred,
       nonces: report.nonces,
       txs: report.txs.map((t) => `${t.symbol}/${t.kind}#${t.nonce}:${t.hash ?? "-"}:${typeof t.receipt === "string" ? t.receipt : (t.receipt?.status ?? t.error ?? "?")}`),
       plans: report.symbols.map((s) => `${s.symbol} feed=${s.feed.plan}(${s.feed.reason}) reg=${s.registry.plan}(${s.registry.reason})`),
