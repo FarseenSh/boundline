@@ -303,3 +303,47 @@ cast send 0xBBBBBbbBBb9cC5e90e3b3Af64bdAF62C37EEFFCb 'setAuthorization(address,b
 Note on artifacts: because `DeployProtection` imports the vendored files, forge compiled that script's whole unit under
 the via-IR profile, so the Sepolia `ShadowGuard` and `MockSwapPool` bytecode comes from that build (the broadcast lists
 them as `ShadowGuard.preliq-via-ir`); same source, verified, different pipeline from the 3 Oct oracles.
+
+### AaveDesk and ProtectionVault: `DeployAave.s.sol`
+
+Aave V4 is mainnet-only on Base (the Equities Hub's MAG7 spoke `0x1790…7B8D`), so this script has no
+Sepolia path. One run deploys the `AaveDesk` (lines on the spoke through Aave's activated Taker and
+Giver position managers, with the external `AaveDeskLib`) and the `ProtectionVault` (seven-day
+protective repays through the Giver down the funding ladder, Monday recovery through the Taker),
+enables the first collateral reserve, creates the first partner, sets its reserve policy and the vault's
+advance terms. The broadcaster becomes owner of both and, unless `PARTNER_ADMIN` says otherwise, the
+partner admin on both.
+
+| Env | Default |
+| --- | --- |
+| `GATE`, `KEEPER` | required: a `SessionGate` holding the collateral's feed, and the keeper account |
+| `SPOKE`, `TAKER`, `GIVER` | `0x1790…7B8D`, `0x8481…D695`, `0x9E81…F08` (verified active and registered on 6 Oct 2026) |
+| `LOAN_RESERVE_ID`, `COLLATERAL_RESERVE_ID` | `7` (USDC), `0` (AAPLc, collateral factor 78%) |
+| `PARTNER_ID`, `PARTNER_ADMIN`, `PARTNER_SIGNER`, `PARTNER_EXPOSURE_CAP` | `boundline-app`, broadcaster, none, `1_000e6` |
+| `MAX_LTV_WAD`, `MIN_DRAW`, `MAX_DRAW`, `RESERVE_EXPOSURE_CAP` | `0.5e18`, `1e6`, `100e6`, `500e6` |
+| `ADVANCE_CAP_PER_USER`, `ADVANCE_FEE_BPS` | `200e6`, `100` |
+
+Every pre-check is a named error (`NoRpc`, `ManagerNotActive`, `SpokeNotRegistered`,
+`LoanReserveNotBorrowable`, `CollateralFactorZero`, `GateHasNoFeed`, `LtvNotBelowCollateralFactor`), so a
+keyless simulation stops with the reason instead of a trace. The mainnet `SessionGate` comes from
+`DeployOracles.runMainnet()` first; the desk refuses to enable a reserve whose underlying has no feed on it.
+
+```bash
+cd contracts
+export GATE=<mainnet SessionGate> KEEPER=<keeper>
+forge script script/DeployAave.s.sol --tc DeployAave --rpc-url base --sender <deployer>        # simulate
+forge script script/DeployAave.s.sol --tc DeployAave --rpc-url base --broadcast --verify --private-key "$KEY"
+```
+
+What a user signs afterwards (one Base Account batch, see `AaveEnrolment` and `AaveDesk.enrolmentCalls`):
+`spoke.setUserPositionManager(TAKER, true)`, `spoke.setUserPositionManager(GIVER, true)`,
+`taker.approveBorrow(spoke, 7, desk, cap)` and, for recovery, `taker.approveWithdraw(spoke, 0, vault, cap)`.
+The signature variants (`approveBorrowWithSig`, `approveWithdrawWithSig`, `setUserPositionManagersWithSig`)
+are verified against the deployed contracts in `test/fork/AaveFork.t.sol`. Draw and recovery read the real
+B20 token through the gate, so the fork test's pricing paths run under `base-forge`; the Giver repay, the
+weekend refusal and the signature checks run under stock `forge` too:
+
+```bash
+BASE_RPC_URL=<archive rpc> forge test --match-path 'test/fork/AaveFork.t.sol' -vv
+BASE_RPC_URL=<archive rpc> ~/.foundry/bin/base-forge test --match-path 'test/fork/AaveFork.t.sol' -vv
+```
