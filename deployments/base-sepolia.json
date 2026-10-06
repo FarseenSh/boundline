@@ -259,6 +259,13 @@
       "tx": "0x6b17288ff94723934a83a308ad4d350fd4403c639777bb2317646f3834c949dd",
       "block": 47760060,
       "result": "included in the next block, status success, 183,098 gas (Repaid on line 1). A first attempt with block_number <= head+3000 was refused: 'expires too far in the future: last satisfiable block 47763039 exceeds the maximum permitted block 47760071', i.e. the sequencer accepts a bound at most 32 blocks (about 64 s) ahead, so a waiting transaction has to be re-armed every minute (apps/keeper/scripts/validity-tx.ts --loop)"
+    },
+    {
+      "what": "automated protection drill, 6 Oct 2026 (PRE session): the keeper's validity transaction pre-liquidated the in-band drill position at the ShadowGuard price and repaid 0.171377 USDC from the sale of 0.00052273 AAPLt",
+      "from": "0x40668755c993A551dB05E844fF9150A0C00a0373",
+      "tx": "0x982c7327efa9f0460b92501a4322ec5dc730e5faaca3ce1d87dc80f708dfb695",
+      "block": 47760683,
+      "result": "shadow LTV 0.6012 -> 0.5800 (preLltv), partial sized by Protector.sizing on chain, 486,363 gas"
     }
   ],
   "gas": {
@@ -479,10 +486,11 @@
       "address": "0x5c546946c909718040dd686f63df6cb5e4df442c",
       "tx": "0x9f90df05\u2026183d",
       "owner": "0x2f0d9B1f16CD702259C6cC259e8D5E5455282a4E",
-      "keeper": "0xEcC07A1D6306B56f9684F5555C2dE87174Dc6AAE",
+      "keeper": "0x40668755c993A551dB05E844fF9150A0C00a0373",
       "routeTx": "0xd4ee4cbc\u20269c61",
-      "note": "operators: owner and keeper; the keeper is the protection signer (BOUNDLINE_TESTNET_VALIDITY_ADDRESS, the keeper Worker's secret PROTECT_KEY), separate from the feed-mirror key so a waiting validity transaction never blocks the mirror's nonce; sells seized collateral on the route pool inside onPreLiquidate; sizing(preLiq, borrower, targetLtv) is the on-chain cap",
-      "setKeeperTx": "0x9a22c28e346a11a8a2e8037348d4edb68bf4f18f12d0ebedb2353eea4637f927"
+      "note": "operators: owner and keeper; the keeper is the protection signer (BOUNDLINE_TESTNET_PROTECT_KEY = the keeper Worker's secret PROTECT_KEY), separate from the feed-mirror key and from the validity demo key, so a waiting validity transaction never blocks another job's nonce; sells seized collateral on the route pool inside onPreLiquidate; sizing(preLiq, borrower, targetLtv) is the on-chain cap",
+      "setKeeperTx": "0x9a22c28e346a11a8a2e8037348d4edb68bf4f18f12d0ebedb2353eea4637f927",
+      "setKeeperTx2": "see the deployer's setKeeper on 6 Oct 2026 (second call): the protection signer got a key of its own after the validity demo key's pending transaction collided on the nonce"
     },
     "wire": {
       "updateAllowlistTx": "0xdede9b78\u202627ce",
@@ -508,7 +516,16 @@
       "borrowTx": "0x5f43b3494914256bc3327c879f81682e3d22dc927a6f4e31bc01caf601039dd8",
       "optInTx": "0x9d5815a4c96eb71cec048ca715c7c974591f2600fef0759e14152178f2c5df4a",
       "sizingAtOpen": "IN_BAND, collateral 1,000,000 raw, debt 2.000001 USDC, shadow = venue price 332.67 (session open), shadow LTV 0.6012, preLIF 1.0147, target 0.58, maxSeizedAssets 52,273 raw (repays 0.171377 USDC), full close allowed (610,039 raw seized)",
-      "keeper": "apps/keeper protection job watches it (PROTECT_TARGETS) and arms the partial as a validity transaction"
+      "keeper": "apps/keeper protection job watches it (PROTECT_TARGETS) and arms the partial as a validity transaction",
+      "keeperAction": {
+        "what": "the keeper Worker's protection job (apps/keeper/src/protect-job.ts) read Protector.sizing, chose the partial the contract allows and armed Protector.protect as a validity transaction (predicate: AAPLt feed slot 5 still = the held round; bound 30 blocks)",
+        "signer": "0x40668755c993A551dB05E844fF9150A0C00a0373",
+        "tx": "0x982c7327efa9f0460b92501a4322ec5dc730e5faaca3ce1d87dc80f708dfb695",
+        "block": 47760683,
+        "gasUsed": 486363,
+        "result": "status success; Morpho Repay + WithdrawCollateral, seized 52,273 raw AAPLt sold on the MockSwapPool for USDC, PreLiquidation.PreLiquidate and Protector.Protected emitted; position after: collateral 947,727 raw, debt 1.828624 USDC, shadow LTV 0.5799994 (band edge), standing BELOW_BAND; Protector kept 757 raw AAPLt as the incentive; decisionCount 1",
+        "firstAttempt": "the first two ticks failed with 'replacement transaction underpriced' because the signer still shared the validity demo key whose != transaction was pending at the same nonce; fixed by giving the protection job its own key"
+      }
     }
   }
 }

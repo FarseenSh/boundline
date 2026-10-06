@@ -77,8 +77,25 @@ export const BASE_SEPOLIA: BoundlineChainConfig = {
       oracle: addr("0x1589aAb40fF0b2E0C4c679e70865eb97A24e5854"),
       lltvWad: 625_000_000_000_000_000n,
     },
+    {
+      id: "0x7cb7fcc828a7296f8ea18256e0f5763a5588cfe22df9c943088021c762e58cc9" as Hex,
+      symbol: "NVDAt",
+      collateral: addr("0xB200000000000000000000AEd76Eae58870E2ae6"),
+      loan: addr("0x036CbD53842c5426634e7929541eC2318f3dCF7e"),
+      oracle: addr("0xcEDcD908aB8B12766147459fb34F8C6Da4aA7518"),
+      lltvWad: 625_000_000_000_000_000n,
+    },
+    {
+      id: "0xb0e8d25d1c9b822cc718c89666b887698922a7b49fdb00dbdecd70dd4ed9e2f1" as Hex,
+      symbol: "TSLAt",
+      collateral: addr("0xb200000000000000000000Af3FB2181a8772F804"),
+      loan: addr("0x036CbD53842c5426634e7929541eC2318f3dCF7e"),
+      oracle: addr("0xcADf92BBDC997fDb5920FF0Ba95B4d2d2b8389B3"),
+      lltvWad: 625_000_000_000_000_000n,
+    },
   ],
-  preLiquidation: null,
+  // AAPLt/USDC pre-liquidation (Lane A, 6 Oct 2026; deployments/base-sepolia.json → protection): protected mode opt-in.
+  preLiquidation: addr("0xdcae709341aab652144e8afcb47479fe49e133a1"),
 };
 
 export const BASE_MAINNET: BoundlineChainConfig = {

@@ -34,3 +34,16 @@ round; the first-block-after-reopen action runs only once the feed has printed. 
 
 The second transaction is the first-block pattern from the plan: the keeper does not watch the feed and race; Base
 holds the transaction and includes it in the block where the predicate flips.
+
+## The keeper's own action (automated)
+
+With the Protector live, the keeper Worker's protection job found the drill position (0.01 AAPLt, 2 USDC debt,
+shadow LTV 60.1%, band 58% to 62.5%) IN_BAND, took the partial that `Protector.sizing` allows and armed it as a
+validity transaction with the held-feed predicate. Base included it in block 47760683:
+[`0x982c7327…b695`](https://sepolia.basescan.org/tx/0x982c7327efa9f0460b92501a4322ec5dc730e5faaca3ce1d87dc80f708dfb695),
+486,363 gas. Inside one transaction: Morpho `Repay` and `WithdrawCollateral`, 52,273 raw AAPLt seized and sold on the
+pool, 0.171377 USDC repaid, `PreLiquidate` and `Protected` emitted. The position moved from 60.12% to exactly 58.00%
+shadow LTV, the band edge the contract enforces, and the Protector kept 757 raw AAPLt as the incentive.
+
+Lesson from the first two ticks: the protection signer shared a key with the waiting `!=` transaction above, so the
+sequencer answered `replacement transaction underpriced` on the colliding nonce. Each job now has its own key.
