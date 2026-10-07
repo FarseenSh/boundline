@@ -17,9 +17,25 @@ importers:
       typescript:
         specifier: 7.0.2
         version: 7.0.2
+      viem:
+        specifier: 2.57.2
+        version: 2.57.2(typescript@7.0.2)(zod@3.25.76)
       vitest:
         specifier: 5.0.3
         version: 5.0.3(@types/node@26.6.4)(vite@8.3.2(@types/node@26.6.4)(esbuild@0.28.2)(tsx@4.23.15))
+
+  apps/agent:
+    dependencies:
+      '@boundline/router':
+        specifier: workspace:*
+        version: link:../../packages/router
+    devDependencies:
+      '@cloudflare/workers-types':
+        specifier: latest
+        version: 5.20261006.1
+      wrangler:
+        specifier: 4.147.0
+        version: 4.147.0(@cloudflare/workers-types@5.20261006.1)(@types/node@26.6.4)
 
   apps/api:
     dependencies:
@@ -38,10 +54,10 @@ importers:
     devDependencies:
       '@cloudflare/workers-types':
         specifier: latest
-        version: 5.20261005.1
+        version: 5.20261006.1
       wrangler:
         specifier: 4.147.0
-        version: 4.147.0(@cloudflare/workers-types@5.20261005.1)(@types/node@26.6.4)
+        version: 4.147.0(@cloudflare/workers-types@5.20261006.1)(@types/node@26.6.4)
 
   apps/app:
     dependencies:
@@ -75,7 +91,7 @@ importers:
     devDependencies:
       '@cloudflare/workers-types':
         specifier: latest
-        version: 5.20261005.1
+        version: 5.20261006.1
       '@types/react':
         specifier: ^19.2.0
         version: 19.3.0
@@ -90,7 +106,53 @@ importers:
         version: 8.3.2(@types/node@26.6.4)(esbuild@0.28.2)(tsx@4.23.15)
       wrangler:
         specifier: 4.147.0
-        version: 4.147.0(@cloudflare/workers-types@5.20261005.1)(@types/node@26.6.4)
+        version: 4.147.0(@cloudflare/workers-types@5.20261006.1)(@types/node@26.6.4)
+
+  apps/console:
+    dependencies:
+      '@base-org/account':
+        specifier: ^2.5.13
+        version: 2.5.13(@types/react@19.3.0)(react@19.3.0)(typescript@7.0.2)(use-sync-external-store@1.4.0(react@19.3.0))(zod@3.25.76)
+      '@boundline/calendar':
+        specifier: workspace:*
+        version: link:../../packages/calendar
+      '@boundline/sdk':
+        specifier: workspace:*
+        version: link:../../packages/sdk
+      '@tanstack/react-query':
+        specifier: ^5.90.0
+        version: 5.104.1(react@19.3.0)
+      react:
+        specifier: ^19.2.0
+        version: 19.3.0
+      react-dom:
+        specifier: ^19.2.0
+        version: 19.3.0(react@19.3.0)
+      viem:
+        specifier: 2.57.2
+        version: 2.57.2(typescript@7.0.2)(zod@3.25.76)
+      wagmi:
+        specifier: ^3.7.0
+        version: 3.7.7(@base-org/account@2.5.13(@types/react@19.3.0)(react@19.3.0)(typescript@7.0.2)(use-sync-external-store@1.4.0(react@19.3.0))(zod@3.25.76))(@tanstack/query-core@5.104.1)(@tanstack/react-query@5.104.1(react@19.3.0))(@types/react@19.3.0)(react@19.3.0)(typescript@7.0.2)(viem@2.57.2(typescript@7.0.2)(zod@3.25.76))
+    devDependencies:
+      '@cloudflare/workers-types':
+        specifier: latest
+        version: 5.20261006.1
+      '@types/react':
+        specifier: ^19.2.0
+        version: 19.3.0
+      '@types/react-dom':
+        specifier: ^19.2.0
+        version: 19.3.0(@types/react@19.3.0)
+      '@vitejs/plugin-react':
+        specifier: ^6.0.0
+        version: 6.1.2(vite@8.3.2(@types/node@26.6.4)(esbuild@0.28.2)(tsx@4.23.15))
+      vite:
+        specifier: ^8.0.0
+        version: 8.3.2(@types/node@26.6.4)(esbuild@0.28.2)(tsx@4.23.15)
+      wrangler:
+        specifier: 4.147.0
+        version: 4.147.0(@cloudflare/workers-types@5.20261006.1)(@types/node@26.6.4)
 
   apps/indexer:
     dependencies:
@@ -109,10 +171,10 @@ importers:
     devDependencies:
       '@cloudflare/workers-types':
         specifier: latest
-        version: 5.20261005.1
+        version: 5.20261006.1
       wrangler:
         specifier: 4.147.0
-        version: 4.147.0(@cloudflare/workers-types@5.20261005.1)(@types/node@26.6.4)
+        version: 4.147.0(@cloudflare/workers-types@5.20261006.1)(@types/node@26.6.4)
 
   apps/keeper:
     dependencies:
@@ -131,10 +193,10 @@ importers:
     devDependencies:
       '@cloudflare/workers-types':
         specifier: latest
-        version: 5.20261005.1
+        version: 5.20261006.1
       wrangler:
         specifier: 4.147.0
-        version: 4.147.0(@cloudflare/workers-types@5.20261005.1)(@types/node@26.6.4)
+        version: 4.147.0(@cloudflare/workers-types@5.20261006.1)(@types/node@26.6.4)
 
   apps/observatory:
     dependencies:
@@ -153,10 +215,10 @@ importers:
     devDependencies:
       '@cloudflare/workers-types':
         specifier: latest
-        version: 5.20261005.1
+        version: 5.20261006.1
       wrangler:
         specifier: 4.147.0
-        version: 4.147.0(@cloudflare/workers-types@5.20261005.1)(@types/node@26.6.4)
+        version: 4.147.0(@cloudflare/workers-types@5.20261006.1)(@types/node@26.6.4)
 
   packages/calendar: {}
 
@@ -165,6 +227,10 @@ importers:
       viem:
         specifier: 2.57.2
         version: 2.57.2(typescript@7.0.2)(zod@3.25.76)
+
+  packages/ledger: {}
+
+  packages/router: {}
 
   packages/sdk:
     dependencies:
@@ -230,8 +296,8 @@ packages:
     cpu: [x64]
     os: [win32]
 
-  '@cloudflare/workers-types@5.20261005.1':
-    resolution: {integrity: sha512-QQwZY342US72QGHso/H1CSzn9FWe6IoLZ8TsYyoMnvRHHOnucGuKZRDCyOn43HAkkRQqfRHFw8NP1xe1A7Oj8A==}
+  '@cloudflare/workers-types@5.20261006.1':
+    resolution: {integrity: sha512-5OclwQK1d8f5LCPvOlyldC3ryKLUa4nLXegcgPZeUxAPudczQ9xujJDdpS2Tenp7JqbBLW3OgGciHJmuc7QShg==}
 
   '@coinbase/cdp-sdk@1.57.1':
     resolution: {integrity: sha512-p47gw/5WNJ2Js+MMSQ1U1ocUY0UNnVvrjAxcrYt6YEcmVAUuz56L7Sg025tdutzH1BP+yU/jG9lDr/0AkTVvNw==}
@@ -2189,7 +2255,7 @@ snapshots:
   '@cloudflare/workerd-windows-64@1.20261001.1':
     optional: true
 
-  '@cloudflare/workers-types@5.20261005.1': {}
+  '@cloudflare/workers-types@5.20261006.1': {}
 
   '@coinbase/cdp-sdk@1.57.1(typescript@7.0.2)':
     dependencies:
@@ -3732,7 +3798,7 @@ snapshots:
       '@cloudflare/workerd-linux-arm64': 1.20261001.1
       '@cloudflare/workerd-windows-64': 1.20261001.1
 
-  wrangler@4.147.0(@cloudflare/workers-types@5.20261005.1)(@types/node@26.6.4):
+  wrangler@4.147.0(@cloudflare/workers-types@5.20261006.1)(@types/node@26.6.4):
     dependencies:
       '@cloudflare/kv-asset-handler': 0.5.0
       '@cloudflare/unenv-preset': 2.16.2(unenv@2.0.0-rc.24)(workerd@1.20261001.1)
@@ -3743,7 +3809,7 @@ snapshots:
       unenv: 2.0.0-rc.24
       workerd: 1.20261001.1
     optionalDependencies:
-      '@cloudflare/workers-types': 5.20261005.1
+      '@cloudflare/workers-types': 5.20261006.1
       fsevents: 2.3.3
     transitivePeerDependencies:
       - '@types/node'

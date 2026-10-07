@@ -1,0 +1,21 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "boundline-agent",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-09-01",
+  "compatibility_flags": ["nodejs_compat"],
+  // The agent surface reaches the other Workers through service bindings (workers.dev fetches between Workers are
+  // refused with Cloudflare error 1042). The partner key for `quote` and `shadowHealth` is the secret PARTNER_API_KEY.
+  "services": [
+    { "binding": "API", "service": "boundline-api" },
+    { "binding": "INDEXER", "service": "boundline-indexer" },
+    { "binding": "OBSERVATORY", "service": "boundline-observatory" },
+    { "binding": "KEEPER", "service": "boundline-keeper" }
+  ],
+  "vars": {
+    "BASE_RPC_URL": "https://base-rpc.publicnode.com,https://base.drpc.org,https://mainnet.base.org",
+    "BASE_SEPOLIA_RPC_URL": "https://sepolia.base.org,https://base-sepolia-rpc.publicnode.com,https://base-sepolia.drpc.org",
+    "PARTNER_ID": "boundline-app"
+  },
+  "observability": { "enabled": true }
+}
