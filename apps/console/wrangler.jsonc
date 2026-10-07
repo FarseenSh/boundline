@@ -1,0 +1,29 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "boundline-console",
+  "main": "worker/index.ts",
+  "compatibility_date": "2026-09-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "observability": { "enabled": true },
+  // The built Vite app. /api/* runs the Worker first (the proxy); everything else is a static asset, and unknown
+  // paths get index.html so the client-side router owns /policy, /drills, /reconciliation and /evidence.
+  "assets": {
+    "directory": "./dist",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/api/*"]
+  },
+  // Service bindings: a Worker fetching another Worker's workers.dev URL is refused (Cloudflare error 1042), so the
+  // proxy reaches the partner API and the indexer through bindings. A partner who pasted their own key into the
+  // console sends it as a bearer and the Worker forwards it; otherwise the Worker uses the secret PARTNER_API_KEY
+  // (`wrangler secret put PARTNER_API_KEY`), which never reaches the browser. The Observatory binding carries its
+  // public JSON (the session clock) because workers.dev answers no CORS headers.
+  "services": [
+    { "binding": "API", "service": "boundline-api" },
+    { "binding": "INDEXER", "service": "boundline-indexer" },
+    { "binding": "OBSERVATORY", "service": "boundline-observatory" }
+  ],
+  "vars": {
+    "PARTNER_ID": "boundline-app"
+  }
+}
