@@ -1,0 +1,24 @@
+{
+  "name": "@boundline/router",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Credit router: choose venue and market by rate, effective LTV, liquidity, protection and session state; deterministic, signed route plans. Pure, dependency-free.",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run"
+  }
+}
