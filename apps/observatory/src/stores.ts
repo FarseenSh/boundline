@@ -1,5 +1,6 @@
 // D1 access behind small store interfaces, with an in-memory twin used by the tests.
 import type { Address, Hex } from "viem";
+import type { AaveBorrowerRecord, AavePositionRow } from "./aave-positions.js";
 import type { Session } from "./calendar-port.js";
 import type { CaptureRow, CaptureSummary, TransitionKind } from "./capture.js";
 import type { Borrower, PositionRow } from "./positions.js";
@@ -45,9 +46,23 @@ export interface PositionStore {
   lastPositionsTakenAt(chainId: number): Promise<number | null>;
 }
 
+export interface AaveStore {
+  /** Insert or update by address; returns how many were new. */
+  upsertBorrowers(list: readonly AaveBorrowerRecord[]): Promise<number>;
+  /** Every known borrower, ordered by address (the rotation key). */
+  borrowers(chainId: number): Promise<AaveBorrowerRecord[]>;
+  scanOffset(chainId: number): Promise<number>;
+  setScanOffset(chainId: number, offset: number, at: number): Promise<void>;
+  addPositions(rows: readonly AavePositionRow[]): Promise<void>;
+  /** Latest row per borrower, protection cases first, then worst shadow health. */
+  latestPositions(chainId: number): Promise<AavePositionRow[]>;
+  positionsForAddress(address: Address): Promise<AavePositionRow[]>;
+}
+
 export interface Stores {
   capture: CaptureStore;
   positions: PositionStore;
+  aave: AaveStore;
 }
 
 // ---------------------------------------------------------------- D1
@@ -96,6 +111,74 @@ interface PositionDbRow {
   shadow_hf: number | null;
   protection_case: number;
 }
+
+interface AaveBorrowerDbRow {
+  chain_id: number;
+  address: string;
+  first_seen_block: number;
+  last_seen_block: number;
+  reserve_ids: string;
+  source: string;
+  updated_at: number;
+}
+
+interface AavePositionDbRow {
+  chain_id: number;
+  address: string;
+  taken_at: number;
+  block_number: number;
+  debt_usdc: string;
+  debt_value_usd: number;
+  collateral_value_usd: number;
+  shadow_collateral_value_usd: number;
+  shadow_coverage: number;
+  collateral_json: string;
+  venue_hf: number | null;
+  model_hf: number | null;
+  shadow_hf: number | null;
+  protection_case: number;
+  risk_premium_bps: number;
+  avg_collateral_factor: number;
+}
+
+function aaveBorrowerFromDb(r: AaveBorrowerDbRow): AaveBorrowerRecord {
+  let reserveIds: number[] = [];
+  try {
+    const parsed = JSON.parse(r.reserve_ids) as unknown;
+    if (Array.isArray(parsed)) reserveIds = parsed.map((n) => Number(n)).filter((n) => Number.isInteger(n));
+  } catch {
+    reserveIds = [];
+  }
+  return { chainId: r.chain_id, address: r.address as Address, firstSeenBlock: r.first_seen_block, lastSeenBlock: r.last_seen_block, reserveIds, source: "indexer", updatedAt: r.updated_at };
+}
+
+function aavePositionFromDb(r: AavePositionDbRow): AavePositionRow {
+  return {
+    chainId: r.chain_id,
+    venue: "aave",
+    spoke: "0x17905Db0e4A3514467539956c084180616AE7B8D",
+    address: r.address as Address,
+    takenAt: r.taken_at,
+    blockNumber: r.block_number,
+    debtUsdc: r.debt_usdc,
+    debtValueUsd: r.debt_value_usd,
+    collateralValueUsd: r.collateral_value_usd,
+    shadowCollateralValueUsd: r.shadow_collateral_value_usd,
+    shadowCoverage: r.shadow_coverage,
+    collateral: JSON.parse(r.collateral_json) as AavePositionRow["collateral"],
+    venueHf: r.venue_hf,
+    modelHf: r.model_hf,
+    shadowHf: r.shadow_hf,
+    protectionCase: r.protection_case === 1,
+    riskPremiumBps: r.risk_premium_bps,
+    avgCollateralFactor: r.avg_collateral_factor,
+  };
+}
+
+const LATEST_AAVE_SQL = `SELECT p.* FROM aave_positions p
+  JOIN (SELECT chain_id, address, MAX(taken_at) AS taken_at FROM aave_positions WHERE chain_id = ?1 GROUP BY chain_id, address) m
+    ON p.chain_id = m.chain_id AND p.address = m.address AND p.taken_at = m.taken_at
+  ORDER BY p.protection_case DESC, (p.shadow_hf IS NULL) ASC, p.shadow_hf ASC, p.debt_value_usd DESC`;
 
 function runFromDb(r: RunDbRow): CaptureRunRecord {
   return {
@@ -250,7 +333,70 @@ export function d1Stores(db: D1Database): Stores {
     },
   };
 
-  return { capture, positions };
+  const aave: AaveStore = {
+    async upsertBorrowers(list) {
+      if (list.length === 0) return 0;
+      const insert = db.prepare(
+        "INSERT OR IGNORE INTO aave_borrowers (chain_id, address, first_seen_block, last_seen_block, reserve_ids, source, updated_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+      );
+      const update = db.prepare("UPDATE aave_borrowers SET last_seen_block = ?3, reserve_ids = ?4, updated_at = ?5 WHERE chain_id = ?1 AND address = ?2 AND last_seen_block < ?3");
+      const res = await db.batch([
+        ...list.map((b) => insert.bind(b.chainId, b.address.toLowerCase(), b.firstSeenBlock, b.lastSeenBlock, JSON.stringify(b.reserveIds), b.source, b.updatedAt)),
+        ...list.map((b) => update.bind(b.chainId, b.address.toLowerCase(), b.lastSeenBlock, JSON.stringify(b.reserveIds), b.updatedAt)),
+      ]);
+      return res.slice(0, list.length).reduce((n, r) => n + (r.meta?.changes ?? 0), 0);
+    },
+    async borrowers(chainId) {
+      const { results } = await db.prepare("SELECT * FROM aave_borrowers WHERE chain_id = ?1 ORDER BY address ASC").bind(chainId).all<AaveBorrowerDbRow>();
+      return results.map(aaveBorrowerFromDb);
+    },
+    async scanOffset(chainId) {
+      const r = await db.prepare("SELECT next_offset FROM aave_scan_state WHERE chain_id = ?1").bind(chainId).first<{ next_offset: number }>();
+      return r?.next_offset ?? 0;
+    },
+    async setScanOffset(chainId, offset, at) {
+      await db.prepare("INSERT OR REPLACE INTO aave_scan_state (chain_id, next_offset, updated_at) VALUES (?1, ?2, ?3)").bind(chainId, offset, at).run();
+    },
+    async addPositions(rows) {
+      if (rows.length === 0) return;
+      const stmt = db.prepare(
+        `INSERT OR REPLACE INTO aave_positions (chain_id, address, taken_at, block_number, debt_usdc, debt_value_usd, collateral_value_usd, shadow_collateral_value_usd, shadow_coverage, collateral_json, venue_hf, model_hf, shadow_hf, protection_case, risk_premium_bps, avg_collateral_factor)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16)`,
+      );
+      await db.batch(
+        rows.map((p) =>
+          stmt.bind(
+            p.chainId,
+            p.address.toLowerCase(),
+            p.takenAt,
+            p.blockNumber,
+            p.debtUsdc,
+            p.debtValueUsd,
+            p.collateralValueUsd,
+            p.shadowCollateralValueUsd,
+            p.shadowCoverage,
+            JSON.stringify(p.collateral),
+            p.venueHf,
+            p.modelHf,
+            p.shadowHf,
+            p.protectionCase ? 1 : 0,
+            p.riskPremiumBps,
+            p.avgCollateralFactor,
+          ),
+        ),
+      );
+    },
+    async latestPositions(chainId) {
+      const { results } = await db.prepare(LATEST_AAVE_SQL).bind(chainId).all<AavePositionDbRow>();
+      return results.map(aavePositionFromDb);
+    },
+    async positionsForAddress(address) {
+      const { results } = await db.prepare("SELECT * FROM aave_positions WHERE address = lower(?1) ORDER BY taken_at DESC LIMIT 50").bind(address).all<AavePositionDbRow>();
+      return results.map(aavePositionFromDb);
+    },
+  };
+
+  return { capture, positions, aave };
 }
 
 // ---------------------------------------------------------------- memory (tests)
@@ -263,6 +409,9 @@ export interface MemorySeed {
   positions?: PositionRow[];
   /** Snapshot prints for lastHeldPrint: symbol -> prints. */
   prints?: Array<{ symbol: string; answer: string; updatedAt: number; takenAt: number }>;
+  aaveBorrowers?: AaveBorrowerRecord[];
+  aaveOffsets?: Array<{ chainId: number; offset: number }>;
+  aavePositions?: AavePositionRow[];
 }
 
 export interface MemoryStores extends Stores {
@@ -277,6 +426,9 @@ export function memoryStores(seed: MemorySeed = {}): MemoryStores {
     cursors: [...(seed.cursors ?? [])],
     positions: [...(seed.positions ?? [])],
     prints: [...(seed.prints ?? [])],
+    aaveBorrowers: [...(seed.aaveBorrowers ?? [])],
+    aaveOffsets: [...(seed.aaveOffsets ?? [])],
+    aavePositions: [...(seed.aavePositions ?? [])],
   };
   const capture: CaptureStore = {
     async getRun(at) {
@@ -361,5 +513,54 @@ export function memoryStores(seed: MemorySeed = {}): MemoryStores {
       return rows.length === 0 ? null : Math.max(...rows.map((p) => p.takenAt));
     },
   };
-  return { capture, positions, state };
+  const aave: AaveStore = {
+    async upsertBorrowers(list) {
+      let n = 0;
+      for (const b of list) {
+        const i = state.aaveBorrowers.findIndex((x) => x.chainId === b.chainId && x.address.toLowerCase() === b.address.toLowerCase());
+        const row = { ...b, address: b.address.toLowerCase() as Address, reserveIds: [...b.reserveIds] };
+        if (i < 0) {
+          state.aaveBorrowers.push(row);
+          n += 1;
+        } else if ((state.aaveBorrowers[i] as AaveBorrowerRecord).lastSeenBlock < b.lastSeenBlock) {
+          state.aaveBorrowers[i] = { ...(state.aaveBorrowers[i] as AaveBorrowerRecord), lastSeenBlock: b.lastSeenBlock, reserveIds: row.reserveIds, updatedAt: b.updatedAt };
+        }
+      }
+      return n;
+    },
+    async borrowers(chainId) {
+      return state.aaveBorrowers.filter((b) => b.chainId === chainId).sort((a, b) => a.address.localeCompare(b.address));
+    },
+    async scanOffset(chainId) {
+      return state.aaveOffsets.find((o) => o.chainId === chainId)?.offset ?? 0;
+    },
+    async setScanOffset(chainId, offset) {
+      const i = state.aaveOffsets.findIndex((o) => o.chainId === chainId);
+      if (i >= 0) state.aaveOffsets[i] = { chainId, offset };
+      else state.aaveOffsets.push({ chainId, offset });
+    },
+    async addPositions(rows) {
+      for (const p of rows) {
+        const i = state.aavePositions.findIndex((q) => q.chainId === p.chainId && q.address.toLowerCase() === p.address.toLowerCase() && q.takenAt === p.takenAt);
+        if (i >= 0) state.aavePositions[i] = { ...p };
+        else state.aavePositions.push({ ...p });
+      }
+    },
+    async latestPositions(chainId) {
+      const latest = new Map<string, AavePositionRow>();
+      for (const p of state.aavePositions) {
+        if (p.chainId !== chainId) continue;
+        const k = p.address.toLowerCase();
+        const cur = latest.get(k);
+        if (!cur || p.takenAt > cur.takenAt) latest.set(k, p);
+      }
+      return [...latest.values()].sort(
+        (a, b) => Number(b.protectionCase) - Number(a.protectionCase) || (a.shadowHf ?? Infinity) - (b.shadowHf ?? Infinity) || b.debtValueUsd - a.debtValueUsd,
+      );
+    },
+    async positionsForAddress(address) {
+      return state.aavePositions.filter((p) => p.address.toLowerCase() === address.toLowerCase()).sort((a, b) => b.takenAt - a.takenAt).slice(0, 50);
+    },
+  };
+  return { capture, positions, aave, state };
 }

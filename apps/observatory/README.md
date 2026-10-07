@@ -7,7 +7,9 @@ from the held feed, and the gap the feed will print at the next reopen. Served a
 and as JSON under `/v1`.
 
 A Cloudflare Worker (Hono) with a one-minute cron: the snapshot, the reopen capture and the indexer
-kick every minute, the real-position scan and refresh on every fifth minute. Reads go through `src/reader.ts`
+kick every minute, the Morpho position scan on every fifth minute, the Aave V4 position batch a minute
+later, the weekend-gap panel on minute 2 of every ten (the jobs never share a tick, so no invocation
+stacks their CPU). Reads go through `src/reader.ts`
 (one Multicall3 `aggregate3` per snapshot, hand-encoded and hand-decoded in `src/encoding.ts`, sent as
 raw JSON-RPC with a fallback list in `src/rpc.ts`), shaping is pure (`src/snapshot.ts`), the latest
 snapshot lives in KV, history is appended to D1.
@@ -16,16 +18,19 @@ snapshot lives in KV, history is appended to D1.
 
 | Route | What |
 | --- | --- |
-| `GET /` | Server-rendered page: token table, the reopen capture panel, the real-positions table |
+| `GET /` | Server-rendered page: token table, the reopen capture panel, the weekend-gap panel, the Morpho and Aave position tables, the nightly assurance panel |
 | `GET /v1/tokens` | Full rows per token |
 | `GET /v1/feeds` | Feed subset: price, round, updatedAt, age, frozen, registry |
 | `GET /v1/sessions` | Session state, next session transition, next feed liveness transition, last feed print |
 | `GET /v1/captures` | Capture runs (newest first) with their per-token summaries, plus the next feed transition |
 | `GET /v1/captures/:transitionAt` | One run and every row it recorded |
 | `GET /v1/positions` | Latest row per real borrower on the B20 Morpho markets: venue health versus shadow health |
-| `GET /v1/positions/:addr/shadow` | That address's latest row per market, its history count, and a decision (ALLOW, PROTECT, UNKNOWN) |
+| `GET /v1/positions/:addr/shadow` | That address's latest Morpho row per market (`venue: "morpho"`) and its latest Aave row (`venue: "aave"`), the history count, and a decision (ALLOW, PROTECT, UNKNOWN) |
 | `GET /v1/venues/morpho/markets` | The B20 markets on Morpho Blue, discovered from Morpho's API, read onchain (15-minute cache) |
-| `GET /v1/venues/aave/positions` | MAG7 spoke reserve configs; the Aave borrower scan is not built yet |
+| `GET /v1/venues/aave/positions` | Latest row per real borrower on the Aave V4 MAG7 spoke: collateral per reserve, USDC debt, the spoke's health factor, the same formula at the DEX TWAP, the reserve table (collateral factors) |
+| `GET /v1/venues/aave/reserves` | MAG7 spoke reserve configs (15-minute cache) |
+| `GET /v1/gaps` | The weekend-gap panel: per reopen, every feed's held close, first print after, lag and gap (bundled evidence, capture runs, indexer rounds) |
+| `GET /v1/assurance` | The latest nightly replay run as the harness wrote it to KV, or `{ "status": "no run yet" }` |
 | `GET /v1/events` | 501 until the indexer lands |
 
 ## Reopen capture
@@ -55,8 +60,38 @@ API is asked again). Every 10 minutes one multicall reads `market(id)`, the mark
 `price()` and `position(id, user)` for every borrower and stores a `positions` row with the debt
 (Morpho's shares-to-assets rounding), the venue price, the 1h DEX TWAP price for tokens with an
 Aerodrome pool (AAPLc, NVDAc), and the health factor at each. `protection_case` is set when the
-shadow health is below 1 while the venue still reports healthy. Aave V4 spoke positions are not
-scanned yet.
+shadow health is below 1 while the venue still reports healthy.
+
+## Aave V4 positions
+
+`src/aave-positions.ts` reads the MAG7 spoke (`0x1790…7B8D`) the same way. Borrowers come from the
+indexer's Borrow-event scan (`GET /v1/venues/aave/borrowers` through the `INDEXER` service binding; the
+scan starts at the indexer's cutoff block, so a position opened before it appears once it borrows again)
+and are merged into `aave_borrowers`. On minute 1 of every five one aggregate reads the oracle price of
+every reserve, then `getUserAccountData`, `getUserTotalDebt(7)` and `getUserSuppliedAssets(id)` for the
+seven stock reserves of a rotating batch of 25 borrowers (`aave_scan_state` keeps the offset), and stores
+an `aave_positions` row. Reserve metadata (decimals, `getDynamicReserveConfig` collateral factors, the oracle
+address) is cached in KV for an hour. Health is the spoke's own formula, Σ collateral value × collateral
+factor / debt value: on 7 Oct 2026 it reproduced the spoke's `healthFactor` to four decimals on every live
+row (1.680896… for borrower `0x84c4…d980`), and the shadow health applies the 1h Aerodrome TWAP to each
+reserve that has a pool (AAPLc, NVDAc) while the others keep the held feed; `shadow_coverage` says how much
+of the factor-weighted collateral has a 24/7 price. `protection_case` is set below a shadow health of 1.05.
+
+## Weekend gaps
+
+`src/gaps.ts` builds one block per reopen from three sources merged by reopen instant: the reconstructed
+2 to 4 Oct 2026 weekend bundled from `docs/evidence/reopen-2026-10-04.json`, the Observatory's own
+completed reopen capture runs, and the indexer's `/v1/feeds/:symbol/rounds` pages for the ten priced
+feeds, whose pauses are classified against the calendar (a pause that spans a 20:00 ET close is a closure,
+any other pause is an in-session lull under the 24 h heartbeat). The panel is rebuilt on minute 2 of every
+ten and cached in KV (`gaps-latest`); a request with no cache computes it on demand.
+
+## Nightly assurance
+
+`GET /v1/assurance` and the page's last panel serve the key `assurance-latest` in the SNAPSHOTS namespace,
+written by the fork replay harness (`scripts/replay`): every real Aave and Morpho stock position through
+Friday close, feed gaps of −3, −8 and −15 % and the Sunday reopen, raw venue against Boundline, with the
+evidence hash. The Observatory validates the shape (`src/assurance.ts`) and renders "no run yet" otherwise.
 
 ## Local run
 

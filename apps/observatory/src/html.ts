@@ -1,5 +1,8 @@
+import type { AavePositionRow } from "./aave-positions.js";
+import { fmtAssuranceHf, type AssuranceStatus } from "./assurance.js";
 import type { LivenessTransition } from "./capture.js";
 import { escapeHtml, fmtAge, fmtBps, fmtEt, fmtUsd } from "./format.js";
+import type { GapsPanel, WeekendGap } from "./gaps.js";
 import type { PositionRow } from "./positions.js";
 import type { Snapshot, TokenRow } from "./snapshot.js";
 import type { CaptureRunRecord } from "./stores.js";
@@ -25,6 +28,12 @@ export interface PageExtras {
   nextTransition: LivenessTransition | null;
   /** Latest row per real position, worst shadow health first. */
   positions: PositionRow[] | null;
+  /** Latest row per Aave V4 MAG7 borrower, protection cases first. */
+  aave?: AavePositionRow[] | null;
+  /** The weekend-gap panel (cached in KV). */
+  gaps?: GapsPanel | null;
+  /** The nightly assurance run from KV, or the reason there is none to show. */
+  assurance?: AssuranceStatus | null;
 }
 
 function sessionTag(s: string, live: boolean): string {
@@ -131,7 +140,98 @@ ${banner}
 ${rows}
 </tbody></table></div>
 ${capturePanel(s.takenAt, extras.capture, extras.nextTransition)}
+${gapsPanel(extras.gaps ?? null)}
 ${positionsPanel(extras.positions)}
-<footer>Calendar: ${escapeHtml(s.session.calendarSource)} · JSON: <a href="/v1/tokens">/v1/tokens</a> · <a href="/v1/sessions">/v1/sessions</a> · <a href="/v1/captures">/v1/captures</a> · <a href="/v1/positions">/v1/positions</a> · <a href="/v1/venues/morpho/markets">/v1/venues/morpho/markets</a> · <a href="/v1/venues/aave/positions">/v1/venues/aave/positions</a> · MIT, public good.</footer>
+${aavePanel(extras.aave ?? null)}
+${assurancePanel(extras.assurance ?? null)}
+<footer>Calendar: ${escapeHtml(s.session.calendarSource)} · JSON: <a href="/v1/tokens">/v1/tokens</a> · <a href="/v1/sessions">/v1/sessions</a> · <a href="/v1/captures">/v1/captures</a> · <a href="/v1/gaps">/v1/gaps</a> · <a href="/v1/positions">/v1/positions</a> · <a href="/v1/venues/morpho/markets">/v1/venues/morpho/markets</a> · <a href="/v1/venues/aave/positions">/v1/venues/aave/positions</a> · <a href="/v1/assurance">/v1/assurance</a> · MIT, public good.</footer>
 </body></html>`;
+}
+
+// ---------------------------------------------------------------- Aave V4 positions
+
+function legsCell(p: AavePositionRow): string {
+  if (p.collateral.length === 0) return `<span class="mute">none</span>`;
+  return p.collateral
+    .map((l) => `${fmtUsd(l.amount, l.amount < 1 ? 4 : 2)} ${escapeHtml(l.symbol)}${l.shadowPrice === null ? `<span class="mute">*</span>` : ""}`)
+    .join(" · ");
+}
+
+export function aavePanel(rows: AavePositionRow[] | null): string {
+  const head = `<h2>Aave V4 positions</h2>`;
+  if (rows === null) return `${head}<div class="panel"><p class="mute">Aave scan not available.</p></div>`;
+  if (rows.length === 0) return `${head}<div class="panel"><p class="mute">No MAG7 spoke borrowers read yet (the indexer's Borrow-event scan seeds the list; positions follow in rotating batches every five minutes).</p></div>`;
+  const body = rows
+    .map((p) => {
+      const flag = p.protectionCase ? `<span class="tag bad">shadow HF &lt; 1.05</span>` : p.shadowHf === null ? `<span class="tag">no debt</span>` : `<span class="tag ok">ok</span>`;
+      const coverage = p.collateral.length === 0 ? "—" : `${Math.round(p.shadowCoverage * 100)}%`;
+      return `<tr><td><code>${escapeHtml(shortAddr(p.address))}</code></td><td>${legsCell(p)}</td><td>${fmtUsd(p.collateralValueUsd)}</td><td>${fmtUsd(Number(p.debtUsdc) / 1e6)}</td><td>${fmtHf(p.venueHf)}</td><td>${fmtHf(p.shadowHf)}</td><td>${coverage}</td><td>${flag}</td></tr>`;
+    })
+    .join("\n");
+  const taken = rows.reduce((m, p) => Math.max(m, p.takenAt), 0);
+  const cases = rows.filter((p) => p.protectionCase).length;
+  return `${head}<div class="panel"><p class="mute">Real borrowers on the Aave V4 MAG7 spoke (USDC against Coinbase stocks). Venue HF is the spoke's own figure at its oracle's price, held while closed; shadow HF applies the 1h Aerodrome TWAP to every reserve that has a pool (AAPLc, NVDAc; <span class="mute">*</span> marks collateral priced at the held feed). ${rows.length} positions, ${cases} protection case${cases === 1 ? "" : "s"}, last read ${escapeHtml(fmtEt(taken, true))}.</p>
+<div class="wrap"><table><thead><tr><th>Borrower</th><th>Collateral</th><th>Value (venue)</th><th>Debt (USDC)</th><th>Venue HF</th><th>Shadow HF</th><th>24/7 priced</th><th></th></tr></thead><tbody>
+${body}
+</tbody></table></div></div>`;
+}
+
+// ---------------------------------------------------------------- weekend gaps
+
+function weekendBlock(w: WeekendGap): string {
+  const rows = w.feeds
+    .map((f) => {
+      const gapCls = f.gapBps === null ? "mute" : f.gapBps < 0 ? "neg" : f.gapBps > 0 ? "pos" : "";
+      return `<tr><td><b>${escapeHtml(f.symbol)}</b></td><td>${answerUsd(f.heldAnswer)}</td><td class="mute">${escapeHtml(fmtEt(f.heldUpdatedAt))}</td><td>${f.firstAnswer === null ? `<span class="mute">not yet</span>` : answerUsd(f.firstAnswer)}</td><td class="mute">${f.firstUpdatedAt === null ? "—" : escapeHtml(fmtEt(f.firstUpdatedAt, true))}</td><td>${f.lagSeconds === null ? "—" : fmtAge(Math.max(0, f.lagSeconds))}</td><td class="${gapCls}">${fmtBps(f.gapBps)}</td><td>${f.roundsWhileClosed === null ? `<span class="mute">—</span>` : f.roundsWhileClosed}</td><td class="mute">${escapeHtml(f.source)}</td></tr>`;
+    })
+    .join("\n");
+  const dex = w.dex
+    ? `<p class="mute">DEX in the last block before the reopen: ${Object.entries(w.dex)
+        .map(([s, d]) => `${escapeHtml(s)} spot ${fmtBps(d.spotVsHeldBps)} and 1h TWAP ${fmtBps(d.twapVsHeldBps)} versus the held feed`)
+        .join("; ")}.</p>`
+    : "";
+  const range = w.summary.minGapBps === null ? "" : ` · gaps ${fmtBps(w.summary.minGapBps)} to ${fmtBps(w.summary.maxGapBps)}`;
+  const lag = w.summary.minLagSeconds === null ? "" : ` · first prints ${fmtAge(Math.max(0, w.summary.minLagSeconds))} to ${fmtAge(Math.max(0, w.summary.maxLagSeconds ?? 0))} after the reopen`;
+  return `<p>Reopen <b>${escapeHtml(fmtEt(w.reopenAt))}</b>${w.closeAt === null ? "" : ` · closed since <b>${escapeHtml(fmtEt(w.closeAt))}</b>`} · ${w.summary.feeds} feed${w.summary.feeds === 1 ? "" : "s"}${range}${lag} · source ${escapeHtml(w.sources.join(", "))}</p>
+${dex}
+<div class="wrap"><table><thead><tr><th>Token</th><th>Held close</th><th>Held since (ET)</th><th>First print after</th><th>Printed at (ET)</th><th>Lag</th><th>Gap</th><th>Rounds while closed</th><th>Source</th></tr></thead><tbody>
+${rows}
+</tbody></table></div>`;
+}
+
+export function gapsPanel(panel: GapsPanel | null, maxWeekends = 3): string {
+  const head = `<h2>Weekend gaps</h2>`;
+  if (panel === null) return `${head}<div class="panel"><p class="mute">Gap history not available.</p></div>`;
+  if (panel.weekends.length === 0) return `${head}<div class="panel"><p class="mute">No closure recorded yet.</p></div>`;
+  const blocks = panel.weekends.slice(0, maxWeekends).map(weekendBlock).join("\n");
+  const more = panel.weekends.length > maxWeekends ? `<p class="mute">${panel.weekends.length - maxWeekends} earlier closure${panel.weekends.length - maxWeekends === 1 ? "" : "s"} in <a href="/v1/gaps">/v1/gaps</a>.</p>` : "";
+  const through = panel.indexer.through === null ? "no round history from the indexer yet" : `indexer rounds through ${escapeHtml(fmtEt(panel.indexer.through))}`;
+  return `${head}<div class="panel"><p class="mute">What the feeds printed around each closure: the held close, the first print after the reopen, its lag and the gap. ${through}; computed ${escapeHtml(fmtEt(panel.computedAt, true))}.</p>
+${blocks}
+${more}</div>`;
+}
+
+// ---------------------------------------------------------------- nightly assurance
+
+export function assurancePanel(a: AssuranceStatus | null): string {
+  const head = `<h2>Nightly assurance</h2>`;
+  if (a === null || a.status === "no run yet") return `${head}<div class="panel"><p class="mute">No run yet. The replay harness forks Base at the latest block, takes every real Aave and Morpho stock position through Friday close, a feed gap and the Sunday reopen, raw venue against Boundline, and publishes the result here with its evidence hash.</p></div>`;
+  if (a.status === "malformed") return `${head}<div class="panel"><p class="mute">The last run could not be read: ${escapeHtml(a.detail)}.</p></div>`;
+  const r = a.run;
+  const verdict = r.summary.pass ? `<span class="tag ok">pass</span>` : `<span class="tag bad">fail</span>`;
+  const rows = r.scenarios
+    .flatMap((s) =>
+      s.positions.map((p) => {
+        const rawTag = p.raw.liquidatableAtReopen ? `<span class="tag bad">liquidatable</span>` : `<span class="tag ok">safe</span>`;
+        const blTag = p.boundline.liquidatableAtReopen ? `<span class="tag bad">liquidatable</span>` : `<span class="tag ok">safe</span>`;
+        const action = p.boundline.action === "none" ? `<span class="mute">none</span>` : `${escapeHtml(p.boundline.action)} ${escapeHtml(p.boundline.actionAt)} · ${fmtUsd(Number(p.boundline.amountUsdc))} USDC`;
+        return `<tr><td><b>${escapeHtml(s.id)}</b> <span class="mute">${fmtBps(s.gapBps)}</span></td><td>${escapeHtml(p.venue)}</td><td><code>${escapeHtml(shortAddr(p.address))}</code></td><td>${escapeHtml(p.collateralSymbol)}</td><td>${fmtUsd(Number(p.debtUsdc))}</td><td>${escapeHtml(fmtAssuranceHf(p.raw.hfAtReopen))}</td><td>${p.raw.liquidatableSaturday ? `<span class="tag bad">Sat</span> ` : ""}${rawTag}</td><td>${action}</td><td>${escapeHtml(fmtAssuranceHf(p.boundline.hfAfter))}</td><td>${blTag}</td></tr>`;
+      }),
+    )
+    .join("\n");
+  return `${head}<div class="panel"><p>${verdict} ran ${escapeHtml(fmtEt(r.ranAt, true))} · fork block ${r.forkBlock} (${escapeHtml(fmtEt(r.forkBlockTime))}) · ${r.summary.positions} position${r.summary.positions === 1 ? "" : "s"} × ${r.summary.scenarios} scenario${r.summary.scenarios === 1 ? "" : "s"} · raw venue liquidatable in ${r.summary.rawLiquidatable}, with Boundline ${r.summary.boundlineLiquidatable}.</p>
+<p class="mute">Evidence <code>${escapeHtml(r.evidenceHash)}</code> · ${escapeHtml(r.artifact)}</p>
+<div class="wrap"><table><thead><tr><th>Scenario</th><th>Venue</th><th>Position</th><th>Collateral</th><th>Debt (USDC)</th><th>Raw HF at reopen</th><th>Raw venue</th><th>Boundline action</th><th>HF after</th><th>With Boundline</th></tr></thead><tbody>
+${rows}
+</tbody></table></div></div>`;
 }

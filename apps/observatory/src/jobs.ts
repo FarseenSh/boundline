@@ -1,12 +1,14 @@
 // The two cron jobs added for the reopen: the capture recorder and the real-position refresh.
 // Both take their I/O as arguments so the tests drive them with the memory stores and fakes.
 import type { Hex } from "viem";
+import { AAVE_BATCH_PER_TICK, AAVE_CHAIN_ID, readAavePositions, rotate, shadowUsdFromSnapshot, type AaveBorrowerRecord, type AaveMeta } from "./aave-positions.js";
 import type { CalendarPort } from "./calendar-port.js";
 import { activeTransition, captureRows, emptySummary, firstUpdateAt, isComplete, phaseFor, updateSummary, type CaptureSummary } from "./capture.js";
 import type { MarketRow } from "./morpho.js";
 import { CHAIN_ID, POSITIONS_EVERY_SECONDS, fetchApiBorrowers, planScan, readPositions, scanBorrowLogs, type Borrower, type PositionRow, type PositionsRpc } from "./positions.js";
+import type { EthCall } from "./rpc.js";
 import type { Snapshot } from "./snapshot.js";
-import type { CaptureRunRecord, CaptureStore, PositionStore } from "./stores.js";
+import type { AaveStore, CaptureRunRecord, CaptureStore, PositionStore } from "./stores.js";
 
 export interface Logger {
   log(message: string): void;
@@ -119,5 +121,85 @@ export async function runPositions(deps: PositionsDeps): Promise<PositionsResult
   }
 
   if (result.errors.length > 0) log.error(`positions job: ${result.errors.join("; ")}`);
+  return result;
+}
+
+export interface AaveJobDeps {
+  store: AaveStore;
+  call: EthCall;
+  /** Reserve metadata (decimals, collateral factors, oracle); the live loader caches it in KV. */
+  meta: () => Promise<AaveMeta>;
+  /** Today's borrowers from the indexer's Borrow-event scan, already parsed. */
+  borrowers: () => Promise<AaveBorrowerRecord[]>;
+  snapshot: Snapshot;
+  log?: Logger;
+  batch?: number;
+}
+
+export interface AaveJobResult {
+  known: number;
+  newBorrowers: number;
+  scanned: number;
+  nextOffset: number;
+  refreshed: number;
+  protectionCases: number;
+  errors: string[];
+}
+
+/**
+ * Refreshes a rotating batch of Aave V4 MAG7 positions: merges the indexer's borrower list into D1, reads
+ * `batch` of them in one aggregate3 call at the venue's prices and the snapshot's DEX TWAPs, stores the rows
+ * and advances the offset. Runs on the fifth-minute tick next to the Morpho scan (index.ts).
+ */
+export async function runAavePositions(deps: AaveJobDeps): Promise<AaveJobResult> {
+  const log = deps.log ?? console;
+  const result: AaveJobResult = { known: 0, newBorrowers: 0, scanned: 0, nextOffset: 0, refreshed: 0, protectionCases: 0, errors: [] };
+  const now = deps.snapshot.takenAt;
+  let known: AaveBorrowerRecord[] = [];
+  try {
+    known = await deps.store.borrowers(AAVE_CHAIN_ID);
+  } catch (err) {
+    result.errors.push(`known: ${err instanceof Error ? err.message : String(err)}`);
+  }
+  try {
+    // Only what the indexer knows and D1 does not yet (a new borrower, or a later Borrow) is written: in the
+    // steady state that is nothing, and a 60-statement batch every tick was most of the job's CPU.
+    const have = new Map(known.map((b) => [b.address.toLowerCase(), b.lastSeenBlock]));
+    const changed = (await deps.borrowers()).filter((b) => {
+      const seen = have.get(b.address.toLowerCase());
+      return seen === undefined || seen < b.lastSeenBlock;
+    });
+    if (changed.length > 0) {
+      result.newBorrowers = await deps.store.upsertBorrowers(changed);
+      known = await deps.store.borrowers(AAVE_CHAIN_ID);
+    }
+  } catch (err) {
+    result.errors.push(`borrowers: ${err instanceof Error ? err.message : String(err)}`);
+  }
+  try {
+    result.known = known.length;
+    const offset = await deps.store.scanOffset(AAVE_CHAIN_ID);
+    const { picked, nextOffset } = rotate(known, offset, deps.batch ?? AAVE_BATCH_PER_TICK);
+    result.scanned = picked.length;
+    result.nextOffset = nextOffset;
+    if (picked.length > 0) {
+      const meta = await deps.meta();
+      const rows = await readAavePositions(
+        deps.call,
+        meta,
+        picked.map((b) => b.address),
+        shadowUsdFromSnapshot(deps.snapshot),
+        deps.snapshot.block,
+        now,
+      );
+      await deps.store.addPositions(rows);
+      result.refreshed = rows.length;
+      result.protectionCases = rows.filter((r) => r.protectionCase).length;
+    }
+    await deps.store.setScanOffset(AAVE_CHAIN_ID, nextOffset, now);
+  } catch (err) {
+    result.errors.push(`positions: ${err instanceof Error ? err.message : String(err)}`);
+  }
+  if (result.errors.length > 0) log.error(`aave job: ${result.errors.join("; ")}`);
   return result;
 }
