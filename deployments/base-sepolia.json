@@ -225,7 +225,7 @@
     {
       "what": "borrower borrows 1 USDC during the WEEKEND session (eth_call)",
       "from": "0xB789aD318945B37566E2549F65526Cc269a482Fc",
-      "result": "revert 0x3e363de9\u202605 = MarketClosed(WEEKEND): the SessionGuard refuses to price a held feed"
+      "result": "revert 0x3e363de9…05 = MarketClosed(WEEKEND): the SessionGuard refuses to price a held feed"
     },
     {
       "what": "SessionGuard.price() and SessionGate.priceOf(AAPLt) during the WEEKEND session (eth_call)",
@@ -254,7 +254,7 @@
       "result": "GET /v1/lines/1: status OPEN, obligation OPEN, drawnPrincipal 3.000000 USDC; POST /v1/quotes {lineId 1, amount 1 USDC}: 200, reason NONE, session PRE, capacity 1,660.35 USDC, X-Quote-Hash 0x023d1eb219bd408ecd5f623299010d6627881066c34772ed0a61221074c25d78, block 47759482; indexer /v1/events?source=credit-desk lists Drawn, Repaid and both Decision events"
     },
     {
-      "what": "validity transaction (Cobalt) on Sepolia: repay 0.1 USDC on line 1 from the test key 0xEcC07A1D6306B56f9684F5555C2dE87174Dc6AAE, submitted with base_sendRawTransactionValidity to https://sepolia-sequencer.base.org with predicates storage(AAPLt feed 0xa652\u2026e52a, slot 5 = _updatedAt) = 0x\u20266ac3e55b and block_number <= head+30",
+      "what": "validity transaction (Cobalt) on Sepolia: repay 0.1 USDC on line 1 from the test key 0xEcC07A1D6306B56f9684F5555C2dE87174Dc6AAE, submitted with base_sendRawTransactionValidity to https://sepolia-sequencer.base.org with predicates storage(AAPLt feed 0xa652…e52a, slot 5 = _updatedAt) = 0x…6ac3e55b and block_number <= head+30",
       "from": "0xEcC07A1D6306B56f9684F5555C2dE87174Dc6AAE",
       "tx": "0x6b17288ff94723934a83a308ad4d350fd4403c639777bb2317646f3834c949dd",
       "block": 47760060,
@@ -268,11 +268,11 @@
       "result": "shadow LTV 0.6012 -> 0.5800 (preLltv), partial sized by Protector.sizing on chain, 486,363 gas"
     },
     {
-      "what": "validity transaction 2 (Cobalt): repay 0.1 USDC on line 1 with predicate storage(AAPLt feed, slot 5) != the held round, re-armed every ~65 s for two hours from the test key 0xEcC0\u20266AAE (67 submissions)",
+      "what": "validity transaction 2 (Cobalt): repay 0.1 USDC on line 1 with predicate storage(AAPLt feed, slot 5) != the held round, re-armed every ~65 s for two hours from the test key 0xEcC0…6AAE (67 submissions)",
       "from": "0xEcC07A1D6306B56f9684F5555C2dE87174Dc6AAE",
       "tx": "0xbbd8463132d3863f135ce30e5618d92919e4c3832b80b76510e97f18b99cb2fb",
       "block": 47763777,
-      "result": "included 14:10:42 UTC, success, 183,098 gas, Repaid(1, 100000); slot in that block 0x\u20266ac500c1 (mainnet round \u2026520 mirrored in block 47763713). The predicate had flipped at 13:55:34 (round \u2026519) while the operator machine was offline (13:50\u201314:02); after reconnecting, seven accepted re-arms with a satisfied predicate were not included before the eighth was; base fee flat at 0.005 gwei. Lesson: 'not before', not 'as soon as'; re-sign with a new hash per re-arm next. Details: docs/evidence/validity-transactions-sepolia.md"
+      "result": "included 14:10:42 UTC, success, 183,098 gas, Repaid(1, 100000); slot in that block 0x…6ac500c1 (mainnet round …520 mirrored in block 47763713). The predicate had flipped at 13:55:34 (round …519) while the operator machine was offline (13:50–14:02); after reconnecting, seven accepted re-arms with a satisfied predicate were not included before the eighth was; base fee flat at 0.005 gwei. Lesson: 'not before', not 'as soon as'; re-sign with a new hash per re-arm next. Details: docs/evidence/validity-transactions-sepolia.md"
     }
   ],
   "gas": {
@@ -378,11 +378,15 @@
         "openLineTx": "0x91b80185acda93fbc0c886cb1aba7f226cf976221df1a7c60996f58b24c17206",
         "block": 47637827,
         "morphoAuthorizationTx": "0xd0d3391606356756b8b96266518665f5446e3fd747b21c78635870c528d3c279",
-        "note": "the user's 10 AAPLt sit in Morpho directly; a zero-draw quote through the API on 3 Oct returned reason MARKET_CLOSED, session WEEKEND, quoteHash 0xfe523dc9c20ad0c5e3ca561ed389653925c30fd96eda2cbb75fc060775c2c4a2 On 6 Oct 2026 (PRE session, gate OPEN at 332.67) the user drew 5 USDC and repaid 2: Decision hashes 0xdaa6562f\u2026c816 (DRAW) and 0x2b40f937\u2026d2a8 (REPAY); see proofs.",
+        "note": "the user's 10 AAPLt sit in Morpho directly; a zero-draw quote through the API on 3 Oct returned reason MARKET_CLOSED, session WEEKEND, quoteHash 0xfe523dc9c20ad0c5e3ca561ed389653925c30fd96eda2cbb75fc060775c2c4a2 On 6 Oct 2026 (PRE session, gate OPEN at 332.67) the user drew 5 USDC and repaid 2: Decision hashes 0xdaa6562f…c816 (DRAW) and 0x2b40f937…d2a8 (REPAY); see proofs.",
         "firstDrawTx": "0x661ebb1abc30e1fffe987b4598b006004ed746943afcc1e67ea82595854b8bac",
         "firstDrawBlock": 47759305,
         "partialRepayTx": "0xe3bc2f0b3a58975b5870d624fd4772656deab41ef9fbc3b5c0f727d3f464771b",
-        "state": "6 Oct 2026 07:40 ET: 10 AAPLt collateral, 3 USDC debt outstanding (5 drawn in the PRE session, 2 repaid); kept open as the live position for the protection drills"
+        "state": "7 Oct 2026 19:40 IST: 10 AAPLt collateral, 1.600134 USDC debt (drawnPrincipal 1.6) after two protective repays through the DeskProtectionVault (0.5 from the user reserve, 0.7 = 0.5 user + 0.2 Reserve advance, settled); see reserve.liveCycle",
+        "protectiveRepays": [
+          "0xa0efe0c47d788acb8e0f756b62ebf01e155cb33c553d6e4ccdfc2d20065c9f07",
+          "0x28c1ec4479d58ff7e362499b3e0b3f41517a1ec7ee4cd2fa83523de2ca5c08a4"
+        ]
       },
       {
         "lineId": "2",
@@ -459,25 +463,25 @@
     "runbook": "contracts/script/DeployProtection.s.sol (broadcast in contracts/broadcast/DeployProtection.s.sol/84532), then contracts/script/wire-protection-sepolia.sh",
     "mockSwapPool": {
       "address": "0x5069f3753961efcaea8c7f6ec49a182e2c40081b",
-      "tx": "0xffd1e554\u20266c6a",
+      "tx": "0xffd1e554…6c6a",
       "block": 47760173,
       "note": "token0 USDC, token1 AAPLt; TWAP tick -12021 = $332.69 (price36 3.3267e36); holds 2 USDC; the TWAP source of the ShadowGuard and the sale venue of the Protector (fixed-price swap, owner-set); TWAP setters are open as on MockCLPool"
     },
     "shadowGuardAAPLt": {
       "address": "0x7a53b459be6e5e9a12324cc3417bb027daf73f65",
-      "tx": "0x502a48a7\u2026d467",
+      "tx": "0x502a48a7…d467",
       "haircutBps": 200,
       "maxDeviationBps": 3000,
       "note": "feed in session, pool TWAP less 200 bps while the feed is held; built via-IR with the vendored pre-liquidation profile, same source"
     },
     "preLiquidationFactory": {
       "address": "0x09af92fbfd4bad4a138a9093f08606db02c50c75",
-      "tx": "0x80dc81c6\u20261414",
-      "note": "vendored morpho-org/pre-liquidation (GPL-2.0-or-later), constructor Morpho 0xBBBB\u2026FFCb"
+      "tx": "0x80dc81c6…1414",
+      "note": "vendored morpho-org/pre-liquidation (GPL-2.0-or-later), constructor Morpho 0xBBBB…FFCb"
     },
     "preLiquidationAAPLtUSDC": {
       "address": "0xdcae709341aab652144e8afcb47479fe49e133a1",
-      "createTx": "0x84445011\u202654e4",
+      "createTx": "0x84445011…54e4",
       "block": 47760182,
       "marketId": "0x4a03b124a170a913931f00ab87f7966d388370cf457c0a3c4fb6fcf4fbb88047",
       "params": {
@@ -491,28 +495,28 @@
     },
     "protector": {
       "address": "0x5c546946c909718040dd686f63df6cb5e4df442c",
-      "tx": "0x9f90df05\u2026183d",
+      "tx": "0x9f90df05…183d",
       "owner": "0x2f0d9B1f16CD702259C6cC259e8D5E5455282a4E",
       "keeper": "0x40668755c993A551dB05E844fF9150A0C00a0373",
-      "routeTx": "0xd4ee4cbc\u20269c61",
+      "routeTx": "0xd4ee4cbc…9c61",
       "note": "operators: owner and keeper; the keeper is the protection signer (BOUNDLINE_TESTNET_PROTECT_KEY = the keeper Worker's secret PROTECT_KEY), separate from the feed-mirror key and from the validity demo key, so a waiting validity transaction never blocks another job's nonce; sells seized collateral on the route pool inside onPreLiquidate; sizing(preLiq, borrower, targetLtv) is the on-chain cap",
       "setKeeperTx": "0x9a22c28e346a11a8a2e8037348d4edb68bf4f18f12d0ebedb2353eea4637f927",
       "setKeeperTx2": "see the deployer's setKeeper on 6 Oct 2026 (second call): the protection signer got a key of its own after the validity demo key's pending transaction collided on the nonce"
     },
     "wire": {
-      "updateAllowlistTx": "0xdede9b78\u202627ce",
-      "seizeExemptTx": "0xa0a47153\u20263e1a",
+      "updateAllowlistTx": "0xdede9b78…27ce",
+      "seizeExemptTx": "0xa0a47153…3e1a",
       "result": "Protector, PreLiquidation and MockSwapPool admitted to AAPLt's holders allowlist 72057594037928092 and seize-exempt list 72057594037928099; isAuthorized true for all three"
     },
     "optIns": [
       {
         "borrower": "0xB789aD318945B37566E2549F65526Cc269a482Fc",
-        "tx": "0xe66aeda3\u20264ac5",
+        "tx": "0xe66aeda3…4ac5",
         "block": 47760267,
         "what": "Morpho.setAuthorization(preLiquidation, true): the user authorises Morpho's audited contract, never Boundline's"
       }
     ],
-    "liveReads": "Protector.sizing(preLiq, 0xB789\u202682Fc) on 6 Oct: BELOW_BAND, 10 AAPLt, 2.900001 USDC debt",
+    "liveReads": "Protector.sizing(preLiq, 0xB789…82Fc) on 6 Oct: BELOW_BAND, 10 AAPLt, 2.900001 USDC debt",
     "designFact": "PreLiquidation.onMorphoRepay calls Morpho.withdrawCollateral, which re-checks health through the MARKET oracle: on a SessionGuard market while closed a partial pre-liquidation reverts MarketClosed and only a full close-out (borrowShares -> 0, Morpho skips the oracle) can execute; partials run at any hour on held-price markets (the mainnet Steakhouse targets) and in session everywhere",
     "drill": {
       "date": "2026-10-06",
@@ -533,6 +537,75 @@
         "result": "status success; Morpho Repay + WithdrawCollateral, seized 52,273 raw AAPLt sold on the MockSwapPool for USDC, PreLiquidation.PreLiquidate and Protector.Protected emitted; position after: collateral 947,727 raw, debt 1.828624 USDC, shadow LTV 0.5799994 (band edge), standing BELOW_BAND; Protector kept 757 raw AAPLt as the incentive; decisionCount 1",
         "firstAttempt": "the first two ticks failed with 'replacement transaction underpriced' because the signer still shared the validity demo key whose != transaction was pending at the same nonce; fixed by giving the protection job its own key"
       }
+    }
+  },
+  "reserve": {
+    "deployedAt": "2026-10-07",
+    "deployer": "0x2f0d9B1f16CD702259C6cC259e8D5E5455282a4E",
+    "verified": true,
+    "runbook": "contracts/script/DeployReserve.s.sol (broadcast in contracts/broadcast/DeployReserve.s.sol/84532)",
+    "boundlineReserve": {
+      "address": "0x7AcE5c9ca94d5B67feC97348Ff41778D092a6B6E",
+      "tx": "0x1d31ac9e40b642539b5c45610f7c0812c29aa82d355826a5d112f3d68fd2acb0",
+      "block": 47806313,
+      "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+      "shares": "blUSDC",
+      "owner": "0x2f0d9B1f16CD702259C6cC259e8D5E5455282a4E",
+      "manager": "0x2f0d9B1f16CD702259C6cC259e8D5E5455282a4E",
+      "cooldownSeconds": 3600,
+      "utilisationCapBps": 8000,
+      "sinks": [
+        "0x87f600279F021ca859b9903DE884d3A7A169f38c"
+      ]
+    },
+    "deskProtectionVault": {
+      "address": "0x87f600279F021ca859b9903DE884d3A7A169f38c",
+      "tx": "0xf24fef6ff6182d807631b7c3ae8bea0c974358bc1a14efb9986c6b8b710ab925",
+      "block": 47806314,
+      "desk": "0x39aBaDc0aAa12D1F7e259b89536Aa1848997399a",
+      "keeper": "0x2f0d9B1f16CD702259C6cC259e8D5E5455282a4E",
+      "funder": "0x7AcE5c9ca94d5B67feC97348Ff41778D092a6B6E",
+      "advanceFeeBps": 100,
+      "advanceCapPerLine": "2000000",
+      "partnerAdmin": {
+        "boundline-app": "0x2f0d9B1f16CD702259C6cC259e8D5E5455282a4E"
+      },
+      "note": "the live desk predates setProtectionVault/recoverCollateral: recovery is unit- and invariant-proven, wired at the freeze redeploy (the Cobalt receiver allowlists must then admit the vault)"
+    },
+    "seed": {
+      "depositTx": "0xa274b4260a7fc6554716b3b6c1fffdecd13e586c48ab867c6c014185104597d6",
+      "deposited": "2000000",
+      "allocateTx": "0x249bfab3f4ebef08f4d8e1920e640022ce3c87798a0d4b3b0fe6127e1331d8ea",
+      "allocated": "1000000"
+    },
+    "liveCycle": {
+      "date": "2026-10-07",
+      "lineId": "1",
+      "borrowerDepositTx": "0x648d1da4466f3cb0507f4a5fd9b54b1759ff33410d98f6290950ca79e6c07345",
+      "protect1": {
+        "tx": "0xa0efe0c47d788acb8e0f756b62ebf01e155cb33c553d6e4ccdfc2d20065c9f07",
+        "block": 47806381,
+        "repaid": "500000",
+        "fromUser": "500000",
+        "debtBefore": "2800134",
+        "debtAfter": "2300134",
+        "deskDecision": "0x5770ecafeb1e1e6c8f1e24cae1ae7c0d3646923f8dfcf765e7147641a2b8e1b0",
+        "vaultDecision": "0x87c3ecb68f304e2d5de53e89ccb50dc626082d9a40acbc610dc3c754f439b53e"
+      },
+      "protect2": {
+        "tx": "0x28c1ec4479d58ff7e362499b3e0b3f41517a1ec7ee4cd2fa83523de2ca5c08a4",
+        "block": 47806408,
+        "repaid": "700000",
+        "fromUser": "500000",
+        "fromAdvance": "200000",
+        "debtAfter": "1600134",
+        "fee": "2000",
+        "vaultDecision": "0x2463f15325277e27fb7556fe82df29471217f11c2d3923ffbf75c3c07d4a70a4"
+      },
+      "settleTx": "0x14c4ffbdd12e2a52785b28c1837fd9c9cff2400b07bf22e2922faf96152cdb9a",
+      "harvestTx": "0xf257476420589a5455369f2337802911420427909f803684bd15d0173984da67",
+      "reserveTotalAssetsAfter": "2002000",
+      "what": "any-hour protective repay on a desk line down the ladder (user reserve, then a Reserve-funded advance), settlement by the borrower with the 1% fee, and the Reserve harvesting the fee into its share price"
     }
   }
 }
