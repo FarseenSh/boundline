@@ -52,6 +52,7 @@ Vars in `wrangler.jsonc` (comma-separated fallback lists, first wins):
 | --- | --- |
 | `BASE_RPC_URL` | `https://base-rpc.publicnode.com,https://base.drpc.org,https://mainnet.base.org` |
 | `BASE_SEPOLIA_RPC_URL` | `https://sepolia.base.org,https://base-sepolia-rpc.publicnode.com,https://base-sepolia.drpc.org` (each answered `eth_chainId` 0x14a34 and a Multicall3 call on 3 Oct 2026; `base-sepolia.public.blastapi.io` is shut down) |
+| `MIRROR_HOLD_FEED`, `MIRROR_HOLD_REGISTRY` | symbols the mirror leaves alone during a drill (see "Drills by hand"); blank |
 
 Secrets (never in the file):
 
@@ -106,9 +107,13 @@ cast send --rpc-url $RPC --private-key "$BOUNDLINE_TESTNET_KEEPER_KEY" $REG "set
 cast send --rpc-url $RPC --private-key "$BOUNDLINE_TESTNET_KEEPER_KEY" $REG "setOracleParams(address,uint256,bool)" $AAPLT 2000000000000000000 false
 ```
 
-The next tick undoes a drill because mainnet differs; pause the cron first (`wrangler triggers deploy` with
-the cron removed, or delete the trigger in the dashboard) or run the drill between two ticks and read the gate
-immediately (`cast call <SessionGate> "priceOf(address)(uint256)" $AAPLT`).
+The next tick would undo a drill because mainnet differs, so **hold the symbol first**: the vars
+`MIRROR_HOLD_FEED` and `MIRROR_HOLD_REGISTRY` (comma-separated symbols, blank = none) make the mirror skip that
+symbol's feed or registry writes (`planAll` reports `skip` / `held (MIRROR_HOLD_…)`; `/v1/config` shows `hold`).
+Set them without a redeploy from the dashboard, or in `wrangler.jsonc` followed by `pnpm exec wrangler deploy`,
+run the drill, record the evidence, then clear the hold: the next tick restores mainnet's state. The keeper key
+also sends the drill transactions, so keep the drill to one transaction between two ticks (a tick sends at most
+one transaction and skips while one is pending) or send it from another owner.
 
 ## Tests
 

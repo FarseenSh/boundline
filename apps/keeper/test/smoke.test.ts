@@ -53,3 +53,11 @@ describe("/v1/protect", () => {
     expect(jsonWithBigints({ a: 10n ** 20n, b: [1n, { c: 2n }], d: "x" })).toBe('{"a":"100000000000000000000","b":["1",{"c":"2"}],"d":"x"}');
   });
 });
+
+describe("mirrorHold", () => {
+  it("parses the two comma lists, trims, drops blanks", async () => {
+    const { mirrorHold } = await import("../src/env.js");
+    expect(mirrorHold({})).toEqual({ feed: new Set(), registry: new Set() });
+    expect(mirrorHold({ MIRROR_HOLD_FEED: " AAPLt , ,NVDAt", MIRROR_HOLD_REGISTRY: "TSLAt" })).toEqual({ feed: new Set(["AAPLt", "NVDAt"]), registry: new Set(["TSLAt"]) });
+  });
+});

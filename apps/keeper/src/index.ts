@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { getMirrorChain, type MirrorChain } from "./chain.js";
 import { CHAINS, KEEPER_ADDRESS, MAINNET_REGISTRY, MAX_TX_PER_TICK, PAIRS, SEPOLIA_REGISTRY } from "./config.js";
-import { keeperKey, mainnetRpc, protectKey, sepoliaRpc, sequencerUrl, type Env } from "./env.js";
+import { keeperKey, mainnetRpc, mirrorHold, protectKey, sepoliaRpc, sequencerUrl, type Env } from "./env.js";
 import { parseTargets } from "./protect.js";
 import { liveProtectRpc, protectAccount, runProtect, type ProtectReport } from "./protect-job.js";
 import { collectStatus } from "./status.js";
@@ -47,6 +47,7 @@ app.get("/v1/config", (c) =>
     jobs: ["sepolia-feed-mirror", "sepolia-registry-mirror"],
     cron: "* * * * *",
     maxTxPerTick: maxTxPerTick(c.env),
+    hold: { feed: [...mirrorHold(c.env).feed], registry: [...mirrorHold(c.env).registry] },
     keeperAddress: KEEPER_ADDRESS,
     chains: {
       mainnet: { chainId: CHAINS.mainnet, registry: MAINNET_REGISTRY, rpc: mainnetRpc(c.env).split(",").map(redact) },
@@ -113,7 +114,7 @@ function redact(url: string): string {
 /** One mirror tick, logged as one JSON line; never throws (the cron must not crashloop). */
 export async function tick(env: Env): Promise<void> {
   try {
-    const report = await runTick(chainFor(env), PAIRS, { maxTxPerTick: maxTxPerTick(env) });
+    const report = await runTick(chainFor(env), PAIRS, { maxTxPerTick: maxTxPerTick(env), hold: mirrorHold(env) });
     const line = {
       tick: report.at,
       ms: report.durationMs,

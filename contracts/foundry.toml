@@ -95,3 +95,11 @@ optimizer_runs = 999_999
 paths = "src/protection/vendor/**"
 via_ir = true
 optimizer_runs = 999_999
+
+[profile.lane-e]
+out = "out-lane-e"
+cache_path = "cache-lane-e"
+
+[profile.lane-f]
+out = "out-lane-f"
+cache_path = "cache-lane-f"

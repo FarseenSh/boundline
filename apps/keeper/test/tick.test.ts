@@ -149,4 +149,26 @@ describe("runTick", () => {
     expect(txs.map((t) => `${t.symbol}/${t.kind}`)).toEqual(["NVDAt/feed", "NVDAt/registry"]);
     expect(symbols[1]?.registry).toEqual({ plan: "setOracleParams", reason: "differs" });
   });
+
+  it("leaves a held symbol alone: a drill on the simulators is not reverted by the mirror", () => {
+    const s = inSync();
+    s.sepolia.rounds.set("NVDAt", ok(round(1n, 1n, 1n)));
+    s.sepolia.registry.set("NVDAt", ok({ multiplier: ONE * 2n, paused: false }));
+    const held = planAll(PAIRS2, s.mainnet, s.sepolia, fakeChain(s), { feed: new Set(), registry: new Set(["NVDAt"]) });
+    expect(held.txs.map((t) => `${t.symbol}/${t.kind}`)).toEqual(["NVDAt/feed"]);
+    expect(held.symbols[1]?.registry).toEqual({ plan: "skip", reason: "held (MIRROR_HOLD_REGISTRY)" });
+    const both = planAll(PAIRS2, s.mainnet, s.sepolia, fakeChain(s), { feed: new Set(["NVDAt"]), registry: new Set(["NVDAt"]) });
+    expect(both.txs).toEqual([]);
+    expect(both.symbols[1]?.feed).toEqual({ plan: "skip", reason: "held (MIRROR_HOLD_FEED)" });
+    expect(both.symbols[0]?.feed.plan).toBe("skip");
+  });
+
+  it("runTick threads the hold through to the plan", async () => {
+    const s = inSync();
+    s.sepolia.registry.set("AAPLt", ok({ multiplier: ONE * 2n, paused: false }));
+    const chain = fakeChain(s);
+    const r = await runTick(chain, PAIRS2, { hold: { feed: new Set(), registry: new Set(["AAPLt"]) } });
+    expect(r.skipped).toBe("nothing-to-do");
+    expect(r.planned).toBe(0);
+  });
 });

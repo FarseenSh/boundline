@@ -44,10 +44,20 @@ interface PlannedTx {
   send: (nonce: bigint) => Promise<Hex>;
 }
 
+/** Symbols whose mirror is held: a drill on the Sepolia simulators (a scheduled multiplier, a pause) must not be reverted a minute later. */
+export interface MirrorHold {
+  feed: ReadonlySet<string>;
+  registry: ReadonlySet<string>;
+}
+
+export const NO_HOLD: MirrorHold = { feed: new Set(), registry: new Set() };
+
 export interface TickOptions {
   /** Transactions signed and sent in this tick; see MAX_TX_PER_TICK. */
   maxTxPerTick?: number;
   now?: () => number;
+  /** Symbols to leave alone (vars MIRROR_HOLD_FEED / MIRROR_HOLD_REGISTRY). */
+  hold?: MirrorHold;
 }
 
 function reasonOf(plan: FeedPlan | RegistryPlan): string {
@@ -55,7 +65,7 @@ function reasonOf(plan: FeedPlan | RegistryPlan): string {
 }
 
 /** Plans every pair from two side reads: every feed update, then every registry update. Pure; exported for tests. */
-export function planAll(pairs: readonly MirrorPair[], mainnet: SideReads, sepolia: SideReads, chain: MirrorChain) {
+export function planAll(pairs: readonly MirrorPair[], mainnet: SideReads, sepolia: SideReads, chain: MirrorChain, hold: MirrorHold = NO_HOLD) {
   const symbols: SymbolReport[] = [];
   const feedTxs: PlannedTx[] = [];
   const registryTxs: PlannedTx[] = [];
@@ -66,7 +76,9 @@ export function planAll(pairs: readonly MirrorPair[], mainnet: SideReads, sepoli
     const sg = sepolia.registry.get(p.symbol);
     const report: SymbolReport = { symbol: p.symbol, feed: { plan: "error", reason: "unread" }, registry: { plan: "error", reason: "unread" } };
 
-    if (!mr || !mr.ok) {
+    if (hold.feed.has(p.symbol)) {
+      report.feed = { plan: "skip", reason: "held (MIRROR_HOLD_FEED)" };
+    } else if (!mr || !mr.ok) {
       report.feed = { plan: "error", reason: `mainnet read failed: ${mr?.ok === false ? mr.error : "missing"}` };
     } else {
       const plan = planFeedMirror(mr.value, sr?.ok ? sr.value : null);
@@ -77,7 +89,9 @@ export function planAll(pairs: readonly MirrorPair[], mainnet: SideReads, sepoli
       }
     }
 
-    if (!mg || !mg.ok) {
+    if (hold.registry.has(p.symbol)) {
+      report.registry = { plan: "skip", reason: "held (MIRROR_HOLD_REGISTRY)" };
+    } else if (!mg || !mg.ok) {
       report.registry = { plan: "error", reason: `mainnet read failed: ${mg?.ok === false ? mg.error : "missing"}` };
     } else {
       const plan = planRegistryMirror(mg.value, sg?.ok ? sg.value : null);
@@ -126,7 +140,7 @@ export async function runTick(chain: MirrorChain, pairs: readonly MirrorPair[], 
   }
   report.blocks = { mainnet: mainnet.block.toString(), sepolia: sepolia.block.toString() };
 
-  const { symbols, txs } = planAll(pairs, mainnet, sepolia, chain);
+  const { symbols, txs } = planAll(pairs, mainnet, sepolia, chain, opts.hold ?? NO_HOLD);
   report.symbols = symbols;
   report.planned = txs.length;
   if (txs.length === 0) {

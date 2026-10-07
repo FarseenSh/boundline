@@ -19,7 +19,10 @@
     // the decision was made on; bound 30 blocks, re-armed every tick).
     "PROTECTOR": "0x5c546946c909718040dd686f63df6cb5e4df442c",
     "PROTECT_TARGETS": "0xdcae709341aab652144e8afcb47479fe49e133a1:0xB789aD318945B37566E2549F65526Cc269a482Fc:0xa652b75CA90084FA16D4F18Fd96B5dd7069ee52a:5,0xdcae709341aab652144e8afcb47479fe49e133a1:0x2f0d9B1f16CD702259C6cC259e8D5E5455282a4E:0xa652b75CA90084FA16D4F18Fd96B5dd7069ee52a:5",
-    "BASE_SEPOLIA_SEQUENCER_URL": "https://sepolia-sequencer.base.org"
+    "BASE_SEPOLIA_SEQUENCER_URL": "https://sepolia-sequencer.base.org",
+    // Symbols whose Sepolia feed / registry params the mirror leaves alone during a drill (comma lists; blank = none).
+    "MIRROR_HOLD_FEED": "",
+    "MIRROR_HOLD_REGISTRY": ""
   },
   "observability": { "enabled": true }
 }

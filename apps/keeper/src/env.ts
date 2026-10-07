@@ -21,6 +21,12 @@ export interface Env {
   PROTECT_KEY?: string;
   /** Sequencer endpoint for base_sendRawTransactionValidity (Base Sepolia: https://sepolia-sequencer.base.org). */
   BASE_SEPOLIA_SEQUENCER_URL?: string;
+  /**
+   * Comma-separated symbols whose Sepolia feed (or registry params) the mirror leaves alone, so a drill on the
+   * simulators (a scheduled multiplier, a registry pause, a stale feed) is not reverted a minute later. Blank = none.
+   */
+  MIRROR_HOLD_FEED?: string;
+  MIRROR_HOLD_REGISTRY?: string;
 }
 
 function join(...parts: (string | undefined)[]): string {
@@ -54,4 +60,10 @@ function asKey(value: string | undefined): `0x${string}` | null {
 
 export function sequencerUrl(env: Env): string {
   return env.BASE_SEPOLIA_SEQUENCER_URL?.trim() || "https://sepolia-sequencer.base.org";
+}
+
+/** The held symbols from the two MIRROR_HOLD_* vars (trimmed, blank entries dropped). */
+export function mirrorHold(env: Pick<Env, "MIRROR_HOLD_FEED" | "MIRROR_HOLD_REGISTRY">): { feed: Set<string>; registry: Set<string> } {
+  const list = (v: string | undefined) => new Set((v ?? "").split(",").map((s) => s.trim()).filter((s) => s.length > 0));
+  return { feed: list(env.MIRROR_HOLD_FEED), registry: list(env.MIRROR_HOLD_REGISTRY) };
 }
