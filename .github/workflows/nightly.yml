@@ -1,0 +1,68 @@
+name: nightly-assurance
+
+# Replays the real Base mainnet positions through the weekend gap scenarios on a fork every night and
+# publishes the result to the Observatory (KV `assurance-latest`, served at /v1/assurance). The job skips
+# cleanly when the secrets are absent, so forks and the first push stay green. Secrets: BASE_RPC_URL (an
+# archive RPC; the Alchemy free tier works) or ALCHEMY_KEY, CLOUDFLARE_API_TOKEN (Workers KV write),
+# CLOUDFLARE_ACCOUNT_ID.
+on:
+  schedule:
+    - cron: "0 3 * * *" # 03:00 UTC, after the day's feeds have printed and before the Asian session
+  workflow_dispatch:
+    inputs:
+      fork_block:
+        description: "Pin the fork block (empty = latest)"
+        required: false
+
+jobs:
+  replay:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Decide whether secrets are present
+        id: gate
+        env:
+          BASE_RPC_URL: ${{ secrets.BASE_RPC_URL }}
+          ALCHEMY_KEY: ${{ secrets.ALCHEMY_KEY }}
+        run: |
+          if [ -n "$BASE_RPC_URL" ] || [ -n "$ALCHEMY_KEY" ]; then echo "run=true" >> "$GITHUB_OUTPUT"; else echo "run=false" >> "$GITHUB_OUTPUT"; echo "no RPC secret: skipping the replay"; fi
+      - uses: pnpm/action-setup@v4
+        if: steps.gate.outputs.run == 'true'
+      - uses: actions/setup-node@v4
+        if: steps.gate.outputs.run == 'true'
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Install Foundry and Base's build
+        if: steps.gate.outputs.run == 'true'
+        run: |
+          curl -L https://foundry.paradigm.xyz | bash
+          export PATH="$HOME/.foundry/bin:$PATH"
+          foundryup
+          curl -L https://raw.githubusercontent.com/base/foundry/master/foundryup/install | bash || true
+          base-foundryup || true
+          ls "$HOME/.foundry/bin"
+      - name: Install workspace
+        if: steps.gate.outputs.run == 'true'
+        run: pnpm install --frozen-lockfile
+      - name: Replay and publish
+        if: steps.gate.outputs.run == 'true'
+        env:
+          BASE_RPC_URL: ${{ secrets.BASE_RPC_URL }}
+          BOUNDLINE_ALCHEMY_API_KEY: ${{ secrets.ALCHEMY_KEY }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          REPLAY_FORK_BLOCK: ${{ github.event.inputs.fork_block }}
+          REPLAY_PUBLISH: ${{ secrets.CLOUDFLARE_API_TOKEN != '' && '1' || '0' }}
+          FOUNDRY_PROFILE: ci
+        run: scripts/replay/nightly.sh
+      - name: Keep the evidence
+        if: steps.gate.outputs.run == 'true' && always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: assurance-${{ github.run_id }}
+          path: docs/evidence/assurance/*
+          if-no-files-found: ignore
