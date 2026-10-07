@@ -149,6 +149,8 @@ contract CreditDesk is Ownable2Step, ReentrancyGuard, EIP712 {
     bool public paused;
     uint256 public lineCount;
     uint256 private _decisionNonce;
+    /// @notice The DeskProtectionVault that may receive recovered collateral (keeper recovery of an advance).
+    address public protectionVault;
 
     mapping(Id => MarketConfig) private _markets;
     mapping(bytes32 => Partner) private _partners;
@@ -160,6 +162,7 @@ contract CreditDesk is Ownable2Step, ReentrancyGuard, EIP712 {
     // ---------------------------------------------------------------- events
 
     event KeeperSet(address indexed keeper);
+    event ProtectionVaultSet(address indexed vault);
     event PausedSet(bool paused);
     event MarketRegistered(Id indexed id, address indexed collateral, address indexed loanToken, uint256 lltv);
     event MarketEnabled(Id indexed id, bool enabled);
@@ -192,6 +195,14 @@ contract CreditDesk is Ownable2Step, ReentrancyGuard, EIP712 {
     event CollateralWithdrawn(
         uint256 indexed lineId, uint256 amount, uint256 price8, IMarketCalendar.Session session, bytes32 decisionHash
     );
+    event CollateralRecovered(
+        uint256 indexed lineId,
+        address indexed to,
+        uint256 amount,
+        uint256 price8,
+        IMarketCalendar.Session session,
+        bytes32 decisionHash
+    );
     event LineClosed(uint256 indexed lineId, bytes32 decisionHash);
     event LineHeld(uint256 indexed lineId, bytes32 reason, bytes32 decisionHash);
     event LineReleased(uint256 indexed lineId, bytes32 decisionHash);
@@ -203,6 +214,7 @@ contract CreditDesk is Ownable2Step, ReentrancyGuard, EIP712 {
 
     error ZeroAddress();
     error NotKeeper();
+    error NotProtectionVault();
     error NotPartnerAdmin();
     error NotLineOwner();
     error Refused(Reason reason);
@@ -249,6 +261,12 @@ contract CreditDesk is Ownable2Step, ReentrancyGuard, EIP712 {
     function setKeeper(address newKeeper) external onlyOwner {
         keeper = newKeeper;
         emit KeeperSet(newKeeper);
+    }
+
+    /// @notice The one address keeper recovery may send collateral to; zero disables recovery.
+    function setProtectionVault(address vault) external onlyOwner {
+        protectionVault = vault;
+        emit ProtectionVaultSet(vault);
     }
 
     /// @notice Pausing stops openLine, draw and withdrawCollateral. Repay and addCollateral always work.
@@ -363,6 +381,22 @@ contract CreditDesk is Ownable2Step, ReentrancyGuard, EIP712 {
         emit LineReleased(lineId, h);
     }
 
+    /// @notice Monday recovery of a protection advance: the registered protection vault (whose own
+    ///         `recover` is keeper-only) withdraws `amount` of the line's collateral to itself, sells it at
+    ///         the session's fresh price and settles the advance. Session-gated and policy-bound exactly
+    ///         like the owner's own `withdrawCollateral` (the line must stay within its policy LTV), and
+    ///         the receiver is always the caller, so nothing can strip a position or divert its collateral.
+    function recoverCollateral(uint256 lineId, uint256 amount) external nonReentrant {
+        if (amount == 0) revert ZeroAmount();
+        if (msg.sender == address(0) || msg.sender != protectionVault) revert NotProtectionVault();
+        Line storage l = _line(lineId);
+        Quote memory q = _quote(l, 0);
+        if (q.reason != Reason.NONE) revert Refused(q.reason);
+        CreditDeskLib.withdrawCollateral(_venue(), l, _markets[l.marketId], q, amount, msg.sender);
+        bytes32 h = _decide(lineId, "RECOVER_COLLATERAL", amount, q.price8);
+        emit CollateralRecovered(lineId, msg.sender, amount, q.price8, q.session, h);
+    }
+
     // ---------------------------------------------------------------- user
 
     /// @notice Open a line for `msg.sender` under `partnerId` on `marketId`. When the partner has a
@@ -475,7 +509,7 @@ contract CreditDesk is Ownable2Step, ReentrancyGuard, EIP712 {
         if (msg.sender != l.user) revert NotLineOwner();
         Quote memory q = _quote(l, 0);
         if (q.reason != Reason.NONE) revert Refused(q.reason);
-        CreditDeskLib.withdrawCollateral(_venue(), l, _markets[l.marketId], q, amount);
+        CreditDeskLib.withdrawCollateral(_venue(), l, _markets[l.marketId], q, amount, l.user);
         bytes32 h = _decide(lineId, "WITHDRAW_COLLATERAL", amount, q.price8);
         emit CollateralWithdrawn(lineId, amount, q.price8, q.session, h);
     }

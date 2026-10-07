@@ -159,6 +159,32 @@ contract ProtectionVaultTest is Test {
         _conserved();
     }
 
+    function test_funderSharesTheOwnersRightsOverAdvancesAndFees() public {
+        vm.prank(stranger);
+        vm.expectRevert(ProtectionVault.NotFunder.selector);
+        vault.fundAdvances(1e6);
+        vm.prank(owner);
+        vault.setFunder(stranger);
+        assertEq(vault.funder(), stranger);
+        vm.startPrank(stranger);
+        vault.fundAdvances(300e6);
+        assertEq(vault.advanceLiquidity(), 300e6);
+        vault.defundAdvances(100e6, stranger);
+        vault.collectFees(stranger);
+        vm.stopPrank();
+        assertEq(vault.advanceLiquidity(), 200e6);
+        vm.prank(user);
+        vm.expectRevert(ProtectionVault.NotFunder.selector);
+        vault.defundAdvances(1e6, user);
+        vm.prank(user);
+        vm.expectRevert(ProtectionVault.NotFunder.selector);
+        vault.collectFees(user);
+        vm.prank(user);
+        vm.expectRevert();
+        vault.setFunder(user); // owner only
+        _conserved();
+    }
+
     // ------------------------------------------------------------ protect
 
     function test_protect_walksTheLadderOnTheWeekend() public {

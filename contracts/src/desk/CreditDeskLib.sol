@@ -101,21 +101,24 @@ library CreditDeskLib {
         }
     }
 
-    /// @dev Post-withdraw check against the policy LTV, not only the venue LLTV, then the withdrawal.
+    /// @dev Post-withdraw check against the policy LTV, not only the venue LLTV, then the withdrawal to
+    ///      `receiver`: the position owner on the user's own path, the registered protection vault on the
+    ///      keeper's recovery path. The desk never passes anything else.
     function withdrawCollateral(
         Venue memory v,
         T.Line storage l,
         T.MarketConfig storage m,
         T.Quote memory q,
-        uint256 amount
+        uint256 amount,
+        address receiver
     ) external {
         if (amount > q.collateralRaw) revert Refused(T.Reason.INSUFFICIENT_CAPACITY);
         uint256 remainingValue = Math.mulDiv(q.collateralValue, q.collateralRaw - amount, q.collateralRaw);
         if (Math.mulDiv(remainingValue, q.effectiveMaxLtvWad, WAD) < q.debt) {
             revert Refused(T.Reason.INSUFFICIENT_CAPACITY);
         }
-        preflight(v, l.collateral, address(v.morpho), l.user);
-        v.morpho.withdrawCollateral(m.params, amount, l.user, l.user); // receiver is the position owner, always
+        preflight(v, l.collateral, address(v.morpho), receiver);
+        v.morpho.withdrawCollateral(m.params, amount, l.user, receiver);
     }
 
     function expectedDebt(IMorpho morpho, T.MarketConfig storage m, address user) external view returns (uint256) {

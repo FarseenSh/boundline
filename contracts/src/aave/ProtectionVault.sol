@@ -11,6 +11,7 @@ import {IPriceGate} from "../interfaces/IPriceGate.sol";
 import {SessionGate} from "../oracle/SessionGate.sol";
 import {IAaveSpoke, ITakerPositionManager, IGiverPositionManager} from "./interfaces/IAaveV4.sol";
 import {AaveTypes as T} from "./AaveTypes.sol";
+import {IAdvanceSink} from "../reserve/IAdvanceSink.sol";
 
 /// @title ProtectionVault
 /// @notice Seven-day-a-week protection for Aave V4 positions. A protective repay is the one action that
@@ -30,7 +31,7 @@ import {AaveTypes as T} from "./AaveTypes.sol";
 ///         USDC held == user reserves + partner reserves + free advance liquidity + collected fees;
 ///         advanced == settled + outstanding, per user and in total; per-user outstanding never exceeds
 ///         the cap; recovered collateral is held per user and only returned or sold for that user.
-contract ProtectionVault is Ownable2Step, ReentrancyGuard {
+contract ProtectionVault is Ownable2Step, ReentrancyGuard, IAdvanceSink {
     using SafeERC20 for IERC20;
     using SafeCast for uint256;
 
@@ -67,6 +68,8 @@ contract ProtectionVault is Ownable2Step, ReentrancyGuard {
     // ---------------------------------------------------------------- storage
 
     address public keeper;
+    /// @notice The Boundline Reserve (or any funder) allowed to place, recall and harvest advance liquidity.
+    address public funder;
     bool public paused;
     uint256 private _decisionNonce;
 
@@ -88,6 +91,7 @@ contract ProtectionVault is Ownable2Step, ReentrancyGuard {
     // ---------------------------------------------------------------- events
 
     event KeeperSet(address indexed keeper);
+    event FunderSet(address indexed funder);
     event PausedSet(bool paused);
     event PartnerAdminSet(bytes32 indexed partnerId, address indexed admin);
     event AdvanceTermsSet(uint256 capPerUser, uint16 feeBps);
@@ -133,6 +137,7 @@ contract ProtectionVault is Ownable2Step, ReentrancyGuard {
     error ZeroAddress();
     error ZeroAmount();
     error NotKeeper();
+    error NotFunder();
     error NotPartnerAdmin();
     error Paused();
     error ManagerNotActive(address manager);
@@ -182,6 +187,17 @@ contract ProtectionVault is Ownable2Step, ReentrancyGuard {
         emit KeeperSet(newKeeper);
     }
 
+    /// @notice The funder shares the owner's rights over advance liquidity and fees, nothing else.
+    function setFunder(address newFunder) external onlyOwner {
+        funder = newFunder;
+        emit FunderSet(newFunder);
+    }
+
+    modifier onlyFunder() {
+        if (msg.sender != owner() && msg.sender != funder) revert NotFunder();
+        _;
+    }
+
     /// @notice Pausing stops new advances and recoveries. Deposits, withdrawals and protection funded
     ///         from the user's or the partner's own reserve keep working.
     function setPaused(bool value) external onlyOwner {
@@ -201,22 +217,23 @@ contract ProtectionVault is Ownable2Step, ReentrancyGuard {
         emit AdvanceTermsSet(capPerUser, feeBps);
     }
 
-    /// @notice USDC the vault may advance. Only free liquidity (not yet advanced) can be taken back.
-    function fundAdvances(uint256 amount) external onlyOwner {
+    /// @notice USDC the vault may advance, from the owner or the funder (the Boundline Reserve). Only free
+    ///         liquidity (not yet advanced) can be taken back.
+    function fundAdvances(uint256 amount) external onlyFunder {
         if (amount == 0) revert ZeroAmount();
         USDC.safeTransferFrom(msg.sender, address(this), amount);
         advanceLiquidity += amount;
         emit AdvancesFunded(amount);
     }
 
-    function defundAdvances(uint256 amount, address to) external onlyOwner nonReentrant {
+    function defundAdvances(uint256 amount, address to) external onlyFunder nonReentrant {
         if (amount > advanceLiquidity) revert InsufficientBalance(advanceLiquidity, amount);
         advanceLiquidity -= amount;
         USDC.safeTransfer(to, amount);
         emit AdvancesDefunded(to, amount);
     }
 
-    function collectFees(address to) external onlyOwner nonReentrant {
+    function collectFees(address to) external onlyFunder nonReentrant {
         uint256 amount = feesCollected;
         feesCollected = 0;
         USDC.safeTransfer(to, amount);

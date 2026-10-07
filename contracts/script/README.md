@@ -347,3 +347,67 @@ weekend refusal and the signature checks run under stock `forge` too:
 BASE_RPC_URL=<archive rpc> forge test --match-path 'test/fork/AaveFork.t.sol' -vv
 BASE_RPC_URL=<archive rpc> ~/.foundry/bin/base-forge test --match-path 'test/fork/AaveFork.t.sol' -vv
 ```
+
+### Boundline Reserve and DeskProtectionVault: `DeployReserve.s.sol`
+
+The capital side of protection on Morpho. One run deploys the `BoundlineReserve` (ERC-4626 over USDC:
+capital providers deposit, the manager places idle USDC into registered sinks as advance liquidity, recalls
+free liquidity and harvests the sinks' advance fees as the vault's yield; a utilisation cap keeps part of
+the book idle and a request-then-wait cooldown gates every redemption, which is also capped by the idle
+USDC) and the `DeskProtectionVault` over an existing `CreditDesk` (the `ProtectionVault`'s ladder for desk
+lines: user reserve → partner reserve → bounded vault advance, paid through the desk's anyone-may-call
+`repay` at any hour; Monday recovery through the desk's `recoverCollateral`, which only the registered
+vault may call, in an open session and within the line's policy LTV). The script wires the two (the vault's
+`funder` is the Reserve, the vault is a sink of the Reserve), names the partner admin on the vault and, by
+default, seeds the book with a deposit and a first allocation from the broadcaster. The broadcaster becomes
+owner of both and, unless told otherwise, the Reserve's manager, the vault's keeper and the partner admin.
+
+| Env | Default |
+| --- | --- |
+| `DESK` | required: the CreditDesk |
+| `USDC` | USDC on 8453 and 84532, required elsewhere |
+| `KEEPER`, `MANAGER`, `PARTNER_ADMIN` | the broadcaster |
+| `COOLDOWN_SECONDS`, `UTILISATION_CAP_BPS` | `3600`, `8000` (max 9000) |
+| `ADVANCE_FEE_BPS`, `ADVANCE_CAP_PER_LINE` | `100`, `2e6` |
+| `PARTNER_ID` | `boundline-app` |
+| `RESERVE_DEPOSIT`, `RESERVE_ALLOCATE` | `2e6`, `1e6` (zero skips the step) |
+| `SET_DESK_VAULT` | `false`: `desk.setProtectionVault(vault)` is desk-owner only and needs a desk built on or after 7 Oct 2026 |
+
+```bash
+cd contracts
+export DESK=0x39aBaDc0aAa12D1F7e259b89536Aa1848997399a
+forge script script/DeployReserve.s.sol --tc DeployReserve --rpc-url base_sepolia --sender <deployer>      # simulate
+forge script script/DeployReserve.s.sol --tc DeployReserve --rpc-url base_sepolia --broadcast --verify --slow --private-key "$KEY"
+```
+
+**Base Sepolia (7 Oct 2026), both verified.** `BoundlineReserve` `0x7AcE5c9ca94d5B67feC97348Ff41778D092a6B6E`
+(deploy `0x1d31ac9e…acb0`, block 47806313; owner and manager the deployer; cooldown 1 h; utilisation cap 80%) and
+`DeskProtectionVault` `0x87f600279F021ca859b9903DE884d3A7A169f38c` (deploy `0xf24fef6f…b925`, block 47806314; desk
+`0x39aB…399a`; keeper the deployer for now; fee 100 bps; cap 2 USDC per line; funder the Reserve; partner admin
+of `boundline-app` the deployer). Seed: the deployer deposited 2 USDC into the Reserve (`0xa274b426…97d6`) and
+allocated 1 USDC to the vault's advances (`0x249bfab3…d8ea`). Broadcast:
+`broadcast/DeployReserve.s.sol/84532/run-latest.json`. The live Sepolia desk predates `setProtectionVault` /
+`recoverCollateral`, so recovery stays unit- and invariant-proven until the freeze redeploy.
+
+Live cycle on line 1 the same evening (any hour; the desk's `repay` needs no session): the borrower deposited
+1 USDC into their reserve (`0x648d1da4…7345`); the keeper's `protect(1, 0.5e6)` repaid 0.5 USDC from the user
+reserve (`0xa0efe0c4…9f07`, debt 2.800134 → 2.300134, desk decision `0x5770ecaf…e1b0`, vault decision
+`0x87c3ecb6…b53e`); `protect(1, 0.7e6)` repaid 0.7 USDC as 0.5 from the user reserve plus a **0.2 USDC Reserve
+advance** (`0x28c1ec44…08a4`, debt → 1.600134, fee 0.002); the borrower settled the advance with the fee
+(`0x14c4ffbd…db9a`) and the Reserve harvested it (`0xf2574764…da67`: `totalAssets` 2.000000 → 2.002000, one
+share now worth 1.001 USDC).
+
+```bash
+# a user funds their own protection reserve; anyone may top up anyone with depositFor
+cast send $USDC 'approve(address,uint256)' <vault> 1000000 --private-key "$USER_KEY"
+cast send <vault> 'deposit(uint256)' 1000000 --private-key "$USER_KEY"
+# the keeper protects a line down the ladder (user reserve, partner reserve, Reserve advance)
+cast call <vault> 'previewProtect(uint256,uint256)((uint256,uint256,uint256,uint256))' 1 500000
+cast send <vault> 'protect(uint256,uint256)' 1 500000 --private-key "$KEEPER_KEY"
+# settle an advance (principal, then the fee) and harvest the fee into the Reserve
+cast send <vault> 'repayAdvance(uint256,uint256)' 1 202000 --private-key "$USER_KEY"
+cast send <reserve> 'harvest(address)' <vault> --private-key "$MANAGER_KEY"
+```
+
+Note: a `cast send` right after another from the same key can fail `nonce too low` on sepolia.base.org (the
+nodes lag each other); pass `--nonce $(cast nonce <addr> --block pending)` and retry.

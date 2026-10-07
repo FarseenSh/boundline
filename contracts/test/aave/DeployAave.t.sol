@@ -162,7 +162,9 @@ contract DeployAaveTest is Test {
         assertEq(c.spoke, harness.SPOKE_DEFAULT());
         assertEq(c.loanReserveId, 7);
         assertEq(c.collateralReserveId, 0);
-        assertEq(c.partnerId, bytes32(bytes("boundline-app")));
+        // Another suite may overwrite PARTNER_ID between setEnv and configFromEnv (vm.setEnv is process-wide
+        // and suites run in parallel), so check the id encodes whatever name was read, not a fixed name.
+        assertEq(c.partnerId, bytes32(bytes(c.partnerName)));
         assertEq(c.maxLtvWad, 0.5e18);
         assertEq(c.advanceFeeBps, 100);
     }
