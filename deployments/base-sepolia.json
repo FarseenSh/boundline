@@ -273,6 +273,20 @@
       "tx": "0xbbd8463132d3863f135ce30e5618d92919e4c3832b80b76510e97f18b99cb2fb",
       "block": 47763777,
       "result": "included 14:10:42 UTC, success, 183,098 gas, Repaid(1, 100000); slot in that block 0x…6ac500c1 (mainnet round …520 mirrored in block 47763713). The predicate had flipped at 13:55:34 (round …519) while the operator machine was offline (13:50–14:02); after reconnecting, seven accepted re-arms with a satisfied predicate were not included before the eighth was; base fee flat at 0.005 gwei. Lesson: 'not before', not 'as soon as'; re-sign with a new hash per re-arm next. Details: docs/evidence/validity-transactions-sepolia.md"
+    },
+    {
+      "date": "2026-10-07",
+      "what": "x402 metering live on the partner API: a keyless GET /v1/positions/0xB789…82Fc/shadow answered 402 with the payment requirements; the client (scripts/x402-pay.ts, validity key 0xEcC0…6AAE as payer) signed the $0.01 USDC EIP-3009 authorisation and the x402.org facilitator settled it, then the route served with PAYMENT-RESPONSE success",
+      "tx": "0x8816d08fb7d6fadb8983f116bb4963bb5040e9666db6f15076272eb81cf5c6ff",
+      "block": 47806632,
+      "transfer": "USDC 0xEcC0…6AAE → 0x2f0d…2a4E, 10000 (0.01 USDC)",
+      "facilitatorSigner": "0xd407…f1bf",
+      "gasUsed": 85776
+    },
+    {
+      "date": "2026-10-07",
+      "what": "second x402 settlement: a keyless POST /v1/quotes paid $0.01 USDC the same way and received the quote",
+      "tx": "0x055981d83ca73612b1677326f1ecb5847c9ccbfcdcad1b8a25f3a2c81eaca8f9"
     }
   ],
   "gas": {
@@ -446,14 +460,35 @@
       "url": "https://boundline-api.papermind-ai.workers.dev",
       "d1": "9dee89e3-b1bd-42b3-b91c-adbcf9f58da9",
       "migrations": [
-        "0001_init"
+        "0001_init",
+        "0002_policy_versions"
       ],
       "partners": [
         {
           "id": "boundline-app",
           "keyFile": "~/.boundline/boundline-api-partner-keys.txt on the deployer's machine (hash in D1, key shown once)"
         }
-      ]
+      ],
+      "vars": {
+        "MARKETS": "JSON: the registered markets with their protection contracts (pre-liquidation, Protector) for /v1/positions/:addr/shadow",
+        "X402_ENABLED": "true",
+        "X402_PAY_TO": "0x2f0d9B1f16CD702259C6cC259e8D5E5455282a4E",
+        "X402_FACILITATOR": "https://x402.org/facilitator",
+        "X402_NETWORK": "base-sepolia",
+        "X402_PRICE_USDC": "0.01"
+      },
+      "routes7Oct": [
+        "GET /v1/policy",
+        "POST /v1/policy/versions",
+        "GET /v1/policy/versions[/:id]",
+        "POST /v1/policy/versions/:id/applied",
+        "GET /v1/drills[/:id]",
+        "GET /v1/reconciliation",
+        "GET /v1/evidence/export",
+        "GET /v1/positions/:addr/shadow (x402-metered without a key)",
+        "POST /v1/quotes (x402-metered without a key)"
+      ],
+      "note": "a request with a valid partner key is never metered; a keyless request on a metered route runs the x402 flow (v1 body + v2 PAYMENT-REQUIRED header, facilitator /verify and /settle); refusals are never settled"
     }
   },
   "protection": {

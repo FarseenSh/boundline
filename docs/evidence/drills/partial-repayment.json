@@ -1,0 +1,37 @@
+{
+  "drill": "partial-repayment",
+  "runs": [
+    {
+      "ranAt": 1791286952,
+      "chainId": 84532,
+      "label": "Tue 6 Oct 2026, PRE session: a 5 USDC draw on line 1 followed by a 2 USDC partial repay from the borrower",
+      "txs": [
+        { "hash": "0x661ebb1abc30e1fffe987b4598b006004ed746943afcc1e67ea82595854b8bac", "block": 47759305, "label": "draw 5 USDC (Decision DRAW 0xdaa6562f61aad4bb3b55411491c6c2c5132c44508c6d3fbd5b860a862a81c816, price8 33267000000)" },
+        { "hash": "0x13fad2ede17f483526f3244145d4b98784b77d62e91847d2aec2935490bdd251", "label": "approve 2 USDC to the desk" },
+        { "hash": "0xe3bc2f0b3a58975b5870d624fd4772656deab41ef9fbc3b5c0f727d3f464771b", "block": 47759332, "label": "repay 2 USDC: Repaid(1, 2000000, full=false), Decision REPAY 0x2b40f9370a7822267fb20a152bc6b74023f0d71e8e49d44a038ab5566d0fd2a8" }
+      ],
+      "outcome": "debt 5 -> 3 USDC against 10 AAPLt; drawnPrincipal, partner exposure and ticker exposure fell by the principal repaid; quote after: available 1,660.35 USDC; the API, Morpho and the indexer agree on the line",
+      "evidence": ["deployments/base-sepolia.json#proofs", "GET /v1/lines/1/decisions"]
+    },
+    {
+      "ranAt": 1791288408,
+      "chainId": 84532,
+      "label": "Tue 6 Oct 2026: 0.1 USDC repaid onto line 1 by a third party (the validity demo key) while the feed slot still equalled the held round",
+      "txs": [
+        { "hash": "0x6b17288ff94723934a83a308ad4d350fd4403c639777bb2317646f3834c949dd", "block": 47760060, "label": "repay 0.1 USDC as a Cobalt validity transaction (predicate storage(feed, 5) = held)" }
+      ],
+      "outcome": "Repaid(1, 100000): a repay is callable by anyone and is the one action safe on a held price",
+      "evidence": ["docs/evidence/validity-transactions-sepolia.md"]
+    },
+    {
+      "ranAt": 1791295842,
+      "chainId": 84532,
+      "label": "Tue 6 Oct 2026: 0.1 USDC repaid onto line 1 in the block after the AAPLt feed printed a new round",
+      "txs": [
+        { "hash": "0xbbd8463132d3863f135ce30e5618d92919e4c3832b80b76510e97f18b99cb2fb", "block": 47763777, "label": "repay 0.1 USDC as a Cobalt validity transaction (predicate storage(feed, 5) != held)" }
+      ],
+      "outcome": "Repaid(1, 100000) once the feed moved; 183,098 gas",
+      "evidence": ["docs/evidence/validity-transactions-sepolia.md"]
+    }
+  ]
+}

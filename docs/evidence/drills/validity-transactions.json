@@ -1,0 +1,25 @@
+{
+  "drill": "validity-transactions",
+  "runs": [
+    {
+      "ranAt": 1791288408,
+      "chainId": 84532,
+      "label": "Tue 6 Oct 2026: 'only while the feed is still held' (storage(AAPLt feed, slot 5) = held round, block_number <= head+30)",
+      "txs": [
+        { "hash": "0x6b17288ff94723934a83a308ad4d350fd4403c639777bb2317646f3834c949dd", "block": 47760060, "label": "repay 0.1 USDC on line 1 through base_sendRawTransactionValidity at https://sepolia-sequencer.base.org" }
+      ],
+      "outcome": "accepted and included in the next block, success, 183,098 gas. A first attempt with block_number <= head+3000 was refused: the sequencer accepts a bound at most 32 blocks ahead, so a waiting transaction is re-armed every minute",
+      "evidence": ["docs/evidence/validity-transactions-sepolia.md", "apps/keeper/scripts/validity-tx.ts"]
+    },
+    {
+      "ranAt": 1791295842,
+      "chainId": 84532,
+      "label": "Tue 6 Oct 2026: 'only once the feed prints a new round' (storage(AAPLt feed, slot 5) != held round), re-armed every ~65 s for two hours, 67 submissions",
+      "txs": [
+        { "hash": "0xbbd8463132d3863f135ce30e5618d92919e4c3832b80b76510e97f18b99cb2fb", "block": 47763777, "label": "repay 0.1 USDC on line 1, included 14:10:42 UTC once the slot showed mainnet round …520" }
+      ],
+      "outcome": "held by the sequencer while the slot stayed equal; included about 15 minutes after the predicate flipped. The arming loop was offline when the flip happened (13:50 to 14:02 UTC) and seven accepted re-arms with a true predicate were not included before the eighth: a validity transaction guarantees 'not before', not 'as soon as'; the keeper Worker now re-arms from Cloudflare and the next experiment re-signs each re-arm with a new hash",
+      "evidence": ["docs/evidence/validity-transactions-sepolia.md"]
+    }
+  ]
+}

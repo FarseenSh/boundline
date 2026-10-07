@@ -25,6 +25,16 @@
     "CREDIT_DESK": "0x39aBaDc0aAa12D1F7e259b89536Aa1848997399a",
     "MORPHO": "0xBBBBBbbBBb9cC5e90e3b3Af64bdAF62C37EEFFCb",
     "SESSION_GATE": "0x92f59437d4ef5CDcEAe2CcDE89B03A7B4B1Ae427",
-    "INDEXER_URL": "https://boundline-indexer.papermind-ai.workers.dev"
+    "INDEXER_URL": "https://boundline-indexer.papermind-ai.workers.dev",
+    // The desk's markets (deployments/base-sepolia.json): policy rows, symbols, and the protection contracts where
+    // protected mode is live (the AAPLt pre-liquidation with the ShadowGuard oracle and Boundline's Protector).
+    "MARKETS": "[{\"symbol\":\"AAPLt\",\"collateral\":\"0xB2000000000000000000000E063E65377cA34141\",\"marketId\":\"0x4a03b124a170a913931f00ab87f7966d388370cf457c0a3c4fb6fcf4fbb88047\",\"preLiquidation\":\"0xdcae709341aab652144e8afcb47479fe49e133a1\",\"protector\":\"0x5c546946c909718040dd686f63df6cb5e4df442c\",\"targetLtvWad\":\"580000000000000000\"},{\"symbol\":\"NVDAt\",\"collateral\":\"0xB200000000000000000000AEd76Eae58870E2ae6\",\"marketId\":\"0x7cb7fcc828a7296f8ea18256e0f5763a5588cfe22df9c943088021c762e58cc9\"},{\"symbol\":\"TSLAt\",\"collateral\":\"0xb200000000000000000000Af3FB2181a8772F804\",\"marketId\":\"0xb0e8d25d1c9b822cc718c89666b887698922a7b49fdb00dbdecd70dd4ed9e2f1\"}]",
+    // x402 metering (plan M7): POST /v1/quotes and GET /v1/positions/:addr/shadow cost $0.01 USDC on Base Sepolia
+    // for callers without a partner key, settled through the public facilitator. Partners with a key are never metered.
+    "X402_ENABLED": "true",
+    "X402_PAY_TO": "0x2f0d9B1f16CD702259C6cC259e8D5E5455282a4E",
+    "X402_FACILITATOR": "https://x402.org/facilitator",
+    "X402_NETWORK": "base-sepolia",
+    "X402_PRICE_USDC": "0.01"
   }
 }

@@ -1,0 +1,28 @@
+{
+  "drill": "weekend-gap",
+  "runs": [
+    {
+      "ranAt": 1791038254,
+      "chainId": 84532,
+      "label": "Sat 3 Oct 2026, WEEKEND session on Base Sepolia: the session-safe AAPLt/USDC market refuses to price a held feed",
+      "txs": [
+        { "hash": "0xd951c3fcc16194c08c90022fc3f271200f568bd8bfb56b3739ec17af597299a0", "block": 47634915, "label": "borrower approves AAPLt to Morpho" },
+        { "hash": "0x01191a773774584bdbf4a72aff4397c870bf455c3277d7d0adf8396a42cb760b", "block": 47634983, "label": "supplyCollateral 10 AAPLt during the weekend: success (never reads the oracle)" }
+      ],
+      "attempts": [
+        { "what": "borrow 1 USDC during the WEEKEND session (eth_call)", "result": "revert 0x3e363de9…05 = MarketClosed(WEEKEND)" },
+        { "what": "SessionGuard.price() and SessionGate.priceOf(AAPLt) (eth_call)", "result": "revert MarketClosed(WEEKEND)" }
+      ],
+      "outcome": "repay and supplyCollateral pass, borrow, withdrawCollateral and liquidate are refused while the feed is held",
+      "evidence": ["deployments/base-sepolia.json#proofs", "docs/CONTEXT.md#6.1"]
+    },
+    {
+      "ranAt": 1791287803,
+      "chainId": 8453,
+      "label": "Fri 2 Oct 20:00 ET close to Sun 4 Oct 20:00 ET reopen, reconstructed from the Chainlink round history of all ten priced B20 feeds on Base mainnet",
+      "txs": [],
+      "outcome": "zero rounds on ten feeds for 52 hours; first prints 23 to 53 seconds after the reopen; reopen gaps from -7.5 to +282 bps against the held Friday value; the Aerodrome NVDAc pool was already 46 bps away from the held feed in the last block before the reopen",
+      "evidence": ["docs/evidence/reopen-2026-10-04.md", "docs/evidence/reopen-2026-10-04.json", "scripts/reopen-evidence.py"]
+    }
+  ]
+}

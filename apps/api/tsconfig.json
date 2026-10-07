@@ -4,6 +4,7 @@
     "lib": ["ES2023"],
     "types": ["@cloudflare/workers-types"],
     "noEmit": true,
+    "resolveJsonModule": true,
     "declaration": false,
     "sourceMap": false
   },

@@ -1,0 +1,19 @@
+{
+  "drill": "protection",
+  "runs": [
+    {
+      "ranAt": 1791289654,
+      "chainId": 84532,
+      "label": "Tue 6 Oct 2026, PRE session: an in-band position on the AAPLt/USDC market, protected mode opted in, pre-liquidated automatically by the keeper at the ShadowGuard price",
+      "txs": [
+        { "hash": "0xe51ea2e03fe6fa85031b08461acb1ac99b6c10230257fd37deda09106f849c3d", "block": 47760562, "label": "supplyCollateral 0.01 AAPLt (the drill borrower, directly on Morpho)" },
+        { "hash": "0x5f43b3494914256bc3327c879f81682e3d22dc927a6f4e31bc01caf601039dd8", "label": "borrow 2 USDC: LTV 60.1%, inside the band 58% to 62.5%" },
+        { "hash": "0x9d5815a4c96eb71cec048ca715c7c974591f2600fef0759e14152178f2c5df4a", "label": "Morpho.setAuthorization(preLiquidation, true): the user authorises Morpho's audited contract, never Boundline's" },
+        { "hash": "0x982c7327efa9f0460b92501a4322ec5dc730e5faaca3ce1d87dc80f708dfb695", "block": 47760683, "label": "keeper Worker: Protector.protect armed as a validity transaction (predicate: AAPLt feed slot 5 = held round, bound 30 blocks); Morpho Repay + WithdrawCollateral, 52,273 raw AAPLt sold on the pool, 0.171377 USDC repaid, PreLiquidate and Protected emitted; 486,363 gas" }
+      ],
+      "outcome": "shadow LTV 0.6012 -> 0.5800 (exactly preLltv, the band edge the contract enforces); position after: 947,727 raw AAPLt, 1.828624 USDC debt, standing BELOW_BAND; the Protector kept 757 raw AAPLt as the incentive; sized on chain by Protector.sizing",
+      "evidence": ["deployments/base-sepolia.json#protection.drill", "docs/evidence/validity-transactions-sepolia.md", "apps/keeper/src/protect-job.ts"],
+      "notes": "the first two keeper ticks failed with 'replacement transaction underpriced' because the protection signer shared a key with a waiting validity transaction; each signing job now has its own key"
+    }
+  ]
+}
