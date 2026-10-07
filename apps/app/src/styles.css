@@ -149,6 +149,8 @@ code { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 12.5px
 .field .input { display: flex; align-items: center; gap: 8px; background: var(--panel-2); border: 1px solid var(--line); border-radius: 8px; padding: 0 12px; }
 .field .input:focus-within { border-color: var(--focus); }
 .field input { flex: 1; min-width: 0; background: transparent; border: 0; padding: 12px 0; font-size: 20px; font-family: var(--serif); letter-spacing: -0.01em; outline: none; }
+.field select { flex: 1; min-width: 0; background: transparent; border: 0; padding: 12px 0; font-size: 17px; font-family: var(--sans); color: var(--ink); outline: none; appearance: auto; }
+.field select option { color: #12161c; background: #ffffff; }
 .field .unit { color: var(--mute); font-size: 14px; }
 .field .hint { font-size: 13px; color: var(--mute); }
 .field .hint button { background: none; border: 0; padding: 0; color: var(--ink-2); text-decoration: underline; cursor: pointer; }

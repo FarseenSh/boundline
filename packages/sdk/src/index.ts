@@ -6,6 +6,7 @@ import { createApiClient, type ApiClient, type ApiClientOptions } from "./api.js
 import * as calls from "./calls.js";
 import { configFor, marketById, type BoundlineChainConfig } from "./config.js";
 import { computeHealth, type Health } from "./health.js";
+import { preparePayout, quotePayout, readPayouts, type PayoutQuote, type PayoutRecord, type PayoutRequest } from "./payout.js";
 import { waitForPreconfirmation, type PreconfOptions, type PreconfResult } from "./preconf.js";
 import { createReader, type BoundlineReader, type Line, type Quote } from "./reads.js";
 import { buildSendCalls, type PreparedSendCalls, type SendCallsOptions } from "./sendcalls.js";
@@ -13,6 +14,7 @@ import { sessionInfo, type SessionInfo } from "./session.js";
 
 export * from "./abi/creditDesk.js";
 export * from "./abi/sessionGate.js";
+export * from "./abi/localPayoutRouter.js";
 export * from "./abi/minimal.js";
 export * from "./api.js";
 export * from "./calls.js";
@@ -21,6 +23,7 @@ export * from "./decisions.js";
 export * from "./format.js";
 export * from "./health.js";
 export * from "./names.js";
+export * from "./payout.js";
 export * from "./preconf.js";
 export * from "./reads.js";
 export * from "./sendcalls.js";
@@ -54,6 +57,10 @@ export interface Boundline {
   lineHealth(lineId: bigint, now?: number): Promise<LineHealth>;
   buildSendCalls(callList: readonly calls.Call[], opts?: Partial<SendCallsOptions>): PreparedSendCalls;
   waitForPreconfirmation(hash: `0x${string}`, opts?: PreconfOptions): Promise<PreconfResult>;
+  /** What the local-money leg pays right now for `amountIn` USDC, from the pool's own state. */
+  quotePayout(token: string | `0x${string}`, amountIn: bigint): Promise<PayoutQuote>;
+  /** The router's record of a sender's payouts, oldest first. */
+  payouts(sender: `0x${string}`, offset?: bigint, limit?: bigint): Promise<PayoutRecord[]>;
   /** The prepared-call builders bound to this chain's config. */
   readonly prepare: {
     authorizeDesk(authorized?: boolean): calls.Call;
@@ -67,6 +74,7 @@ export interface Boundline {
     closeLine(lineId: bigint): calls.Call;
     borrowBatch(input: calls.BorrowBatchInput): calls.Call[];
     repayBatch(input: calls.RepayBatchInput): calls.Call[];
+    payout(req: PayoutRequest): calls.Call;
   };
 }
 
@@ -94,6 +102,8 @@ export function createBoundline(opts: BoundlineOptions): Boundline {
     },
     buildSendCalls: (callList, o = {}) => buildSendCalls(callList, { chainId: config.chainId, ...o }),
     waitForPreconfirmation: (hash, o) => waitForPreconfirmation(client, hash, o),
+    quotePayout: (token, amountIn) => quotePayout(client, config, token, amountIn),
+    payouts: (sender, offset, limit) => readPayouts(client, config, sender, offset, limit),
     prepare: {
       authorizeDesk: (authorized) => calls.prepareAuthorizeDesk(config, authorized),
       authorize: (target, authorized) => calls.prepareAuthorize(config, target, authorized),
@@ -106,6 +116,7 @@ export function createBoundline(opts: BoundlineOptions): Boundline {
       closeLine: (lineId) => calls.prepareCloseLine(config, lineId),
       borrowBatch: (input) => calls.borrowBatch(config, input),
       repayBatch: (input) => calls.repayBatch(config, input),
+      payout: (req) => preparePayout(config, req),
     },
   };
 }

@@ -1,0 +1,8 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "boundline-site",
+  "compatibility_date": "2026-09-01",
+  // Assets only: no Worker script runs, Cloudflare serves ./public as static files (free, no CPU budget to mind).
+  "assets": { "directory": "./public", "not_found_handling": "404-page" }
+  // Custom domain: add `"routes": [{ "pattern": "boundline.xyz", "custom_domain": true }]` once the zone is pointed here (a human decision).
+}

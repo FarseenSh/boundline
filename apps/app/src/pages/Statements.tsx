@@ -1,8 +1,8 @@
-import { explorer, formatEt, formatShares, formatUsd, price8ToNumber, shortHash } from "@boundline/sdk";
+import { explorer, formatEt, formatLocal, formatShares, formatUsd, price8ToNumber, shortAddress, shortHash } from "@boundline/sdk";
 import { useAccount } from "wagmi";
 import { cfg } from "../boundline.js";
 import { ConnectChoices } from "../components/Wallet.jsx";
-import { useDecisions, useLineId, useRoots } from "../hooks.js";
+import { useDecisions, useLineId, usePayouts, useRoots } from "../hooks.js";
 
 const SHARE_ACTIONS = new Set(["ADD_COLLATERAL", "WITHDRAW_COLLATERAL"]);
 const ACTION_WORDS: Record<string, string> = {
@@ -22,6 +22,11 @@ export function Statements() {
   const id = lineId.data && lineId.data > 0n ? lineId.data : undefined;
   const decisions = useDecisions(id);
   const roots = useRoots();
+  const payouts = usePayouts(address);
+  const localSymbol = (token: string): { symbol: string; decimals: number } => {
+    const p = cfg.payout.pools.find((x) => x.token.toLowerCase() === token.toLowerCase());
+    return p ? { symbol: p.symbol, decimals: p.decimals } : { symbol: shortAddress(token), decimals: 6 };
+  };
 
   return (
     <>
@@ -74,6 +79,49 @@ export function Statements() {
           ) : null}
         </div>
       )}
+
+      {cfg.payout.router && isConnected && address ? (
+        <>
+          <h2>Local-money payouts</h2>
+          <div className="panel wrap">
+            <p>
+              The last leg of a borrow batch: drawn USDC swapped into a local stablecoin by the payout router, session-checked and slippage-bounded. The router keeps this record itself; nothing here needs an indexer.
+            </p>
+            {payouts.isLoading ? <p className="mute">Reading the router…</p> : null}
+            {payouts.error ? <p className="coral">The router did not answer: {payouts.error.message}</p> : null}
+            {payouts.data && payouts.data.length === 0 ? <p className="mute">No payouts yet. Choose a local stablecoin under "Receive as" when you borrow.</p> : null}
+            {payouts.data && payouts.data.length > 0 ? (
+              <table className="ledger">
+                <thead>
+                  <tr>
+                    <th>When (ET)</th>
+                    <th className="num">Paid</th>
+                    <th className="num">Received</th>
+                    <th>Pool</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {[...payouts.data].reverse().map((r, i) => {
+                    const out = localSymbol(r.tokenOut);
+                    return (
+                      <tr key={`${r.at}:${i}`}>
+                        <td>{formatEt(r.at, { seconds: true })}</td>
+                        <td className="num">{formatUsd(r.amountIn)}</td>
+                        <td className="num">{formatLocal(r.amountOut, out.symbol, out.decimals)}</td>
+                        <td>
+                          <a href={explorer.address(cfg, r.pool)}>
+                            <code>{shortAddress(r.pool)}</code>
+                          </a>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            ) : null}
+          </div>
+        </>
+      ) : null}
 
       <h2>Daily roots</h2>
       <div className="panel wrap">

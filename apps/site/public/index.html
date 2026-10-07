@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="dark light" />
+    <meta name="description" content="Borrow against your stocks on Base. Paid in your currency. Never liquidated while Wall Street is closed." />
+    <title>Boundline</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/styles.css" />
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23FF6B57'/%3E%3Crect x='7' y='15' width='18' height='3' fill='%230E1116'/%3E%3C/svg%3E" />
+  </head>
+  <body>
+    <div class="wrap">
+      <header class="top">
+        <a class="wordmark" href="/">Boundline<i>.</i></a>
+        <nav class="links" aria-label="Boundline surfaces">
+          <a href="https://boundline-app.papermind-ai.workers.dev">App</a>
+          <a href="https://boundline-observatory.papermind-ai.workers.dev">Observatory</a>
+          <a href="https://boundline-console.papermind-ai.workers.dev">Partner console</a>
+          <a href="https://boundline-api.papermind-ai.workers.dev/health">API</a>
+          <a href="#proof">Proof</a>
+          <a href="#partners">For partners</a>
+        </nav>
+      </header>
+
+      <div class="ribbon" id="ribbon" aria-live="polite">
+        <span><span class="dot" id="dot"></span><b id="session">Reading the Observatory…</b></span>
+        <span id="feeds"></span>
+        <span id="next"></span>
+      </div>
+
+      <section class="hero">
+        <h1>Borrow against your stocks on Base. Paid in your currency. <em>Never liquidated while Wall Street is closed.</em></h1>
+        <p class="lede">
+          Coinbase tokenized stocks trade on Base around the clock, but their price feeds hold Friday's close from 20:00 ET until Sunday night.
+          The live credit venues read that held price and liquidate at any hour. Boundline is the session-aware credit layer underneath them:
+          an onchain NYSE calendar, oracles that refuse to price a frozen feed, protection that runs seven days a week at the price the market
+          actually shows, self-custody credit lines any wallet or broker can embed, and a public observatory that watches it all.
+        </p>
+        <div class="cta">
+          <a class="btn primary" href="https://boundline-app.papermind-ai.workers.dev/borrow">Try it on Base Sepolia</a>
+          <a class="btn" href="https://boundline-observatory.papermind-ai.workers.dev">Open the Observatory</a>
+          <span class="mute">Non-custodial: Boundline is an authorised manager on your own venue position, never a custodian.</span>
+        </div>
+      </section>
+
+      <section id="live">
+        <h2>The feeds, right now</h2>
+        <p class="sub">Read live from the Observatory on Base mainnet: each Coinbase stock feed, its age, and how far the 24/7 Aerodrome price already sits from it. When the session is closed every feed below is held.</p>
+        <div class="grid">
+          <div class="card"><h3>Feeds held</h3><div class="big" id="frozenCount">…</div><p id="frozenNote">of the priced B20 feeds are holding a stale answer.</p></div>
+          <div class="card"><h3>Widest live gap</h3><div class="big" id="gapMax">…</div><p id="gapNote">between a held feed and the DEX price, basis points.</p></div>
+          <div class="card"><h3>Last weekend on record</h3><div class="big coral">52 h</div><p>2 to 4 Oct 2026: zero rounds on ten feeds for 52 hours, first prints 23 to 53 s after the reopen, gaps −7.5 to +282 bps. Reconstructed from the round history (<code>docs/evidence/reopen-2026-10-04</code>).</p></div>
+        </div>
+        <div class="card scroll" style="margin-top: 14px">
+          <table class="ledger" id="tokens">
+            <thead><tr><th>Stock</th><th class="num">Feed price</th><th class="num">Feed age</th><th class="num">DEX price</th><th class="num">Divergence</th><th>State</th></tr></thead>
+            <tbody><tr><td colspan="6" class="mute">Loading…</td></tr></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="how">
+        <h2>How it works</h2>
+        <p class="sub">Three gates, one funding ladder, one record. Every contract is verified on Base Sepolia today and fork-proven against the live mainnet venues.</p>
+        <div class="grid">
+          <div class="card"><h3>SessionGuard</h3><p>A Morpho oracle that returns a price only while the NYSE calendar says open and the feed is fresh. While Wall Street is closed, <code>borrow</code>, <code>withdrawCollateral</code> and <code>liquidate</code> revert <code>MarketClosed(WEEKEND)</code>; <code>repay</code> and <code>supplyCollateral</code> still work.</p></div>
+          <div class="card"><h3>ShadowGuard + Protector</h3><p>A pre-liquidation oracle that prices at the Aerodrome 1h TWAP while the feed is held, so a gentle partial pre-liquidation can run on a Saturday at the price the market shows, and pays for itself from the seized collateral.</p></div>
+          <div class="card"><h3>Validity transactions</h3><p>The keeper pre-signs its rescues and Base itself includes them only while the feed slot still equals the held round, or in the first block after it prints a new one. Cobalt's <code>base_sendRawTransactionValidity</code>, used for what it was built for.</p></div>
+          <div class="card"><h3>CreditDesk lines</h3><p>Partner-scoped, self-custody credit lines on the user's own Morpho position: per-ticker LTV caps under the venue's LLTV, draw bounds, exposure caps, eligibility hooks, and a decision hash on every action.</p></div>
+          <div class="card"><h3>Aave V4 as the second venue</h3><p>AaveDesk draws through Aave's Taker, the ProtectionVault repays through the Giver at any hour down a funding ladder (user reserve, partner reserve, bounded advance) and recovers in the next open session.</p></div>
+          <div class="card"><h3>Local money</h3><p>The borrow batch ends with a swap of the drawn USDC into EURC or another local stablecoin on the pool the partner configured, slippage-bounded, deadline-bound and session-checked. One tap, your currency.</p></div>
+        </div>
+      </section>
+
+      <section id="proof">
+        <h2>Proof, with hashes</h2>
+        <p class="sub">Everything below happened on Base Sepolia or on a fork of Base mainnet. Click a hash to read it on Basescan; the full record is <code>deployments/base-sepolia.json</code> and <code>docs/evidence/</code> in the repository.</p>
+        <div class="card">
+          <ol class="proofs">
+            <li><span class="when">Sat 3 Oct 2026</span><div><div class="what">A real B20 test stock posted as collateral during the weekend session, then a borrow attempt refused <code>MarketClosed(WEEKEND)</code> by the SessionGuard on the live Morpho.</div><div class="how">supplyCollateral <a href="https://sepolia.basescan.org/tx/0x01191a773774584bdbf4a72aff4397c870bf455c3277d7d0adf8396a42cb760b"><code>0x01191a77…cb760b</code></a> (block 47634983); the borrow reverts in <code>eth_call</code> with selector <code>0x3e363de9</code>.</div></div></li>
+            <li><span class="when">Tue 6 Oct 2026</span><div><div class="what">First in-session draw on a CreditDesk line: 5 USDC in the PRE session at the SessionGuard price, recorded through the desk, Morpho, the partner API and the indexer.</div><div class="how"><a href="https://sepolia.basescan.org/tx/0x661ebb1abc30e1fffe987b4598b006004ed746943afcc1e67ea82595854b8bac"><code>0x661ebb1a…854bac</code></a> (block 47759305), decision hash <code>0xdaa6562f…81c816</code>.</div></div></li>
+            <li><span class="when">Tue 6 Oct 2026</span><div><div class="what">A validity transaction Base included only while the AAPLt feed slot still equalled the held round.</div><div class="how"><a href="https://sepolia.basescan.org/tx/0x6b17288ff94723934a83a308ad4d350fd4403c639777bb2317646f3834c949dd"><code>0x6b17288f…c949dd</code></a> (block 47760060): predicate <code>storage(feed, slot 5) = held</code>, bound 30 blocks, included in the next block.</div></div></li>
+            <li><span class="when">Tue 6 Oct 2026</span><div><div class="what">The keeper's protection job armed the Protector's partial pre-liquidation as a validity transaction and it landed on its own: shadow LTV 60.1% → 58.0%.</div><div class="how"><a href="https://sepolia.basescan.org/tx/0x982c7327efa9f0460b92501a4322ec5dc730e5faaca3ce1d87dc80f708dfb695"><code>0x982c7327…f8b695</code></a> (block 47760683), seized 52,273 raw AAPLt, sold on the collateral's own pool inside the callback.</div></div></li>
+            <li><span class="when">Wed 7 Oct 2026</span><div><div class="what">The "only once the feed prints a new round" validity transaction: held by Base until the feed moved, then included.</div><div class="how"><a href="https://sepolia.basescan.org/tx/0xbbd8463132d3863f135ce30e5618d92919e4c3832b80b76510e97f18b99cb2fb"><code>0xbbd84631…99cb2fb</code></a> (block 47763777), predicate <code>storage(feed, slot 5) != held</code>. Measured: "not before", not "as soon as"; the lessons are in <code>docs/evidence/validity-transactions-sepolia.md</code>.</div></div></li>
+            <li><span class="when">Wed 7 Oct 2026</span><div><div class="what">The local-money leg live: 0.5 USDC swapped into 0.46 test EURC by the payout router with the session check on AAPLt passing.</div><div class="how"><a href="https://sepolia.basescan.org/tx/0x9090633cf6559f5935a9e5659f4faa7ad6b278e4db93c8141154d2aded5b5bd3"><code>0x9090633c…b5bd3</code></a> (block 47806425); router <a href="https://sepolia.basescan.org/address/0x1a6Dbc873F32f3dcE7719F213cf81842856F6354"><code>0x1a6Dbc87…6F6354</code></a>.</div></div></li>
+            <li><span class="when">Mainnet forks</span><div><div class="what">On a fork of Base mainnet: a real Steakhouse AAPLc borrower pre-liquidated at the Aerodrome TWAP on a Saturday while the venue, pricing at the held feed, called the position healthy; a real Aave V4 MAG7 position drawn through the Taker, protected on a Saturday through the Giver, recovered through the Taker; 10 USDC swapped into 8.944 EURC on the real Aerodrome EURC/USDC pool through the payout router.</div><div class="how">Fork tests under <code>contracts/test/fork/</code>, run against an archive node; the B20 transfers need Base's own <code>base-forge</code>.</div></div></li>
+          </ol>
+        </div>
+      </section>
+
+      <section id="partners">
+        <h2>For partners</h2>
+        <p class="sub">Boundline is its own first partner: the app above is the SDK's reference implementation. A wallet, a broker or a neobank embeds the same line in a day.</p>
+        <div class="grid two">
+          <div class="card">
+            <h3>Partner API</h3>
+            <p>Keys, lines, deterministic quotes with reason codes (capacity rounds down, charges round up, unknown data fails closed), obligations, decision timelines, policy versions, drills, reconciliation and an evidence export. Every response carries a correlation id, the policy version and a quote hash. Public quotes are metered with x402 on Base Sepolia.</p>
+            <p><a href="https://boundline-api.papermind-ai.workers.dev/health">boundline-api</a> · <a href="https://boundline-console.papermind-ai.workers.dev">partner console</a></p>
+          </div>
+          <div class="card">
+            <h3>SDK and widget</h3>
+            <p><code>@boundline/sdk</code> (viem only): read a line, quote it, prepare every user-signed call, batch them for <code>wallet_sendCalls</code> with a paymaster and a Builder Code, poll Flashblocks preconfirmations, and end the batch in local money.</p>
+<pre><code>const calls = boundline.prepare.borrowBatch({
+  lineId, draw: 100_000_000n, needsAuthorization: false,
+  payout: { token: "EURC", minOut, to: user,
+            deadline: payoutDeadline(), gateToken: AAPLc },
+});
+await wallet.sendCalls(boundline.buildSendCalls(calls));</code></pre>
+          </div>
+          <div class="card">
+            <h3>Observatory, a public good</h3>
+            <p>Every B20 feed, session, pause flag and corporate action; every Morpho and Aave stock position with its shadow health at the 24/7 DEX price; the weekend-gap history; the nightly assurance replay. Open JSON, MIT.</p>
+            <p><a href="https://boundline-observatory.papermind-ai.workers.dev/v1/tokens">/v1/tokens</a> · <a href="https://boundline-observatory.papermind-ai.workers.dev/v1/positions">/v1/positions</a> · <a href="https://boundline-observatory.papermind-ai.workers.dev/v1/sessions">/v1/sessions</a></p>
+          </div>
+          <div class="card">
+            <h3>Keeper and indexer</h3>
+            <p>A keeper that mirrors the mainnet rounds onto the Sepolia simulators and arms protections as validity transactions; an indexer with hash-chained daily roots and a reconciliation job against the venues.</p>
+            <p><a href="https://boundline-keeper.papermind-ai.workers.dev/v1/protect">keeper /v1/protect</a> · <a href="https://boundline-indexer.papermind-ai.workers.dev/v1/sources">indexer /v1/sources</a></p>
+          </div>
+        </div>
+      </section>
+
+      <footer>
+        <span>Boundline · session-aware credit layer for tokenized stocks on Base · MIT · built for the Colosseum Crypto World's Fair, Base track.</span>
+        <span>Observatory and SessionGuard are public infrastructure. <a href="https://boundline-app.papermind-ai.workers.dev">App</a> · <a href="https://boundline-observatory.papermind-ai.workers.dev">Observatory</a></span>
+      </footer>
+    </div>
+    <script src="/site.js" defer></script>
+  </body>
+</html>

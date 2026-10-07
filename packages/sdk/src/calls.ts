@@ -6,6 +6,7 @@ import { encodeFunctionData, maxUint256, type Address, type Hex } from "viem";
 import { creditDeskAbi } from "./abi/creditDesk.js";
 import { erc20MinimalAbi, morphoMinimalAbi } from "./abi/minimal.js";
 import type { BoundlineChainConfig } from "./config.js";
+import { payoutRouterOf, preparePayout, type PayoutRequest } from "./payout.js";
 
 export interface Call {
   to: Address;
@@ -76,9 +77,11 @@ export interface BorrowBatchInput {
   needsAuthorization: boolean;
   /** True when the desk's allowance on the collateral token is short of `addCollateral.amount`. */
   needsApproval?: boolean;
+  /** Local-money leg: the drawn USDC (or `amountIn` of it) is swapped into `token` and paid to `to` at the end of the batch. */
+  payout?: Omit<PayoutRequest, "amountIn"> & { amountIn?: bigint };
 }
 
-/** The one-tap borrow: authorise (once) → approve → addCollateral → draw. Each step is skipped when not needed. */
+/** The one-tap borrow: authorise (once) → approve → addCollateral → draw → (approve → payout). Each step is skipped when not needed. */
 export function borrowBatch(cfg: BoundlineChainConfig, input: BorrowBatchInput): Call[] {
   const calls: Call[] = [];
   if (input.needsAuthorization) calls.push(prepareAuthorizeDesk(cfg));
@@ -88,6 +91,13 @@ export function borrowBatch(cfg: BoundlineChainConfig, input: BorrowBatchInput):
   }
   if (input.draw > 0n) calls.push(prepareDraw(cfg, input.lineId, input.draw));
   if (calls.length === 0) throw new Error("nothing to do: no collateral to add and no draw");
+  if (input.payout) {
+    const amountIn = input.payout.amountIn ?? input.draw;
+    if (amountIn <= 0n) throw new Error("a payout needs a draw (or an explicit amountIn)");
+    if (amountIn > input.draw) throw new Error("the payout cannot exceed the draw");
+    calls.push(prepareApprove(cfg.usdc, payoutRouterOf(cfg), amountIn));
+    calls.push(preparePayout(cfg, { ...input.payout, amountIn }));
+  }
   return calls;
 }
 

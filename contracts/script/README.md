@@ -411,3 +411,27 @@ cast send <reserve> 'harvest(address)' <vault> --private-key "$MANAGER_KEY"
 
 Note: a `cast send` right after another from the same key can fail `nonce too low` on sepolia.base.org (the
 nodes lag each other); pass `--nonce $(cast nonce <addr> --block pending)` and retry.
+
+## Local-money payout leg (`DeployPayout`)
+
+```sh
+GATE=<SessionGate> forge script script/DeployPayout.s.sol --tc DeployPayout --rpc-url https://sepolia.base.org --broadcast --verify --private-key "$BOUNDLINE_TESTNET_DEPLOYER_KEY"
+```
+
+Deploys `EURCt` (`MockStable`, 6 decimals), a fixed-rate `MockSwapPool` (token0 EURCt, token1 USDC, `price36` =
+`EURC_PER_USDC_36`, default 0.92e36, seeded with `SEED_EURC`, default 100,000) and the `LocalPayoutRouter` bound to
+`GATE`. On mainnet set `MOCK_POOL=false`: only the router deploys; the pool is Aerodrome's Slipstream EURC/USDC
+(`0xE846…0EC7`, a CL pool: `slot0`, tick spacing 50, fee 76 pips; `stable()` reverts). Keyless dry run: drop
+`--broadcast`/`--verify`. A payout from cast (kind 0 = Slipstream/Uniswap-v3 shape, 1 = Aerodrome v2; `gateToken` 0
+skips the session check):
+
+```sh
+cast send $ROUTER "payout((uint8,address,address,address,uint256,uint256,address,uint256,address))" \
+  "(0,$POOL,$USDC,$EURCT,500000,450000,$TO,$DEADLINE,$AAPLT)" --rpc-url https://sepolia.base.org --private-key "$KEY"
+```
+
+Live on Sepolia 7 Oct 2026: router `0x1a6D…6354`, EURCt `0xE9E7…A82A`, pool `0x31f0…6Cd4`; the borrower swapped
+0.5 USDC into 0.46 EURCt in the REGULAR session with `gateToken` = AAPLt (`0x9090633c…5bd3`). Fact: under stock forge
+the in-session verdict on a mainnet fork is `FEED_PAUSED` because the live OracleRegistry reaches a Base precompile and
+the gate fails closed; base-forge returns `OPEN`.
+

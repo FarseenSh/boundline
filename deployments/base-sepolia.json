@@ -489,6 +489,14 @@
         "POST /v1/quotes (x402-metered without a key)"
       ],
       "note": "a request with a valid partner key is never metered; a keyless request on a metered route runs the x402 flow (v1 body + v2 PAYMENT-REQUIRED header, facilitator /verify and /settle); refusals are never settled"
+    },
+    "site": {
+      "url": "https://boundline-site.papermind-ai.workers.dev",
+      "what": "landing page (apps/site), static assets; live session and feed table from the Observatory"
+    },
+    "agent": {
+      "url": "https://boundline-agent.papermind-ai.workers.dev",
+      "what": "MCP server + REST aliases (apps/agent); tools session, positions, shadowHealth, quote, protect, route"
     }
   },
   "protection": {
@@ -642,5 +650,50 @@
       "reserveTotalAssetsAfter": "2002000",
       "what": "any-hour protective repay on a desk line down the ladder (user reserve, then a Reserve-funded advance), settlement by the borrower with the 1% fee, and the Reserve harvesting the fee into its share price"
     }
+  },
+  "payout": {
+    "deployedAt": "2026-10-07",
+    "block": 47806347,
+    "deployer": "0x2f0d9B1f16CD702259C6cC259e8D5E5455282a4E",
+    "verified": true,
+    "runbook": "contracts/script/DeployPayout.s.sol",
+    "router": {
+      "address": "0x1a6Dbc873F32f3dcE7719F213cf81842856F6354",
+      "tx": "0x08644e1ae3198dce867add7f3aa5bd906d13badb954188ebfd61a8a2eef8feff",
+      "gate": "0x92f59437d4ef5CDcEAe2CcDE89B03A7B4B1Ae427",
+      "gasUsed": 1677020
+    },
+    "eurct": {
+      "address": "0xE9E71CFfFd3f053e2C7791277B794fd7aDaeA82A",
+      "name": "Boundline test EURC",
+      "decimals": 6,
+      "tx": "0x04e0115c3f851bdf67b19c33bcea589de5651b8d5aabe5cdb6bee33ad147e853"
+    },
+    "pool": {
+      "address": "0x31f0EB7569D34d72dEC3C80aCB8949bA5Ac96Cd4",
+      "kind": "MockSwapPool (Slipstream shape)",
+      "token0": "EURCt",
+      "token1": "USDC",
+      "price36": "920000000000000000000000000000000000",
+      "seedEurct": 100000000000,
+      "tx": "0x2219c23ef6297557650055ed1d803e8bd18fac1b39cf1d665046d0886e6790c4"
+    },
+    "mainnetPools": {
+      "EURC/USDC": "0xE846373C1a92B167b4E9cd5d8E4d6B1Db9E90EC7 (Slipstream CL, token0 EURC, tickSpacing 50, fee 76 pips)",
+      "cNGN/ZARP": "0x4D397638D522F9A54B020b42B76aeB4290f73A46 (Slipstream CL)",
+      "cNGN/USDC": "Uniswap v4, not routed"
+    },
+    "proof": {
+      "what": "0.5 USDC swapped into 0.46 EURCt by the router in the REGULAR session, gateToken AAPLt OPEN",
+      "from": "0xB789aD318945B37566E2549F65526Cc269a482Fc",
+      "approveTx": "0x30c55fb104d99bfdce2a164de8e3253d30cc0f1059c0b65d80cc6494a1da7b61",
+      "tx": "0x9090633cf6559f5935a9e5659f4faa7ad6b278e4db93c8141154d2aded5b5bd3",
+      "block": 47806425,
+      "gasUsed": 329034,
+      "amountIn": 500000,
+      "amountOut": 460000,
+      "minOut": 450000
+    },
+    "forkProof": "10 USDC -> 8.944134 EURC on the real Aerodrome EURC/USDC pool (base-forge 4/4; stock forge 3 pass + 1 skip: the in-session gate verdict needs the Base precompile)"
   }
 }

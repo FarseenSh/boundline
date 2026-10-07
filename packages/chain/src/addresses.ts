@@ -110,3 +110,18 @@ export const B20_FEATURE = { TRANSFER: 0, MINT: 1, BURN: 2, SEIZE: 3 } as const;
 
 /** Chainlink Coinbase feed facts used for staleness logic. */
 export const FEED = { decimals: 8, heartbeatSeconds: 24 * 3600, deviationBps: 50 } as const;
+
+/**
+ * Local-money payout leg (7 Oct 2026). The LocalPayoutRouter swaps drawn USDC into a local stablecoin at the end of a
+ * borrow batch. Both recorded Aerodrome local-money pools are Slipstream CL pools (checked live: `slot0` answers,
+ * `stable()` reverts): EURC/USDC has token0 EURC, tickSpacing 50, fee 76 pips; cNGN/ZARP has token0 cNGN. cNGN/USDC
+ * lives on Uniswap v4 (PoolManager), which the router does not route to. Sepolia addresses are in @boundline/sdk's config.
+ */
+export const LOCAL_PAYOUT = {
+  /** Not on mainnet yet; deployed on Base Sepolia at 0x1a6Dbc873F32f3dcE7719F213cf81842856F6354. */
+  mainnetRouter: null as Address | null,
+  sepoliaRouter: "0x1a6Dbc873F32f3dcE7719F213cf81842856F6354" as Address,
+  pools: {
+    EURC: { token: MAINNET.eurc, pool: MAINNET.aerodromeEurcUsdc, kind: "cl", tokenIsToken0: true, tickSpacing: 50, feePips: 76 },
+  },
+} as const;

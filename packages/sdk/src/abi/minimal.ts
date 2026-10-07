@@ -82,3 +82,35 @@ export const erc20MinimalAbi = [
   { type: "function", name: "decimals", stateMutability: "view", inputs: [], outputs: [{ type: "uint8" }] },
   { type: "function", name: "symbol", stateMutability: "view", inputs: [], outputs: [{ type: "string" }] },
 ] as const;
+
+/** The pool views the payout quote reads: Slipstream `slot0`/`fee`, the Sepolia mock's `price36`, Aerodrome v2's `getAmountOut`. */
+export const payoutPoolMinimalAbi = [
+  { type: "function", name: "token0", stateMutability: "view", inputs: [], outputs: [{ type: "address" }] },
+  { type: "function", name: "token1", stateMutability: "view", inputs: [], outputs: [{ type: "address" }] },
+  {
+    type: "function",
+    name: "slot0",
+    stateMutability: "view",
+    inputs: [],
+    outputs: [
+      { name: "sqrtPriceX96", type: "uint160" },
+      { name: "tick", type: "int24" },
+      { name: "observationIndex", type: "uint16" },
+      { name: "observationCardinality", type: "uint16" },
+      { name: "observationCardinalityNext", type: "uint16" },
+      { name: "unlocked", type: "bool" },
+    ],
+  },
+  { type: "function", name: "fee", stateMutability: "view", inputs: [], outputs: [{ type: "uint24" }] },
+  { type: "function", name: "price36", stateMutability: "view", inputs: [], outputs: [{ type: "uint256" }] },
+  {
+    type: "function",
+    name: "getAmountOut",
+    stateMutability: "view",
+    inputs: [
+      { name: "amountIn", type: "uint256" },
+      { name: "tokenIn", type: "address" },
+    ],
+    outputs: [{ type: "uint256" }],
+  },
+] as const;

@@ -1,4 +1,4 @@
-import { REPAY_ALL, countdown, explorer, formatEt, formatShares, formatUsd, parseUnits, parseUsdc, price8ToNumber, roundDownToCents, REASON_COPY } from "@boundline/sdk";
+import { DEFAULT_PAYOUT_SLIPPAGE_BPS, REPAY_ALL, countdown, explorer, formatEt, formatLocal, formatShares, formatUsd, minOutWithSlippage, parseUnits, parseUsdc, payoutDeadline, price8ToNumber, roundDownToCents, REASON_COPY } from "@boundline/sdk";
 import { useEffect, useMemo, useState } from "react";
 import { useAccount } from "wagmi";
 import { boundline, cfg, primaryMarket, primaryStock } from "../boundline.js";
@@ -6,7 +6,7 @@ import { HealthBar } from "../components/HealthBar.jsx";
 import { TxTimeline } from "../components/TxTimeline.jsx";
 import { ConnectChoices } from "../components/Wallet.jsx";
 import { ENV } from "../env.js";
-import { useAllowance, useApiQuote, useAuthorized, useBalances, useLineHealth, useLineId, useMarketLiquidity, useSessionInfo } from "../hooks.js";
+import { useAllowance, useApiQuote, useAuthorized, useBalances, useLineHealth, useLineId, useMarketLiquidity, usePayoutQuote, useSessionInfo } from "../hooks.js";
 import { useSendFlow } from "../sendflow.jsx";
 
 function useDebounced<T>(value: T, ms: number): T {
@@ -34,11 +34,16 @@ export function Borrow() {
   const [sharesText, setSharesText] = useState("");
   const [repayText, setRepayText] = useState("");
   const [repayAll, setRepayAll] = useState(true);
+  /** "USDC" or a local stablecoin's symbol from the chain config: the batch then ends with the payout leg. */
+  const [receiveAs, setReceiveAs] = useState("USDC");
+  const payoutPool = receiveAs === "USDC" ? null : (cfg.payout.pools.find((p) => p.symbol === receiveAs) ?? null);
 
   const draw = drawText.trim() === "" ? 0n : parseUsdc(drawText);
   const shares = sharesText.trim() === "" ? 0n : parseUnits(sharesText, 8);
   const debouncedDraw = useDebounced(draw, 400);
   const apiQuote = useApiQuote(id, debouncedDraw !== null && debouncedDraw > 0n ? debouncedDraw : null);
+  const payoutQuote = usePayoutQuote(payoutPool?.symbol ?? null, debouncedDraw !== null && debouncedDraw > 0n ? debouncedDraw : null);
+  const payoutMinOut = payoutQuote.data && payoutQuote.data.amountIn === draw ? minOutWithSlippage(payoutQuote.data.amountOut, DEFAULT_PAYOUT_SLIPPAGE_BPS) : null;
 
   const q = view.data?.quote;
   const h = view.data?.health;
@@ -54,20 +59,26 @@ export function Borrow() {
     if (draw !== null && draw > 0n && q && shares === 0n && draw > q.available) out.push(`Capacity is ${formatUsd(q.available)} right now.`);
     if (draw !== null && draw > 0n && liquidity.data && draw > liquidity.data.available) out.push(`The market only has ${formatUsd(liquidity.data.available)} of USDC to lend at the moment.`);
     if (draw !== null && draw > 0n && q && q.reason !== "NONE" && q.reason !== "INSUFFICIENT_CAPACITY") out.push(REASON_COPY[q.reason]);
+    if (payoutPool && draw !== null && draw > 0n && payoutQuote.error) out.push(`The ${payoutPool.symbol} pool did not answer: ${payoutQuote.error.message}`);
     return out;
-  }, [draw, shares, stockBalance, q, liquidity.data]);
+  }, [draw, shares, stockBalance, q, liquidity.data, payoutPool, payoutQuote.error]);
 
-  const canSend = isConnected && id !== undefined && problems.length === 0 && !flow.busy && authorized.data !== undefined;
+  const payoutReady = !payoutPool || draw === null || draw === 0n || payoutMinOut !== null;
+  const canSend = isConnected && id !== undefined && problems.length === 0 && !flow.busy && authorized.data !== undefined && payoutReady;
 
   async function borrow(): Promise<void> {
     if (!id || !primaryMarket || draw === null || shares === null) return;
+    const withPayout = payoutPool !== null && draw > 0n && payoutMinOut !== null && address !== undefined;
     const calls = boundline.prepare.borrowBatch({
       lineId: id,
       draw,
       needsAuthorization: authorized.data === false,
       ...(shares > 0n ? { addCollateral: { token: primaryMarket.collateral, amount: shares }, needsApproval: (allowance.data ?? 0n) < shares } : {}),
+      // The local-money leg: approve the router, swap the drawn USDC on the configured pool, session-checked on the collateral.
+      ...(withPayout ? { payout: { token: payoutPool.symbol, minOut: payoutMinOut, to: address, deadline: payoutDeadline(), gateToken: primaryMarket.collateral } } : {}),
     });
-    const label = draw > 0n && shares > 0n ? `Add ${formatShares(shares)} shares and borrow ${formatUsd(draw)}` : draw > 0n ? `Borrow ${formatUsd(draw)}` : `Add ${formatShares(shares)} shares`;
+    const received = withPayout && payoutQuote.data ? `, receive ${formatLocal(payoutQuote.data.amountOut, payoutPool.symbol, payoutPool.decimals)}` : "";
+    const label = draw > 0n && shares > 0n ? `Add ${formatShares(shares)} shares and borrow ${formatUsd(draw)}${received}` : draw > 0n ? `Borrow ${formatUsd(draw)}${received}` : `Add ${formatShares(shares)} shares`;
     await flow.run(calls, label);
     setDrawText("");
     setSharesText("");
@@ -166,6 +177,35 @@ export function Borrow() {
             ) : null}
           </span>
         </div>
+        {cfg.payout.router && cfg.payout.pools.length > 0 ? (
+          <div className="field">
+            <label htmlFor="receive">Receive as</label>
+            <div className="input">
+              <select id="receive" value={receiveAs} onChange={(e) => setReceiveAs(e.target.value)} disabled={!info.feedLive}>
+                <option value="USDC">USDC</option>
+                {cfg.payout.pools.map((p) => (
+                  <option key={p.symbol} value={p.symbol}>
+                    {p.symbol} ({p.name})
+                  </option>
+                ))}
+              </select>
+            </div>
+            <span className="hint">
+              {payoutPool && draw && draw > 0n && payoutQuote.data && payoutQuote.data.amountIn === draw && payoutMinOut !== null ? (
+                <>
+                  ≈ {formatLocal(payoutQuote.data.amountOut, payoutPool.symbol, payoutPool.decimals)} at {payoutQuote.data.rate.toFixed(4)} {payoutPool.symbol} per USDC
+                  {payoutQuote.data.feePips !== null ? ` (pool fee ${(payoutQuote.data.feePips / 10_000).toFixed(4)}%)` : ""} · at least {formatLocal(payoutMinOut, payoutPool.symbol, payoutPool.decimals)} after {DEFAULT_PAYOUT_SLIPPAGE_BPS / 100}% slippage · swapped in the same batch, session-checked on {primaryStock?.symbol}
+                </>
+              ) : payoutPool && draw && draw > 0n ? (
+                "Quoting the pool…"
+              ) : payoutPool ? (
+                `The drawn USDC is swapped into ${payoutPool.symbol} on ${cfg.name} at the end of the batch and paid to you.`
+              ) : (
+                "USDC lands in your wallet. Choose a local stablecoin to receive the draw in your currency."
+              )}
+            </span>
+          </div>
+        ) : null}
         <div className="field">
           <label htmlFor="shares">Add shares as collateral first (optional)</label>
           <div className="input">
@@ -201,13 +241,18 @@ export function Borrow() {
 
         <div className="row">
           <button className="btn primary" disabled={!canSend} onClick={() => void borrow()}>
-            {draw && draw > 0n ? `Borrow ${formatUsd(draw)}` : shares && shares > 0n ? "Add collateral" : "Borrow"}
+            {draw && draw > 0n
+              ? `Borrow ${formatUsd(draw)}${payoutPool && payoutQuote.data && payoutQuote.data.amountIn === draw ? `, receive ${formatLocal(payoutQuote.data.amountOut, payoutPool.symbol, payoutPool.decimals)}` : ""}`
+              : shares && shares > 0n
+                ? "Add collateral"
+                : "Borrow"}
           </button>
           <span className="mute">
             {authorized.data === false ? "First the desk gets your one-time Morpho authorisation, then " : ""}
             {shares && shares > 0n ? "approve, add collateral" : ""}
             {shares && shares > 0n && draw && draw > 0n ? ", then " : ""}
             {draw && draw > 0n ? "draw" : ""}
+            {draw && draw > 0n && payoutPool ? `, then swap to ${payoutPool.symbol}` : ""}
             {ENV.paymasterUrl ? " · gas sponsored" : " · you pay gas"}
             {ENV.builderCode ? ` · Builder Code ${ENV.builderCode}` : ""}
           </span>

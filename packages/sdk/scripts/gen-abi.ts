@@ -1,4 +1,4 @@
-// Copies the CreditDesk and SessionGate ABIs out of the Foundry build into src/abi/*.ts.
+// Copies the CreditDesk, SessionGate and LocalPayoutRouter ABIs out of the Foundry build into src/abi/*.ts.
 // Run from the repo root after a build:
 //   forge build --root contracts && pnpm --filter @boundline/sdk gen-abi
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
@@ -7,7 +7,7 @@ import { fileURLToPath } from "node:url";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const repo = resolve(here, "../../..");
-const outDirs = ["out", "out-lane-c", "out-lane-a", "out-lane-b", "out-lane-d"];
+const outDirs = ["out", "out-lane-c", "out-lane-a", "out-lane-b", "out-lane-d", "out-lane-e", "out-lane-f"];
 
 function artifactFor(contract: string): string {
   const found = outDirs.map((d) => resolve(repo, "contracts", d, `${contract}.sol`, `${contract}.json`)).find((p) => existsSync(p));
@@ -26,3 +26,4 @@ function emit(contract: string, exportName: string, file: string): void {
 
 emit("CreditDesk", "creditDeskAbi", "creditDesk.ts");
 emit("SessionGate", "sessionGateAbi", "sessionGate.ts");
+emit("LocalPayoutRouter", "localPayoutRouterAbi", "localPayoutRouter.ts");

@@ -21,6 +21,29 @@ export interface MarketConfig {
   readonly lltvWad: bigint;
 }
 
+/** A local stablecoin the payout leg can pay in, and the pool the router swaps USDC on. */
+export interface PayoutPoolConfig {
+  readonly symbol: string;
+  readonly name: string;
+  readonly token: Address;
+  readonly decimals: number;
+  /** ISO-style currency the token tracks, for formatting (EUR, NGN). */
+  readonly currency: string;
+  readonly pool: Address;
+  /** LocalPayoutRouter pool kind: "cl" (Slipstream / Uniswap v3 shape) or "v2" (Aerodrome v2 shape). */
+  readonly kind: "cl" | "v2";
+  /** How the SDK quotes it off-chain: a Slipstream pool's slot0 and fee, the Sepolia mock's fixed price36, a v2 pool's getAmountOut. */
+  readonly quoteSource: "slot0" | "price36" | "getAmountOut";
+  /** True when the local token is the pool's token0 (USDC its token1), as the mainnet EURC/USDC pool is laid out. */
+  readonly tokenIsToken0: boolean;
+}
+
+export interface PayoutConfig {
+  /** LocalPayoutRouter; null where it is not deployed yet (mainnet). */
+  readonly router: Address | null;
+  readonly pools: readonly PayoutPoolConfig[];
+}
+
 export interface BoundlineChainConfig {
   readonly chainId: 84532 | 8453;
   readonly name: string;
@@ -38,6 +61,12 @@ export interface BoundlineChainConfig {
   readonly markets: readonly MarketConfig[];
   /** Morpho pre-liquidation contract for protected mode (Lane A deploys it; null until then). */
   readonly preLiquidation: Address | null;
+  /** The local-money payout leg (LocalPayoutRouter and the pools it may swap on). */
+  readonly payout: PayoutConfig;
+  /** The Boundline Reserve (ERC-4626 over USDC) that funds protection advances; null where not deployed. */
+  readonly reserve: Address | null;
+  /** The Morpho-side protection vault over desk lines (any-hour protective repay down the ladder); null where not deployed. */
+  readonly deskProtectionVault: Address | null;
 }
 
 /** bytes32 of a short ASCII partner name, right-padded with zeros, exactly as `bytes32("boundline-app")` in Solidity. */
@@ -96,6 +125,26 @@ export const BASE_SEPOLIA: BoundlineChainConfig = {
   ],
   // AAPLt/USDC pre-liquidation (Lane A, 6 Oct 2026; deployments/base-sepolia.json → protection): protected mode opt-in.
   preLiquidation: addr("0xdcae709341aab652144e8afcb47479fe49e133a1"),
+  // The Reserve and the desk-side protection vault (7 Oct 2026, deployments/base-sepolia.json → reserve).
+  reserve: addr("0x7AcE5c9ca94d5B67feC97348Ff41778D092a6B6E"),
+  deskProtectionVault: addr("0x87f600279F021ca859b9903DE884d3A7A169f38c"),
+  // Local-money leg (7 Oct 2026, deployments/base-sepolia.json → payout): a test EURC and a fixed-rate pool at 0.92 EURCt per USDC.
+  payout: {
+    router: addr("0x1a6Dbc873F32f3dcE7719F213cf81842856F6354"),
+    pools: [
+      {
+        symbol: "EURCt",
+        name: "Boundline test EURC",
+        token: addr("0xE9E71CFfFd3f053e2C7791277B794fd7aDaeA82A"),
+        decimals: 6,
+        currency: "EUR",
+        pool: addr("0x31f0EB7569D34d72dEC3C80aCB8949bA5Ac96Cd4"),
+        kind: "cl",
+        quoteSource: "price36",
+        tokenIsToken0: true,
+      },
+    ],
+  },
 };
 
 export const BASE_MAINNET: BoundlineChainConfig = {
@@ -116,6 +165,25 @@ export const BASE_MAINNET: BoundlineChainConfig = {
   ]),
   markets: [],
   preLiquidation: null,
+  reserve: null,
+  deskProtectionVault: null,
+  // The router is not on mainnet yet; the pool is Aerodrome's Slipstream EURC/USDC (token0 EURC, tickSpacing 50, verified 7 Oct 2026).
+  payout: {
+    router: null,
+    pools: [
+      {
+        symbol: "EURC",
+        name: "Euro Coin",
+        token: addr("0x60a3E35Cc302bFA44Cb288Bc5a4F316Fdb1adb42"),
+        decimals: 6,
+        currency: "EUR",
+        pool: addr("0xE846373C1a92B167b4E9cd5d8E4d6B1Db9E90EC7"),
+        kind: "cl",
+        quoteSource: "slot0",
+        tokenIsToken0: true,
+      },
+    ],
+  },
 };
 
 export const CHAIN_CONFIGS: Readonly<Record<number, BoundlineChainConfig>> = Object.freeze({

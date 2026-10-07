@@ -1,5 +1,5 @@
 // Data hooks over the SDK and the proxy. React Query keeps the reads fresh; the clock ticks on its own.
-import { actionName, sessionInfo, type Health, type Line, type Quote, type SessionInfo } from "@boundline/sdk";
+import { actionName, sessionInfo, type Health, type Line, type PayoutQuote, type PayoutRecord, type Quote, type SessionInfo } from "@boundline/sdk";
 import { useQuery, type UseQueryResult } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import type { Address, Hex } from "viem";
@@ -112,6 +112,26 @@ export function useApiQuote(lineId: bigint | undefined, draw: bigint | null) {
     queryFn: () => boundline.api!.quote({ lineId: lineId!, draw: draw! }),
     staleTime: 15_000,
     retry: false,
+  });
+}
+
+/** The local-money leg's quote for `amountIn` USDC, from the pool's own state; off while USDC is chosen. */
+export function usePayoutQuote(symbol: string | null, amountIn: bigint | null): UseQueryResult<PayoutQuote> {
+  return useQuery({
+    queryKey: ["payoutQuote", cfg.chainId, symbol, amountIn?.toString()],
+    enabled: Boolean(symbol && cfg.payout.router && amountIn !== null && amountIn > 0n),
+    queryFn: () => boundline.quotePayout(symbol!, amountIn!),
+    refetchInterval: 20_000,
+  });
+}
+
+/** The router's own record of the user's payouts (oldest first); no indexer involved. */
+export function usePayouts(address: Address | undefined): UseQueryResult<PayoutRecord[]> {
+  return useQuery({
+    queryKey: ["payouts", cfg.chainId, address],
+    enabled: Boolean(address && cfg.payout.router),
+    queryFn: () => boundline.payouts(address!),
+    refetchInterval: 30_000,
   });
 }
 

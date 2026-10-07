@@ -1,0 +1,15 @@
+{
+  "name": "@boundline/site",
+  "version": "0.1.0",
+  "private": true,
+  "description": "The Boundline landing page: one static page served as Workers assets. The claim, the live session state from the Observatory, the proof points with their transaction hashes, and the partner surface. No build step.",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "deploy": "wrangler deploy",
+    "dev": "wrangler dev"
+  },
+  "devDependencies": {
+    "wrangler": "4.147.0"
+  }
+}
