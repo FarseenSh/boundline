@@ -1,6 +1,9 @@
-// Copies the CreditDesk, SessionGate and LocalPayoutRouter ABIs out of the Foundry build into src/abi/*.ts.
+// Copies the CreditDesk, SessionGate, LocalPayoutRouter and DeskProtectionVault ABIs out of the Foundry build into src/abi/*.ts.
 // Run from the repo root after a build:
-//   forge build --root contracts && pnpm --filter @boundline/sdk gen-abi
+//   forge build --root contracts && pnpm --filter @boundline/sdk gen-abi            # all four
+//   pnpm --filter @boundline/sdk gen-abi DeskProtectionVault                          # only the named ones
+// The CreditDesk ABI is pinned to the live Sepolia desk (0x39aB…399a, the 3 Oct monolith): the source has since gained
+// protectionVault/recoverCollateral/setProtectionVault, which go live with the freeze redeploy. Regenerate CreditDesk then.
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -24,6 +27,13 @@ function emit(contract: string, exportName: string, file: string): void {
   console.log(`wrote ${out.replace(repo + "/", "")} (${json.abi.length} entries)`);
 }
 
-emit("CreditDesk", "creditDeskAbi", "creditDesk.ts");
-emit("SessionGate", "sessionGateAbi", "sessionGate.ts");
-emit("LocalPayoutRouter", "localPayoutRouterAbi", "localPayoutRouter.ts");
+const ALL: readonly (readonly [string, string, string])[] = [
+  ["CreditDesk", "creditDeskAbi", "creditDesk.ts"],
+  ["SessionGate", "sessionGateAbi", "sessionGate.ts"],
+  ["LocalPayoutRouter", "localPayoutRouterAbi", "localPayoutRouter.ts"],
+  ["DeskProtectionVault", "deskProtectionVaultAbi", "deskProtectionVault.ts"],
+];
+const wanted = process.argv.slice(2);
+const unknown = wanted.filter((w) => !ALL.some(([c]) => c === w));
+if (unknown.length > 0) throw new Error(`unknown contract(s): ${unknown.join(", ")}; known: ${ALL.map(([c]) => c).join(", ")}`);
+for (const [contract, exportName, file] of ALL) if (wanted.length === 0 || wanted.includes(contract)) emit(contract, exportName, file);

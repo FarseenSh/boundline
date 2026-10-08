@@ -11,10 +11,12 @@ import { waitForPreconfirmation, type PreconfOptions, type PreconfResult } from 
 import { createReader, type BoundlineReader, type Line, type Quote } from "./reads.js";
 import { buildSendCalls, type PreparedSendCalls, type SendCallsOptions } from "./sendcalls.js";
 import { sessionInfo, type SessionInfo } from "./session.js";
+import { createVaultReader, prepareRepayAdvance, prepareVaultDeposit, prepareVaultWithdraw, type VaultDepositOptions, type VaultReader } from "./vault.js";
 
 export * from "./abi/creditDesk.js";
 export * from "./abi/sessionGate.js";
 export * from "./abi/localPayoutRouter.js";
+export * from "./abi/deskProtectionVault.js";
 export * from "./abi/minimal.js";
 export * from "./api.js";
 export * from "./calls.js";
@@ -26,8 +28,11 @@ export * from "./names.js";
 export * from "./payout.js";
 export * from "./preconf.js";
 export * from "./reads.js";
+export * from "./route.js";
 export * from "./sendcalls.js";
 export * from "./session.js";
+export * from "./vault.js";
+export * from "./webhooks.js";
 
 export interface BoundlineOptions {
   chainId: 84532 | 8453;
@@ -50,6 +55,8 @@ export interface Boundline {
   readonly config: BoundlineChainConfig;
   readonly client: PublicClient;
   readonly reader: BoundlineReader;
+  /** The desk-side protection vault (ladder: user reserve, partner reserve, bounded advance); null where not deployed. */
+  readonly vault: VaultReader | null;
   readonly api: ApiClient | null;
   /** The exchange clock right now (pure, no RPC). */
   session(now?: number): SessionInfo;
@@ -75,6 +82,11 @@ export interface Boundline {
     borrowBatch(input: calls.BorrowBatchInput): calls.Call[];
     repayBatch(input: calls.RepayBatchInput): calls.Call[];
     payout(req: PayoutRequest): calls.Call;
+    /** approve(USDC → vault) + deposit: the user's own protection reserve, ladder step 1. */
+    vaultDeposit(amount: bigint, opts?: VaultDepositOptions): calls.Call[];
+    vaultWithdraw(amount: bigint): calls.Call;
+    /** approve(USDC → vault) + repayAdvance: settle a line's advance, principal then fee. */
+    repayAdvance(lineId: bigint, amount: bigint, opts?: { approve?: boolean }): calls.Call[];
   };
 }
 
@@ -85,6 +97,7 @@ export function createBoundline(opts: BoundlineOptions): Boundline {
   const transport = opts.transport ?? (urls.length === 1 ? http(urls[0]!) : fallback(urls.map((u) => http(u, { retryCount: 1 })), { rank: false }));
   const client = createPublicClient({ chain, transport }) as PublicClient;
   const reader = createReader(client, config);
+  const vault = config.deskProtectionVault ? createVaultReader(client, config) : null;
   const api = opts.api ? createApiClient(opts.api) : null;
   const lltvOf = async (marketId: `0x${string}`): Promise<bigint> => marketById(config, marketId)?.lltvWad ?? (await reader.market(marketId)).lltvWad;
 
@@ -92,6 +105,7 @@ export function createBoundline(opts: BoundlineOptions): Boundline {
     config,
     client,
     reader,
+    vault,
     api,
     session: (now) => sessionInfo(now),
     async lineHealth(lineId, now) {
@@ -117,6 +131,9 @@ export function createBoundline(opts: BoundlineOptions): Boundline {
       borrowBatch: (input) => calls.borrowBatch(config, input),
       repayBatch: (input) => calls.repayBatch(config, input),
       payout: (req) => preparePayout(config, req),
+      vaultDeposit: (amount, o) => prepareVaultDeposit(config, amount, o),
+      vaultWithdraw: (amount) => prepareVaultWithdraw(config, amount),
+      repayAdvance: (lineId, amount, o) => prepareRepayAdvance(config, lineId, amount, o),
     },
   };
 }
