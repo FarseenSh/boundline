@@ -1,0 +1,2486 @@
+{
+  "drill": "bad-debt-probe",
+  "runs": [
+    {
+      "ranAt": 1791444401,
+      "chainId": 8453,
+      "label": "Base mainnet fork at block 52327527: the largest real borrower of the Steakhouse AAPLc/USDC Morpho market taken through LLTV by a reopen print beyond the band and liquidated at the venue (bad debt), against the same position on a SessionGuard market and under protected mode",
+      "fork": {
+        "block": 52327527,
+        "blockTime": 1791444401,
+        "timestamps": {
+          "fridayClose": 1791590400,
+          "saturday": 1791640800,
+          "reopen": 1791763200
+        },
+        "harness": "contracts/test/drills/BadDebtProbeDrill.t.sol under base-forge (FOUNDRY_BASE=true), driven by scripts/drills/run-fork-drills.ts",
+        "forgeVersion": "forge Version: 1.6.0-v1.1.0",
+        "executedAt": 1791444402
+      },
+      "position": {
+        "market": "0xae1a30486234bf7e7ac166c7c03d9bc5f2cd8a39be2c48e73c665ac7148c3c28",
+        "borrower": "0x8E8745Acd6fbE3e70Afc96042c7F3eC84B1f0e9f",
+        "collateralRaw": "3537766363",
+        "debtAtStage": "6650380945",
+        "priceAtClose36": "3356830000000000000000000000000000000",
+        "venueLtvAtStage": "559999999934891948",
+        "lltv": "0.625",
+        "liquidationIncentiveFactor": "1/(1 - 0.3 x (1 - 0.625)) = 1.12676 (Morpho)",
+        "preLiquidation": {
+          "preLltv": "0.58",
+          "preLCF": "1.0/1.0",
+          "preLIF": "1.01/1.02",
+          "contracts": {
+            "guard30": "0x9dF164A471769046b27D495e67339A1E6cb09E3d",
+            "guard50": "0xA1bB9AdFBDe9f1F46d741682b5900AA3bA497AB8"
+          }
+        }
+      },
+      "txs": [],
+      "attempts": [
+        {
+          "what": "raw venue -45%: Saturday liquidation at the held price",
+          "result": "Error(position is healthy)"
+        },
+        {
+          "what": "raw venue -45%: liquidate seizing all collateral",
+          "result": "ok"
+        },
+        {
+          "what": "raw venue -15%: Saturday liquidation at the held price",
+          "result": "Error(position is healthy)"
+        },
+        {
+          "what": "raw venue -15%: liquidate repaying every share",
+          "result": "ok"
+        },
+        {
+          "what": "session-safe market, -45%: Saturday liquidation",
+          "result": "MarketClosed(5)"
+        },
+        {
+          "what": "session-safe market, -45%: Saturday borrow",
+          "result": "MarketClosed(5)"
+        },
+        {
+          "what": "session-safe market, -45%: Saturday repay of 1 USDC (repay never reads the oracle)",
+          "result": "ok"
+        },
+        {
+          "what": "session-safe market, -45%: liquidate seizing all collateral",
+          "result": "ok"
+        },
+        {
+          "what": "protected (30% deviation guard): liquidate repaying every share",
+          "result": "ok"
+        },
+        {
+          "what": "protected (50% deviation guard): liquidation at the reopen",
+          "result": "Error(position is healthy)"
+        }
+      ],
+      "assertions": [
+        {
+          "scenario": "friday-close",
+          "what": "staged venue LTV (WAD)",
+          "actual": "559999999934891948",
+          "expected": "560000000000000000 +/- 1000000000000",
+          "pass": true
+        },
+        {
+          "scenario": "raw venue -45%",
+          "what": "Saturday liquidation at the held price",
+          "actual": "Error(position is healthy)",
+          "expected": "Error(position is healthy)",
+          "pass": true
+        },
+        {
+          "scenario": "raw venue -45%",
+          "what": "liquidatable at the reopen (LTV > LLTV)",
+          "actual": true,
+          "expected": true,
+          "pass": true
+        },
+        {
+          "scenario": "raw venue -45%",
+          "what": "liquidate seizing all collateral",
+          "actual": "ok",
+          "expected": "ok",
+          "pass": true
+        },
+        {
+          "scenario": "raw venue -45%",
+          "what": "supplier loss equals Morpho's badDebtAssets",
+          "actual": "853915040",
+          "expected": "853915040",
+          "pass": true
+        },
+        {
+          "scenario": "raw venue -45%",
+          "what": "collateral conservation: before = seized + left",
+          "actual": "3537766363",
+          "expected": "3537766363",
+          "pass": true
+        },
+        {
+          "scenario": "raw venue -45%",
+          "what": "liquidator paid what Morpho reports repaid (USDC units)",
+          "actual": "5796816429",
+          "expected": "5796816429",
+          "pass": true
+        },
+        {
+          "scenario": "raw venue -45%",
+          "what": "liquidator received what Morpho reports seized (raw AAPLc)",
+          "actual": "3537766363",
+          "expected": "3537766363",
+          "pass": true
+        },
+        {
+          "scenario": "raw venue -45%",
+          "what": "bad debt realised by Morpho (badDebtAssets > 0)",
+          "actual": true,
+          "expected": true,
+          "pass": true
+        },
+        {
+          "scenario": "raw venue -15%",
+          "what": "Saturday liquidation at the held price",
+          "actual": "Error(position is healthy)",
+          "expected": "Error(position is healthy)",
+          "pass": true
+        },
+        {
+          "scenario": "raw venue -15%",
+          "what": "liquidatable at the reopen (LTV > LLTV)",
+          "actual": true,
+          "expected": true,
+          "pass": true
+        },
+        {
+          "scenario": "raw venue -15%",
+          "what": "liquidate repaying every share",
+          "actual": "ok",
+          "expected": "ok",
+          "pass": true
+        },
+        {
+          "scenario": "raw venue -15%",
+          "what": "supplier loss equals Morpho's badDebtAssets",
+          "actual": "0",
+          "expected": "0",
+          "pass": true
+        },
+        {
+          "scenario": "raw venue -15%",
+          "what": "collateral conservation: before = seized + left",
+          "actual": "3537766363",
+          "expected": "3537766363",
+          "pass": true
+        },
+        {
+          "scenario": "raw venue -15%",
+          "what": "liquidator paid what Morpho reports repaid (USDC units)",
+          "actual": "6650731469",
+          "expected": "6650731469",
+          "pass": true
+        },
+        {
+          "scenario": "raw venue -15%",
+          "what": "liquidator received what Morpho reports seized (raw AAPLc)",
+          "actual": "2626351063",
+          "expected": "2626351063",
+          "pass": true
+        },
+        {
+          "scenario": "raw venue -15%",
+          "what": "bad debt realised by Morpho (badDebtAssets > 0)",
+          "actual": false,
+          "expected": false,
+          "pass": true
+        },
+        {
+          "scenario": "session-safe market, -45%",
+          "what": "Saturday liquidation",
+          "actual": "MarketClosed(5)",
+          "expected": "MarketClosed(5)",
+          "pass": true
+        },
+        {
+          "scenario": "session-safe market, -45%",
+          "what": "Saturday borrow",
+          "actual": "MarketClosed(5)",
+          "expected": "MarketClosed(5)",
+          "pass": true
+        },
+        {
+          "scenario": "session-safe market, -45%",
+          "what": "Saturday repay of 1 USDC (repay never reads the oracle)",
+          "actual": "ok",
+          "expected": "ok",
+          "pass": true
+        },
+        {
+          "scenario": "session-safe market, -45%",
+          "what": "liquidate seizing all collateral",
+          "actual": "ok",
+          "expected": "ok",
+          "pass": true
+        },
+        {
+          "scenario": "session-safe market, -45%",
+          "what": "supplier loss equals Morpho's badDebtAssets",
+          "actual": "852958121",
+          "expected": "852958121",
+          "pass": true
+        },
+        {
+          "scenario": "session-safe market, -45%",
+          "what": "collateral conservation: before = seized + left",
+          "actual": "3537766363",
+          "expected": "3537766363",
+          "pass": true
+        },
+        {
+          "scenario": "session-safe market, -45%",
+          "what": "liquidator paid what Morpho reports repaid (USDC units)",
+          "actual": "5796816429",
+          "expected": "5796816429",
+          "pass": true
+        },
+        {
+          "scenario": "session-safe market, -45%",
+          "what": "liquidator received what Morpho reports seized (raw AAPLc)",
+          "actual": "3537766363",
+          "expected": "3537766363",
+          "pass": true
+        },
+        {
+          "scenario": "session-safe market, -45%",
+          "what": "bad debt realised by Morpho (badDebtAssets > 0)",
+          "actual": true,
+          "expected": true,
+          "pass": true
+        },
+        {
+          "scenario": "protected (30% deviation guard) step -4%",
+          "what": "collateral out of the position = seized (raw AAPLc)",
+          "actual": "132266695",
+          "expected": "132266695",
+          "pass": true
+        },
+        {
+          "scenario": "protected (30% deviation guard) step -4%",
+          "what": "sold on the pool = collateralSold in the Protected event (raw AAPLc)",
+          "actual": "127918451",
+          "expected": "127918451",
+          "pass": true
+        },
+        {
+          "scenario": "protected (30% deviation guard) step -8%",
+          "what": "collateral out of the position = seized (raw AAPLc)",
+          "actual": "212435255",
+          "expected": "212435255",
+          "pass": true
+        },
+        {
+          "scenario": "protected (30% deviation guard) step -8%",
+          "what": "sold on the pool = collateralSold in the Protected event (raw AAPLc)",
+          "actual": "204992663",
+          "expected": "204992663",
+          "pass": true
+        },
+        {
+          "scenario": "protected (30% deviation guard) step -12%",
+          "what": "collateral out of the position = seized (raw AAPLc)",
+          "actual": "207908555",
+          "expected": "207908555",
+          "pass": true
+        },
+        {
+          "scenario": "protected (30% deviation guard) step -12%",
+          "what": "sold on the pool = collateralSold in the Protected event (raw AAPLc)",
+          "actual": "200587530",
+          "expected": "200587530",
+          "pass": true
+        },
+        {
+          "scenario": "protected (30% deviation guard) step -16%",
+          "what": "collateral out of the position = seized (raw AAPLc)",
+          "actual": "204373461",
+          "expected": "204373461",
+          "pass": true
+        },
+        {
+          "scenario": "protected (30% deviation guard) step -16%",
+          "what": "sold on the pool = collateralSold in the Protected event (raw AAPLc)",
+          "actual": "197104029",
+          "expected": "197104029",
+          "pass": true
+        },
+        {
+          "scenario": "protected (30% deviation guard) step -20%",
+          "what": "collateral out of the position = seized (raw AAPLc)",
+          "actual": "199306911",
+          "expected": "199306911",
+          "pass": true
+        },
+        {
+          "scenario": "protected (30% deviation guard) step -20%",
+          "what": "sold on the pool = collateralSold in the Protected event (raw AAPLc)",
+          "actual": "192181807",
+          "expected": "192181807",
+          "pass": true
+        },
+        {
+          "scenario": "protected (30% deviation guard) step -24%",
+          "what": "collateral out of the position = seized (raw AAPLc)",
+          "actual": "195320336",
+          "expected": "195320336",
+          "pass": true
+        },
+        {
+          "scenario": "protected (30% deviation guard) step -24%",
+          "what": "sold on the pool = collateralSold in the Protected event (raw AAPLc)",
+          "actual": "188271719",
+          "expected": "188271719",
+          "pass": true
+        },
+        {
+          "scenario": "protected (30% deviation guard) step -28%",
+          "what": "collateral out of the position = seized (raw AAPLc)",
+          "actual": "190839013",
+          "expected": "190839013",
+          "pass": true
+        },
+        {
+          "scenario": "protected (30% deviation guard) step -28%",
+          "what": "sold on the pool = collateralSold in the Protected event (raw AAPLc)",
+          "actual": "183877791",
+          "expected": "183877791",
+          "pass": true
+        },
+        {
+          "scenario": "protected (30% deviation guard)",
+          "what": "at least one pre-liquidation ran",
+          "actual": true,
+          "expected": true,
+          "pass": true
+        },
+        {
+          "scenario": "protected (30% deviation guard)",
+          "what": "liquidatable at the reopen (LTV > LLTV)",
+          "actual": true,
+          "expected": true,
+          "pass": true
+        },
+        {
+          "scenario": "protected (30% deviation guard)",
+          "what": "collateral covers the debt plus incentive (no bad debt possible)",
+          "actual": true,
+          "expected": true,
+          "pass": true
+        },
+        {
+          "scenario": "protected (30% deviation guard)",
+          "what": "liquidate repaying every share",
+          "actual": "ok",
+          "expected": "ok",
+          "pass": true
+        },
+        {
+          "scenario": "protected (30% deviation guard)",
+          "what": "supplier loss equals Morpho's badDebtAssets",
+          "actual": "0",
+          "expected": "0",
+          "pass": true
+        },
+        {
+          "scenario": "protected (30% deviation guard)",
+          "what": "collateral conservation: before = seized + left",
+          "actual": "2195316137",
+          "expected": "2195316137",
+          "pass": true
+        },
+        {
+          "scenario": "protected (30% deviation guard)",
+          "what": "liquidator paid what Morpho reports repaid (USDC units)",
+          "actual": "3016156724",
+          "expected": "3016156724",
+          "pass": true
+        },
+        {
+          "scenario": "protected (30% deviation guard)",
+          "what": "liquidator received what Morpho reports seized (raw AAPLc)",
+          "actual": "1840744472",
+          "expected": "1840744472",
+          "pass": true
+        },
+        {
+          "scenario": "protected (30% deviation guard)",
+          "what": "bad debt written off by Morpho (USDC units)",
+          "actual": "0",
+          "expected": "0",
+          "pass": true
+        },
+        {
+          "scenario": "protected (30% deviation guard)",
+          "what": "collateral left with the borrower after every share is repaid",
+          "actual": true,
+          "expected": true,
+          "pass": true
+        },
+        {
+          "scenario": "protected (50% deviation guard) step -4%",
+          "what": "collateral out of the position = seized (raw AAPLc)",
+          "actual": "132266695",
+          "expected": "132266695",
+          "pass": true
+        },
+        {
+          "scenario": "protected (50% deviation guard) step -4%",
+          "what": "sold on the pool = collateralSold in the Protected event (raw AAPLc)",
+          "actual": "127918451",
+          "expected": "127918451",
+          "pass": true
+        },
+        {
+          "scenario": "protected (50% deviation guard) step -8%",
+          "what": "collateral out of the position = seized (raw AAPLc)",
+          "actual": "212435255",
+          "expected": "212435255",
+          "pass": true
+        },
+        {
+          "scenario": "protected (50% deviation guard) step -8%",
+          "what": "sold on the pool = collateralSold in the Protected event (raw AAPLc)",
+          "actual": "204992663",
+          "expected": "204992663",
+          "pass": true
+        },
+        {
+          "scenario": "protected (50% deviation guard) step -12%",
+          "what": "collateral out of the position = seized (raw AAPLc)",
+          "actual": "207908555",
+          "expected": "207908555",
+          "pass": true
+        },
+        {
+          "scenario": "protected (50% deviation guard) step -12%",
+          "what": "sold on the pool = collateralSold in the Protected event (raw AAPLc)",
+          "actual": "200587530",
+          "expected": "200587530",
+          "pass": true
+        },
+        {
+          "scenario": "protected (50% deviation guard) step -16%",
+          "what": "collateral out of the position = seized (raw AAPLc)",
+          "actual": "204373461",
+          "expected": "204373461",
+          "pass": true
+        },
+        {
+          "scenario": "protected (50% deviation guard) step -16%",
+          "what": "sold on the pool = collateralSold in the Protected event (raw AAPLc)",
+          "actual": "197104029",
+          "expected": "197104029",
+          "pass": true
+        },
+        {
+          "scenario": "protected (50% deviation guard) step -20%",
+          "what": "collateral out of the position = seized (raw AAPLc)",
+          "actual": "199306911",
+          "expected": "199306911",
+          "pass": true
+        },
+        {
+          "scenario": "protected (50% deviation guard) step -20%",
+          "what": "sold on the pool = collateralSold in the Protected event (raw AAPLc)",
+          "actual": "192181807",
+          "expected": "192181807",
+          "pass": true
+        },
+        {
+          "scenario": "protected (50% deviation guard) step -24%",
+          "what": "collateral out of the position = seized (raw AAPLc)",
+          "actual": "195320336",
+          "expected": "195320336",
+          "pass": true
+        },
+        {
+          "scenario": "protected (50% deviation guard) step -24%",
+          "what": "sold on the pool = collateralSold in the Protected event (raw AAPLc)",
+          "actual": "188271719",
+          "expected": "188271719",
+          "pass": true
+        },
+        {
+          "scenario": "protected (50% deviation guard) step -28%",
+          "what": "collateral out of the position = seized (raw AAPLc)",
+          "actual": "190839013",
+          "expected": "190839013",
+          "pass": true
+        },
+        {
+          "scenario": "protected (50% deviation guard) step -28%",
+          "what": "sold on the pool = collateralSold in the Protected event (raw AAPLc)",
+          "actual": "183877791",
+          "expected": "183877791",
+          "pass": true
+        },
+        {
+          "scenario": "protected (50% deviation guard) step -32%",
+          "what": "collateral out of the position = seized (raw AAPLc)",
+          "actual": "186115814",
+          "expected": "186115814",
+          "pass": true
+        },
+        {
+          "scenario": "protected (50% deviation guard) step -32%",
+          "what": "sold on the pool = collateralSold in the Protected event (raw AAPLc)",
+          "actual": "179245500",
+          "expected": "179245500",
+          "pass": true
+        },
+        {
+          "scenario": "protected (50% deviation guard) step -36%",
+          "what": "collateral out of the position = seized (raw AAPLc)",
+          "actual": "180973676",
+          "expected": "180973676",
+          "pass": true
+        },
+        {
+          "scenario": "protected (50% deviation guard) step -36%",
+          "what": "sold on the pool = collateralSold in the Protected event (raw AAPLc)",
+          "actual": "174218425",
+          "expected": "174218425",
+          "pass": true
+        },
+        {
+          "scenario": "protected (50% deviation guard) step -40%",
+          "what": "collateral out of the position = seized (raw AAPLc)",
+          "actual": "175841806",
+          "expected": "175841806",
+          "pass": true
+        },
+        {
+          "scenario": "protected (50% deviation guard) step -40%",
+          "what": "sold on the pool = collateralSold in the Protected event (raw AAPLc)",
+          "actual": "169196252",
+          "expected": "169196252",
+          "pass": true
+        },
+        {
+          "scenario": "protected (50% deviation guard) step -44%",
+          "what": "collateral out of the position = seized (raw AAPLc)",
+          "actual": "170657933",
+          "expected": "170657933",
+          "pass": true
+        },
+        {
+          "scenario": "protected (50% deviation guard) step -44%",
+          "what": "sold on the pool = collateralSold in the Protected event (raw AAPLc)",
+          "actual": "164107797",
+          "expected": "164107797",
+          "pass": true
+        },
+        {
+          "scenario": "protected (50% deviation guard)",
+          "what": "at least one pre-liquidation ran",
+          "actual": true,
+          "expected": true,
+          "pass": true
+        },
+        {
+          "scenario": "protected (50% deviation guard)",
+          "what": "liquidatable at the reopen (LTV > LLTV)",
+          "actual": false,
+          "expected": false,
+          "pass": true
+        },
+        {
+          "scenario": "protected (50% deviation guard)",
+          "what": "liquidation at the reopen",
+          "actual": "Error(position is healthy)",
+          "expected": "Error(position is healthy)",
+          "pass": true
+        }
+      ],
+      "values": [
+        {
+          "scenario": "raw venue -45%",
+          "name": "venue LTV at the reopen print (WAD)",
+          "value": "1018235483735609137"
+        },
+        {
+          "scenario": "raw venue -45%",
+          "name": "price at the liquidation (price36)",
+          "value": "1846256500000000000000000000000000000"
+        },
+        {
+          "scenario": "raw venue -45%",
+          "name": "collateral seized (raw AAPLc)",
+          "value": "3537766363"
+        },
+        {
+          "scenario": "raw venue -45%",
+          "name": "seized collateral value at the oracle price (USDC units)",
+          "value": "6531624143"
+        },
+        {
+          "scenario": "raw venue -45%",
+          "name": "debt repaid by the liquidator (USDC units)",
+          "value": "5796816429"
+        },
+        {
+          "scenario": "raw venue -45%",
+          "name": "liquidation incentive, in kind (USDC units at the oracle price)",
+          "value": "734807714"
+        },
+        {
+          "scenario": "raw venue -45%",
+          "name": "collateral left with the borrower (raw AAPLc)",
+          "value": "0"
+        },
+        {
+          "scenario": "raw venue -45%",
+          "name": "bad debt written off by Morpho (USDC units)",
+          "value": "853915040"
+        },
+        {
+          "scenario": "raw venue -45%",
+          "name": "interest accrued into supply inside the call (USDC units)",
+          "value": "359613"
+        },
+        {
+          "scenario": "raw venue -45%",
+          "name": "supplier loss: accrued totalSupplyAssets before - after (USDC units)",
+          "value": "853915040"
+        },
+        {
+          "scenario": "raw venue -15%",
+          "name": "venue LTV at the reopen print (WAD)",
+          "value": "658858254181864735"
+        },
+        {
+          "scenario": "raw venue -15%",
+          "name": "price at the liquidation (price36)",
+          "value": "2853305500000000000000000000000000000"
+        },
+        {
+          "scenario": "raw venue -15%",
+          "name": "collateral seized (raw AAPLc)",
+          "value": "2626351063"
+        },
+        {
+          "scenario": "raw venue -15%",
+          "name": "seized collateral value at the oracle price (USDC units)",
+          "value": "7493781932"
+        },
+        {
+          "scenario": "raw venue -15%",
+          "name": "debt repaid by the liquidator (USDC units)",
+          "value": "6650731469"
+        },
+        {
+          "scenario": "raw venue -15%",
+          "name": "liquidation incentive, in kind (USDC units at the oracle price)",
+          "value": "843050463"
+        },
+        {
+          "scenario": "raw venue -15%",
+          "name": "collateral left with the borrower (raw AAPLc)",
+          "value": "911415300"
+        },
+        {
+          "scenario": "raw venue -15%",
+          "name": "bad debt written off by Morpho (USDC units)",
+          "value": "0"
+        },
+        {
+          "scenario": "raw venue -15%",
+          "name": "interest accrued into supply inside the call (USDC units)",
+          "value": "359613"
+        },
+        {
+          "scenario": "raw venue -15%",
+          "name": "supplier loss: accrued totalSupplyAssets before - after (USDC units)",
+          "value": "0"
+        },
+        {
+          "scenario": "session-safe market, -45%",
+          "name": "clone venue LTV at the close (WAD)",
+          "value": "559999999934891948"
+        },
+        {
+          "scenario": "session-safe market, -45%",
+          "name": "venue LTV at the reopen print (WAD)",
+          "value": "1018088978214313853"
+        },
+        {
+          "scenario": "session-safe market, -45%",
+          "name": "price at the liquidation (price36)",
+          "value": "1846256500000000000000000000000000000"
+        },
+        {
+          "scenario": "session-safe market, -45%",
+          "name": "collateral seized (raw AAPLc)",
+          "value": "3537766363"
+        },
+        {
+          "scenario": "session-safe market, -45%",
+          "name": "seized collateral value at the oracle price (USDC units)",
+          "value": "6531624143"
+        },
+        {
+          "scenario": "session-safe market, -45%",
+          "name": "debt repaid by the liquidator (USDC units)",
+          "value": "5796816429"
+        },
+        {
+          "scenario": "session-safe market, -45%",
+          "name": "liquidation incentive, in kind (USDC units at the oracle price)",
+          "value": "734807714"
+        },
+        {
+          "scenario": "session-safe market, -45%",
+          "name": "collateral left with the borrower (raw AAPLc)",
+          "value": "0"
+        },
+        {
+          "scenario": "session-safe market, -45%",
+          "name": "bad debt written off by Morpho (USDC units)",
+          "value": "852958121"
+        },
+        {
+          "scenario": "session-safe market, -45%",
+          "name": "interest accrued into supply inside the call (USDC units)",
+          "value": "268286"
+        },
+        {
+          "scenario": "session-safe market, -45%",
+          "name": "supplier loss: accrued totalSupplyAssets before - after (USDC units)",
+          "value": "852958121"
+        },
+        {
+          "scenario": "protected (30% deviation guard) step -4%",
+          "name": "standing",
+          "value": "IN_BAND"
+        },
+        {
+          "scenario": "protected (30% deviation guard) step -4%",
+          "name": "shadow LTV before (WAD)",
+          "value": "595208940962476125"
+        },
+        {
+          "scenario": "protected (30% deviation guard) step -4%",
+          "name": "shadow LTV after (WAD)",
+          "value": "579999999680167861"
+        },
+        {
+          "scenario": "protected (30% deviation guard) step -8%",
+          "name": "standing",
+          "value": "IN_BAND"
+        },
+        {
+          "scenario": "protected (30% deviation guard) step -8%",
+          "name": "shadow LTV before (WAD)",
+          "value": "605240891987527916"
+        },
+        {
+          "scenario": "protected (30% deviation guard) step -8%",
+          "name": "shadow LTV after (WAD)",
+          "value": "579999999722686101"
+        },
+        {
+          "scenario": "protected (30% deviation guard) step -12%",
+          "name": "standing",
+          "value": "IN_BAND"
+        },
+        {
+          "scenario": "protected (30% deviation guard) step -12%",
+          "name": "shadow LTV before (WAD)",
+          "value": "606331250367297771"
+        },
+        {
+          "scenario": "protected (30% deviation guard) step -12%",
+          "name": "shadow LTV after (WAD)",
+          "value": "579999999551057265"
+        },
+        {
+          "scenario": "protected (30% deviation guard) step -16%",
+          "name": "standing",
+          "value": "IN_BAND"
+        },
+        {
+          "scenario": "protected (30% deviation guard) step -16%",
+          "name": "shadow LTV before (WAD)",
+          "value": "607666578979343096"
+        },
+        {
+          "scenario": "protected (30% deviation guard) step -16%",
+          "name": "shadow LTV after (WAD)",
+          "value": "579999999708496108"
+        },
+        {
+          "scenario": "protected (30% deviation guard) step -20%",
+          "name": "standing",
+          "value": "IN_BAND"
+        },
+        {
+          "scenario": "protected (30% deviation guard) step -20%",
+          "name": "shadow LTV before (WAD)",
+          "value": "608943954024805620"
+        },
+        {
+          "scenario": "protected (30% deviation guard) step -20%",
+          "name": "shadow LTV after (WAD)",
+          "value": "579999999611448715"
+        },
+        {
+          "scenario": "protected (30% deviation guard) step -24%",
+          "name": "standing",
+          "value": "IN_BAND"
+        },
+        {
+          "scenario": "protected (30% deviation guard) step -24%",
+          "name": "shadow LTV before (WAD)",
+          "value": "610529187325176896"
+        },
+        {
+          "scenario": "protected (30% deviation guard) step -24%",
+          "name": "shadow LTV after (WAD)",
+          "value": "579999999550813457"
+        },
+        {
+          "scenario": "protected (30% deviation guard) step -28%",
+          "name": "standing",
+          "value": "IN_BAND"
+        },
+        {
+          "scenario": "protected (30% deviation guard) step -28%",
+          "name": "shadow LTV before (WAD)",
+          "value": "612240977578342833"
+        },
+        {
+          "scenario": "protected (30% deviation guard) step -28%",
+          "name": "shadow LTV after (WAD)",
+          "value": "579999999123094990"
+        },
+        {
+          "scenario": "protected (30% deviation guard) step -32%",
+          "name": "standing",
+          "value": "NO_SHADOW_PRICE"
+        },
+        {
+          "scenario": "protected (30% deviation guard) step -36%",
+          "name": "standing",
+          "value": "NO_SHADOW_PRICE"
+        },
+        {
+          "scenario": "protected (30% deviation guard) step -40%",
+          "name": "standing",
+          "value": "NO_SHADOW_PRICE"
+        },
+        {
+          "scenario": "protected (30% deviation guard) step -44%",
+          "name": "standing",
+          "value": "NO_SHADOW_PRICE"
+        },
+        {
+          "scenario": "protected (30% deviation guard)",
+          "name": "pre-liquidations on Saturday",
+          "value": "7"
+        },
+        {
+          "scenario": "protected (30% deviation guard)",
+          "name": "last step acted on (bps)",
+          "value": "-2800"
+        },
+        {
+          "scenario": "protected (30% deviation guard)",
+          "name": "venue LTV at the reopen print (WAD)",
+          "value": "744157387155558635"
+        },
+        {
+          "scenario": "protected (30% deviation guard)",
+          "name": "price at the liquidation (price36)",
+          "value": "1846256500000000000000000000000000000"
+        },
+        {
+          "scenario": "protected (30% deviation guard)",
+          "name": "collateral seized (raw AAPLc)",
+          "value": "1840744472"
+        },
+        {
+          "scenario": "protected (30% deviation guard)",
+          "name": "seized collateral value at the oracle price (USDC units)",
+          "value": "3398486446"
+        },
+        {
+          "scenario": "protected (30% deviation guard)",
+          "name": "debt repaid by the liquidator (USDC units)",
+          "value": "3016156724"
+        },
+        {
+          "scenario": "protected (30% deviation guard)",
+          "name": "liquidation incentive, in kind (USDC units at the oracle price)",
+          "value": "382329722"
+        },
+        {
+          "scenario": "protected (30% deviation guard)",
+          "name": "collateral left with the borrower (raw AAPLc)",
+          "value": "354571665"
+        },
+        {
+          "scenario": "protected (30% deviation guard)",
+          "name": "bad debt written off by Morpho (USDC units)",
+          "value": "0"
+        },
+        {
+          "scenario": "protected (30% deviation guard)",
+          "name": "interest accrued into supply inside the call (USDC units)",
+          "value": "100001"
+        },
+        {
+          "scenario": "protected (30% deviation guard)",
+          "name": "supplier loss: accrued totalSupplyAssets before - after (USDC units)",
+          "value": "0"
+        },
+        {
+          "scenario": "protected (50% deviation guard) step -4%",
+          "name": "standing",
+          "value": "IN_BAND"
+        },
+        {
+          "scenario": "protected (50% deviation guard) step -4%",
+          "name": "shadow LTV before (WAD)",
+          "value": "595208940962476125"
+        },
+        {
+          "scenario": "protected (50% deviation guard) step -4%",
+          "name": "shadow LTV after (WAD)",
+          "value": "579999999680167861"
+        },
+        {
+          "scenario": "protected (50% deviation guard) step -8%",
+          "name": "standing",
+          "value": "IN_BAND"
+        },
+        {
+          "scenario": "protected (50% deviation guard) step -8%",
+          "name": "shadow LTV before (WAD)",
+          "value": "605240891987527916"
+        },
+        {
+          "scenario": "protected (50% deviation guard) step -8%",
+          "name": "shadow LTV after (WAD)",
+          "value": "579999999722686101"
+        },
+        {
+          "scenario": "protected (50% deviation guard) step -12%",
+          "name": "standing",
+          "value": "IN_BAND"
+        },
+        {
+          "scenario": "protected (50% deviation guard) step -12%",
+          "name": "shadow LTV before (WAD)",
+          "value": "606331250367297771"
+        },
+        {
+          "scenario": "protected (50% deviation guard) step -12%",
+          "name": "shadow LTV after (WAD)",
+          "value": "579999999551057265"
+        },
+        {
+          "scenario": "protected (50% deviation guard) step -16%",
+          "name": "standing",
+          "value": "IN_BAND"
+        },
+        {
+          "scenario": "protected (50% deviation guard) step -16%",
+          "name": "shadow LTV before (WAD)",
+          "value": "607666578979343096"
+        },
+        {
+          "scenario": "protected (50% deviation guard) step -16%",
+          "name": "shadow LTV after (WAD)",
+          "value": "579999999708496108"
+        },
+        {
+          "scenario": "protected (50% deviation guard) step -20%",
+          "name": "standing",
+          "value": "IN_BAND"
+        },
+        {
+          "scenario": "protected (50% deviation guard) step -20%",
+          "name": "shadow LTV before (WAD)",
+          "value": "608943954024805620"
+        },
+        {
+          "scenario": "protected (50% deviation guard) step -20%",
+          "name": "shadow LTV after (WAD)",
+          "value": "579999999611448715"
+        },
+        {
+          "scenario": "protected (50% deviation guard) step -24%",
+          "name": "standing",
+          "value": "IN_BAND"
+        },
+        {
+          "scenario": "protected (50% deviation guard) step -24%",
+          "name": "shadow LTV before (WAD)",
+          "value": "610529187325176896"
+        },
+        {
+          "scenario": "protected (50% deviation guard) step -24%",
+          "name": "shadow LTV after (WAD)",
+          "value": "579999999550813457"
+        },
+        {
+          "scenario": "protected (50% deviation guard) step -28%",
+          "name": "standing",
+          "value": "IN_BAND"
+        },
+        {
+          "scenario": "protected (50% deviation guard) step -28%",
+          "name": "shadow LTV before (WAD)",
+          "value": "612240977578342833"
+        },
+        {
+          "scenario": "protected (50% deviation guard) step -28%",
+          "name": "shadow LTV after (WAD)",
+          "value": "579999999123094990"
+        },
+        {
+          "scenario": "protected (50% deviation guard) step -32%",
+          "name": "standing",
+          "value": "IN_BAND"
+        },
+        {
+          "scenario": "protected (50% deviation guard) step -32%",
+          "name": "shadow LTV before (WAD)",
+          "value": "614141771989117389"
+        },
+        {
+          "scenario": "protected (50% deviation guard) step -32%",
+          "name": "shadow LTV after (WAD)",
+          "value": "579999999448235669"
+        },
+        {
+          "scenario": "protected (50% deviation guard) step -36%",
+          "name": "standing",
+          "value": "IN_BAND"
+        },
+        {
+          "scenario": "protected (50% deviation guard) step -36%",
+          "name": "shadow LTV before (WAD)",
+          "value": "616233302393479273"
+        },
+        {
+          "scenario": "protected (50% deviation guard) step -36%",
+          "name": "shadow LTV after (WAD)",
+          "value": "579999999293388046"
+        },
+        {
+          "scenario": "protected (50% deviation guard) step -40%",
+          "name": "standing",
+          "value": "IN_BAND"
+        },
+        {
+          "scenario": "protected (50% deviation guard) step -40%",
+          "name": "shadow LTV before (WAD)",
+          "value": "618641182117614788"
+        },
+        {
+          "scenario": "protected (50% deviation guard) step -40%",
+          "name": "shadow LTV after (WAD)",
+          "value": "579999999086396476"
+        },
+        {
+          "scenario": "protected (50% deviation guard) step -44%",
+          "name": "standing",
+          "value": "IN_BAND"
+        },
+        {
+          "scenario": "protected (50% deviation guard) step -44%",
+          "name": "shadow LTV before (WAD)",
+          "value": "621431199438143065"
+        },
+        {
+          "scenario": "protected (50% deviation guard) step -44%",
+          "name": "shadow LTV after (WAD)",
+          "value": "579999998520105614"
+        },
+        {
+          "scenario": "protected (50% deviation guard)",
+          "name": "pre-liquidations on Saturday",
+          "value": "11"
+        },
+        {
+          "scenario": "protected (50% deviation guard)",
+          "name": "last step acted on (bps)",
+          "value": "-4400"
+        },
+        {
+          "scenario": "protected (50% deviation guard)",
+          "name": "venue LTV at the reopen print (WAD)",
+          "value": "578803328700482185"
+        }
+      ],
+      "ledger": {
+        "method": "@boundline/ledger reconcile() over flows measured on the fork: collateral out of the position, into the liquidator or the pool, kept by the Protector; USDC paid by the liquidator or out of the pool; debt before and after from Morpho's expectedBorrowAssets. For a liquidation the debt left once the position holds no collateral is the ledger's bad debt, compared with Morpho's badDebtAssets. `strict` is the ledger's exact verdict; `pass` also accepts a miss of one raw unit on the debt identity alone, because Morpho keeps debt in shares and rounds assets up on reads and repays.",
+        "strictlyClosed": 20,
+        "events": 22,
+        "pass": true,
+        "entries": [
+          {
+            "scenario": "raw venue -45%",
+            "id": "bad-debt-probe:raw venue -45%:liquidation",
+            "kind": "liquidation",
+            "subject": "0x8E8745Acd6fbE3e70Afc96042c7F3eC84B1f0e9f",
+            "at": 1791763212,
+            "flows": {
+              "collateralIn": "3537766363",
+              "sold": "3537766363",
+              "retained": "0",
+              "remainingOnPosition": "0",
+              "debtBefore": "6650731469",
+              "debtAfter": "853915040",
+              "repaid": "5796816429",
+              "proceeds": "0",
+              "fromLiquidator": "5796816429"
+            },
+            "reconciliation": {
+              "strict": true,
+              "pass": true,
+              "badDebt": "853915040",
+              "equalities": [
+                {
+                  "id": "sources-uses",
+                  "left": "5796816429",
+                  "right": "5796816429",
+                  "residual": "0",
+                  "holds": true
+                },
+                {
+                  "id": "advance",
+                  "left": "0",
+                  "right": "0",
+                  "residual": "0",
+                  "holds": true
+                },
+                {
+                  "id": "collateral",
+                  "left": "3537766363",
+                  "right": "3537766363",
+                  "residual": "0",
+                  "holds": true
+                },
+                {
+                  "id": "debt",
+                  "left": "6650731469",
+                  "right": "6650731469",
+                  "residual": "0",
+                  "holds": true
+                },
+                {
+                  "id": "bad-debt",
+                  "left": "853915040",
+                  "right": "853915040",
+                  "residual": "0",
+                  "holds": true
+                }
+              ]
+            },
+            "morphoBadDebtAssets": "853915040",
+            "ledgerMinusMorphoBadDebt": "0",
+            "badDebtAgrees": true
+          },
+          {
+            "scenario": "raw venue -15%",
+            "id": "bad-debt-probe:raw venue -15%:liquidation",
+            "kind": "liquidation",
+            "subject": "0x8E8745Acd6fbE3e70Afc96042c7F3eC84B1f0e9f",
+            "at": 1791763212,
+            "flows": {
+              "collateralIn": "2626351063",
+              "sold": "2626351063",
+              "retained": "0",
+              "remainingOnPosition": "911415300",
+              "debtBefore": "6650731469",
+              "debtAfter": "0",
+              "repaid": "6650731469",
+              "proceeds": "0",
+              "fromLiquidator": "6650731469"
+            },
+            "reconciliation": {
+              "strict": true,
+              "pass": true,
+              "badDebt": "0",
+              "equalities": [
+                {
+                  "id": "sources-uses",
+                  "left": "6650731469",
+                  "right": "6650731469",
+                  "residual": "0",
+                  "holds": true
+                },
+                {
+                  "id": "advance",
+                  "left": "0",
+                  "right": "0",
+                  "residual": "0",
+                  "holds": true
+                },
+                {
+                  "id": "collateral",
+                  "left": "2626351063",
+                  "right": "2626351063",
+                  "residual": "0",
+                  "holds": true
+                },
+                {
+                  "id": "debt",
+                  "left": "6650731469",
+                  "right": "6650731469",
+                  "residual": "0",
+                  "holds": true
+                },
+                {
+                  "id": "bad-debt",
+                  "left": "0",
+                  "right": "0",
+                  "residual": "0",
+                  "holds": true
+                }
+              ]
+            },
+            "morphoBadDebtAssets": "0",
+            "ledgerMinusMorphoBadDebt": "0",
+            "badDebtAgrees": true
+          },
+          {
+            "scenario": "session-safe market, -45%",
+            "id": "bad-debt-probe:session-safe market, -45%:liquidation",
+            "kind": "liquidation",
+            "subject": "0xF3C9b80b6EDBE94056F2e738BdAc67294a39DAD2",
+            "at": 1791763212,
+            "flows": {
+              "collateralIn": "3537766363",
+              "sold": "3537766363",
+              "retained": "0",
+              "remainingOnPosition": "0",
+              "debtBefore": "6649774550",
+              "debtAfter": "852958121",
+              "repaid": "5796816429",
+              "proceeds": "0",
+              "fromLiquidator": "5796816429"
+            },
+            "reconciliation": {
+              "strict": true,
+              "pass": true,
+              "badDebt": "852958121",
+              "equalities": [
+                {
+                  "id": "sources-uses",
+                  "left": "5796816429",
+                  "right": "5796816429",
+                  "residual": "0",
+                  "holds": true
+                },
+                {
+                  "id": "advance",
+                  "left": "0",
+                  "right": "0",
+                  "residual": "0",
+                  "holds": true
+                },
+                {
+                  "id": "collateral",
+                  "left": "3537766363",
+                  "right": "3537766363",
+                  "residual": "0",
+                  "holds": true
+                },
+                {
+                  "id": "debt",
+                  "left": "6649774550",
+                  "right": "6649774550",
+                  "residual": "0",
+                  "holds": true
+                },
+                {
+                  "id": "bad-debt",
+                  "left": "852958121",
+                  "right": "852958121",
+                  "residual": "0",
+                  "holds": true
+                }
+              ]
+            },
+            "morphoBadDebtAssets": "852958121",
+            "ledgerMinusMorphoBadDebt": "0",
+            "badDebtAgrees": true
+          },
+          {
+            "scenario": "protected (30% deviation guard) step -4%",
+            "id": "bad-debt-probe:protected (30% deviation guard) step -4%:pre-liquidation",
+            "kind": "pre-liquidation",
+            "subject": "0x8E8745Acd6fbE3e70Afc96042c7F3eC84B1f0e9f",
+            "at": 1791642600,
+            "flows": {
+              "collateralIn": "132266695",
+              "sold": "127918451",
+              "retained": "4348244",
+              "remainingOnPosition": "3405499668",
+              "debtBefore": "6650496841",
+              "debtAfter": "6238272367",
+              "repaid": "412224474",
+              "proceeds": "412224474",
+              "fromLiquidator": "0"
+            },
+            "reconciliation": {
+              "strict": true,
+              "pass": true,
+              "badDebt": "0",
+              "equalities": [
+                {
+                  "id": "sources-uses",
+                  "left": "412224474",
+                  "right": "412224474",
+                  "residual": "0",
+                  "holds": true
+                },
+                {
+                  "id": "advance",
+                  "left": "0",
+                  "right": "0",
+                  "residual": "0",
+                  "holds": true
+                },
+                {
+                  "id": "collateral",
+                  "left": "132266695",
+                  "right": "132266695",
+                  "residual": "0",
+                  "holds": true
+                },
+                {
+                  "id": "debt",
+                  "left": "6650496841",
+                  "right": "6650496841",
+                  "residual": "0",
+                  "holds": true
+                },
+                {
+                  "id": "bad-debt",
+                  "left": "0",
+                  "right": "6238272367",
+                  "residual": "6238272367",
+                  "holds": true
+                }
+              ]
+            }
+          },
+          {
+            "scenario": "protected (30% deviation guard) step -8%",
+            "id": "bad-debt-probe:protected (30% deviation guard) step -8%:pre-liquidation",
+            "kind": "pre-liquidation",
+            "subject": "0x8E8745Acd6fbE3e70Afc96042c7F3eC84B1f0e9f",
+            "at": 1791644400,
+            "flows": {
+              "collateralIn": "212435255",
+              "sold": "204992663",
+              "retained": "7442592",
+              "remainingOnPosition": "3193064413",
+              "debtBefore": "6238275949",
+              "debtAfter": "5605200470",
+              "repaid": "633075479",
+              "proceeds": "633075479",
+              "fromLiquidator": "0"
+            },
+            "reconciliation": {
+              "strict": true,
+              "pass": true,
+              "badDebt": "0",
+              "equalities": [
+                {
+                  "id": "sources-uses",
+                  "left": "633075479",
+                  "right": "633075479",
+                  "residual": "0",
+                  "holds": true
+                },
+                {
+                  "id": "advance",
+                  "left": "0",
+                  "right": "0",
+                  "residual": "0",
+                  "holds": true
+                },
+                {
+                  "id": "collateral",
+                  "left": "212435255",
+                  "right": "212435255",
+                  "residual": "0",
+                  "holds": true
+                },
+                {
+                  "id": "debt",
+                  "left": "6238275949",
+                  "right": "6238275949",
+                  "residual": "0",
+                  "holds": true
+                },
+                {
+                  "id": "bad-debt",
+                  "left": "0",
+                  "right": "5605200470",
+                  "residual": "5605200470",
+                  "holds": true
+                }
+              ]
+            }
+          },
+          {
+            "scenario": "protected (30% deviation guard) step -12%",
+            "id": "bad-debt-probe:protected (30% deviation guard) step -12%:pre-liquidation",
+            "kind": "pre-liquidation",
+            "subject": "0x8E8745Acd6fbE3e70Afc96042c7F3eC84B1f0e9f",
+            "at": 1791646200,
+            "flows": {
+              "collateralIn": "207908555",
+              "sold": "200587530",
+              "retained": "7321025",
+              "remainingOnPosition": "2985155858",
+              "debtBefore": "5605203672",
+              "debtAfter": "5012666025",
+              "repaid": "592537647",
+              "proceeds": "592537647",
+              "fromLiquidator": "0"
+            },
+            "reconciliation": {
+              "strict": true,
+              "pass": true,
+              "badDebt": "0",
+              "equalities": [
+                {
+                  "id": "sources-uses",
+                  "left": "592537647",
+                  "right": "592537647",
+                  "residual": "0",
+                  "holds": true
+                },
+                {
+                  "id": "advance",
+                  "left": "0",
+                  "right": "0",
+                  "residual": "0",
+                  "holds": true
+                },
+                {
+                  "id": "collateral",
+                  "left": "207908555",
+                  "right": "207908555",
+                  "residual": "0",
+                  "holds": true
+                },
+                {
+                  "id": "debt",
+                  "left": "5605203672",
+                  "right": "5605203672",
+                  "residual": "0",
+                  "holds": true
+                },
+                {
+                  "id": "bad-debt",
+                  "left": "0",
+                  "right": "5012666025",
+                  "residual": "5012666025",
+                  "holds": true
+                }
+              ]
+            }
+          },
+          {
+            "scenario": "protected (30% deviation guard) step -16%",
+            "id": "bad-debt-probe:protected (30% deviation guard) step -16%:pre-liquidation",
+            "kind": "pre-liquidation",
+            "subject": "0x8E8745Acd6fbE3e70Afc96042c7F3eC84B1f0e9f",
+            "at": 1791648000,
+            "flows": {
+              "collateralIn": "204373461",
+              "sold": "197104029",
+              "retained": "7269432",
+              "remainingOnPosition": "2780782397",
+              "debtBefore": "5012668876",
+              "debtAfter": "4456887315",
+              "repaid": "555781561",
+              "proceeds": "555781561",
+              "fromLiquidator": "0"
+            },
+            "reconciliation": {
+              "strict": true,
+              "pass": true,
+              "badDebt": "0",
+              "equalities": [
+                {
+                  "id": "sources-uses",
+                  "left": "555781561",
+                  "right": "555781561",
+                  "residual": "0",
+                  "holds": true
+                },
+                {
+                  "id": "advance",
+                  "left": "0",
+                  "right": "0",
+                  "residual": "0",
+                  "holds": true
+                },
+                {
+                  "id": "collateral",
+                  "left": "204373461",
+                  "right": "204373461",
+                  "residual": "0",
+                  "holds": true
+                },
+                {
+                  "id": "debt",
+                  "left": "5012668876",
+                  "right": "5012668876",
+                  "residual": "0",
+                  "holds": true
+                },
+                {
+                  "id": "bad-debt",
+                  "left": "0",
+                  "right": "4456887315",
+                  "residual": "4456887315",
+                  "holds": true
+                }
+              ]
+            }
+          },
+          {
+            "scenario": "protected (30% deviation guard) step -20%",
+            "id": "bad-debt-probe:protected (30% deviation guard) step -20%:pre-liquidation",
+            "kind": "pre-liquidation",
+            "subject": "0x8E8745Acd6fbE3e70Afc96042c7F3eC84B1f0e9f",
+            "at": 1791649800,
+            "flows": {
+              "collateralIn": "199306911",
+              "sold": "192181807",
+              "retained": "7125104",
+              "remainingOnPosition": "2581475486",
+              "debtBefore": "4456889837",
+              "debtAfter": "3940792515",
+              "repaid": "516097323",
+              "proceeds": "516097323",
+              "fromLiquidator": "0"
+            },
+            "reconciliation": {
+              "strict": false,
+              "pass": true,
+              "note": "debt identity off by -1 raw unit (Morpho share rounding)",
+              "badDebt": "0",
+              "equalities": [
+                {
+                  "id": "sources-uses",
+                  "left": "516097323",
+                  "right": "516097323",
+                  "residual": "0",
+                  "holds": true
+                },
+                {
+                  "id": "advance",
+                  "left": "0",
+                  "right": "0",
+                  "residual": "0",
+                  "holds": true
+                },
+                {
+                  "id": "collateral",
+                  "left": "199306911",
+                  "right": "199306911",
+                  "residual": "0",
+                  "holds": true
+                },
+                {
+                  "id": "debt",
+                  "left": "4456889837",
+                  "right": "4456889838",
+                  "residual": "-1",
+                  "holds": false
+                },
+                {
+                  "id": "bad-debt",
+                  "left": "0",
+                  "right": "3940792515",
+                  "residual": "3940792515",
+                  "holds": true
+                }
+              ]
+            }
+          },
+          {
+            "scenario": "protected (30% deviation guard) step -24%",
+            "id": "bad-debt-probe:protected (30% deviation guard) step -24%:pre-liquidation",
+            "kind": "pre-liquidation",
+            "subject": "0x8E8745Acd6fbE3e70Afc96042c7F3eC84B1f0e9f",
+            "at": 1791651600,
+            "flows": {
+              "collateralIn": "195320336",
+              "sold": "188271719",
+              "retained": "7048617",
+              "remainingOnPosition": "2386155150",
+              "debtBefore": "3940794735",
+              "debtAfter": "3460477659",
+              "repaid": "480317076",
+              "proceeds": "480317076",
+              "fromLiquidator": "0"
+            },
+            "reconciliation": {
+              "strict": true,
+              "pass": true,
+              "badDebt": "0",
+              "equalities": [
+                {
+                  "id": "sources-uses",
+                  "left": "480317076",
+                  "right": "480317076",
+                  "residual": "0",
+                  "holds": true
+                },
+                {
+                  "id": "advance",
+                  "left": "0",
+                  "right": "0",
+                  "residual": "0",
+                  "holds": true
+                },
+                {
+                  "id": "collateral",
+                  "left": "195320336",
+                  "right": "195320336",
+                  "residual": "0",
+                  "holds": true
+                },
+                {
+                  "id": "debt",
+                  "left": "3940794735",
+                  "right": "3940794735",
+                  "residual": "0",
+                  "holds": true
+                },
+                {
+                  "id": "bad-debt",
+                  "left": "0",
+                  "right": "3460477659",
+                  "residual": "3460477659",
+                  "holds": true
+                }
+              ]
+            }
+          },
+          {
+            "scenario": "protected (30% deviation guard) step -28%",
+            "id": "bad-debt-probe:protected (30% deviation guard) step -28%:pre-liquidation",
+            "kind": "pre-liquidation",
+            "subject": "0x8E8745Acd6fbE3e70Afc96042c7F3eC84B1f0e9f",
+            "at": 1791653400,
+            "flows": {
+              "collateralIn": "190839013",
+              "sold": "183877791",
+              "retained": "6961222",
+              "remainingOnPosition": "2195316137",
+              "debtBefore": "3460479601",
+              "debtAfter": "3016062132",
+              "repaid": "444417469",
+              "proceeds": "444417469",
+              "fromLiquidator": "0"
+            },
+            "reconciliation": {
+              "strict": true,
+              "pass": true,
+              "badDebt": "0",
+              "equalities": [
+                {
+                  "id": "sources-uses",
+                  "left": "444417469",
+                  "right": "444417469",
+                  "residual": "0",
+                  "holds": true
+                },
+                {
+                  "id": "advance",
+                  "left": "0",
+                  "right": "0",
+                  "residual": "0",
+                  "holds": true
+                },
+                {
+                  "id": "collateral",
+                  "left": "190839013",
+                  "right": "190839013",
+                  "residual": "0",
+                  "holds": true
+                },
+                {
+                  "id": "debt",
+                  "left": "3460479601",
+                  "right": "3460479601",
+                  "residual": "0",
+                  "holds": true
+                },
+                {
+                  "id": "bad-debt",
+                  "left": "0",
+                  "right": "3016062132",
+                  "residual": "3016062132",
+                  "holds": true
+                }
+              ]
+            }
+          },
+          {
+            "scenario": "protected (30% deviation guard)",
+            "id": "bad-debt-probe:protected (30% deviation guard):liquidation",
+            "kind": "liquidation",
+            "subject": "0x8E8745Acd6fbE3e70Afc96042c7F3eC84B1f0e9f",
+            "at": 1791763212,
+            "flows": {
+              "collateralIn": "1840744472",
+              "sold": "1840744472",
+              "retained": "0",
+              "remainingOnPosition": "354571665",
+              "debtBefore": "3016156724",
+              "debtAfter": "0",
+              "repaid": "3016156724",
+              "proceeds": "0",
+              "fromLiquidator": "3016156724"
+            },
+            "reconciliation": {
+              "strict": true,
+              "pass": true,
+              "badDebt": "0",
+              "equalities": [
+                {
+                  "id": "sources-uses",
+                  "left": "3016156724",
+                  "right": "3016156724",
+                  "residual": "0",
+                  "holds": true
+                },
+                {
+                  "id": "advance",
+                  "left": "0",
+                  "right": "0",
+                  "residual": "0",
+                  "holds": true
+                },
+                {
+                  "id": "collateral",
+                  "left": "1840744472",
+                  "right": "1840744472",
+                  "residual": "0",
+                  "holds": true
+                },
+                {
+                  "id": "debt",
+                  "left": "3016156724",
+                  "right": "3016156724",
+                  "residual": "0",
+                  "holds": true
+                },
+                {
+                  "id": "bad-debt",
+                  "left": "0",
+                  "right": "0",
+                  "residual": "0",
+                  "holds": true
+                }
+              ]
+            },
+            "morphoBadDebtAssets": "0",
+            "ledgerMinusMorphoBadDebt": "0",
+            "badDebtAgrees": true
+          },
+          {
+            "scenario": "protected (50% deviation guard) step -4%",
+            "id": "bad-debt-probe:protected (50% deviation guard) step -4%:pre-liquidation",
+            "kind": "pre-liquidation",
+            "subject": "0x8E8745Acd6fbE3e70Afc96042c7F3eC84B1f0e9f",
+            "at": 1791642600,
+            "flows": {
+              "collateralIn": "132266695",
+              "sold": "127918451",
+              "retained": "4348244",
+              "remainingOnPosition": "3405499668",
+              "debtBefore": "6650496841",
+              "debtAfter": "6238272367",
+              "repaid": "412224474",
+              "proceeds": "412224474",
+              "fromLiquidator": "0"
+            },
+            "reconciliation": {
+              "strict": true,
+              "pass": true,
+              "badDebt": "0",
+              "equalities": [
+                {
+                  "id": "sources-uses",
+                  "left": "412224474",
+                  "right": "412224474",
+                  "residual": "0",
+                  "holds": true
+                },
+                {
+                  "id": "advance",
+                  "left": "0",
+                  "right": "0",
+                  "residual": "0",
+                  "holds": true
+                },
+                {
+                  "id": "collateral",
+                  "left": "132266695",
+                  "right": "132266695",
+                  "residual": "0",
+                  "holds": true
+                },
+                {
+                  "id": "debt",
+                  "left": "6650496841",
+                  "right": "6650496841",
+                  "residual": "0",
+                  "holds": true
+                },
+                {
+                  "id": "bad-debt",
+                  "left": "0",
+                  "right": "6238272367",
+                  "residual": "6238272367",
+                  "holds": true
+                }
+              ]
+            }
+          },
+          {
+            "scenario": "protected (50% deviation guard) step -8%",
+            "id": "bad-debt-probe:protected (50% deviation guard) step -8%:pre-liquidation",
+            "kind": "pre-liquidation",
+            "subject": "0x8E8745Acd6fbE3e70Afc96042c7F3eC84B1f0e9f",
+            "at": 1791644400,
+            "flows": {
+              "collateralIn": "212435255",
+              "sold": "204992663",
+              "retained": "7442592",
+              "remainingOnPosition": "3193064413",
+              "debtBefore": "6238275949",
+              "debtAfter": "5605200470",
+              "repaid": "633075479",
+              "proceeds": "633075479",
+              "fromLiquidator": "0"
+            },
+            "reconciliation": {
+              "strict": true,
+              "pass": true,
+              "badDebt": "0",
+              "equalities": [
+                {
+                  "id": "sources-uses",
+                  "left": "633075479",
+                  "right": "633075479",
+                  "residual": "0",
+                  "holds": true
+                },
+                {
+                  "id": "advance",
+                  "left": "0",
+                  "right": "0",
+                  "residual": "0",
+                  "holds": true
+                },
+                {
+                  "id": "collateral",
+                  "left": "212435255",
+                  "right": "212435255",
+                  "residual": "0",
+                  "holds": true
+                },
+                {
+                  "id": "debt",
+                  "left": "6238275949",
+                  "right": "6238275949",
+                  "residual": "0",
+                  "holds": true
+                },
+                {
+                  "id": "bad-debt",
+                  "left": "0",
+                  "right": "5605200470",
+                  "residual": "5605200470",
+                  "holds": true
+                }
+              ]
+            }
+          },
+          {
+            "scenario": "protected (50% deviation guard) step -12%",
+            "id": "bad-debt-probe:protected (50% deviation guard) step -12%:pre-liquidation",
+            "kind": "pre-liquidation",
+            "subject": "0x8E8745Acd6fbE3e70Afc96042c7F3eC84B1f0e9f",
+            "at": 1791646200,
+            "flows": {
+              "collateralIn": "207908555",
+              "sold": "200587530",
+              "retained": "7321025",
+              "remainingOnPosition": "2985155858",
+              "debtBefore": "5605203672",
+              "debtAfter": "5012666025",
+              "repaid": "592537647",
+              "proceeds": "592537647",
+              "fromLiquidator": "0"
+            },
+            "reconciliation": {
+              "strict": true,
+              "pass": true,
+              "badDebt": "0",
+              "equalities": [
+                {
+                  "id": "sources-uses",
+                  "left": "592537647",
+                  "right": "592537647",
+                  "residual": "0",
+                  "holds": true
+                },
+                {
+                  "id": "advance",
+                  "left": "0",
+                  "right": "0",
+                  "residual": "0",
+                  "holds": true
+                },
+                {
+                  "id": "collateral",
+                  "left": "207908555",
+                  "right": "207908555",
+                  "residual": "0",
+                  "holds": true
+                },
+                {
+                  "id": "debt",
+                  "left": "5605203672",
+                  "right": "5605203672",
+                  "residual": "0",
+                  "holds": true
+                },
+                {
+                  "id": "bad-debt",
+                  "left": "0",
+                  "right": "5012666025",
+                  "residual": "5012666025",
+                  "holds": true
+                }
+              ]
+            }
+          },
+          {
+            "scenario": "protected (50% deviation guard) step -16%",
+            "id": "bad-debt-probe:protected (50% deviation guard) step -16%:pre-liquidation",
+            "kind": "pre-liquidation",
+            "subject": "0x8E8745Acd6fbE3e70Afc96042c7F3eC84B1f0e9f",
+            "at": 1791648000,
+            "flows": {
+              "collateralIn": "204373461",
+              "sold": "197104029",
+              "retained": "7269432",
+              "remainingOnPosition": "2780782397",
+              "debtBefore": "5012668876",
+              "debtAfter": "4456887315",
+              "repaid": "555781561",
+              "proceeds": "555781561",
+              "fromLiquidator": "0"
+            },
+            "reconciliation": {
+              "strict": true,
+              "pass": true,
+              "badDebt": "0",
+              "equalities": [
+                {
+                  "id": "sources-uses",
+                  "left": "555781561",
+                  "right": "555781561",
+                  "residual": "0",
+                  "holds": true
+                },
+                {
+                  "id": "advance",
+                  "left": "0",
+                  "right": "0",
+                  "residual": "0",
+                  "holds": true
+                },
+                {
+                  "id": "collateral",
+                  "left": "204373461",
+                  "right": "204373461",
+                  "residual": "0",
+                  "holds": true
+                },
+                {
+                  "id": "debt",
+                  "left": "5012668876",
+                  "right": "5012668876",
+                  "residual": "0",
+                  "holds": true
+                },
+                {
+                  "id": "bad-debt",
+                  "left": "0",
+                  "right": "4456887315",
+                  "residual": "4456887315",
+                  "holds": true
+                }
+              ]
+            }
+          },
+          {
+            "scenario": "protected (50% deviation guard) step -20%",
+            "id": "bad-debt-probe:protected (50% deviation guard) step -20%:pre-liquidation",
+            "kind": "pre-liquidation",
+            "subject": "0x8E8745Acd6fbE3e70Afc96042c7F3eC84B1f0e9f",
+            "at": 1791649800,
+            "flows": {
+              "collateralIn": "199306911",
+              "sold": "192181807",
+              "retained": "7125104",
+              "remainingOnPosition": "2581475486",
+              "debtBefore": "4456889837",
+              "debtAfter": "3940792515",
+              "repaid": "516097323",
+              "proceeds": "516097323",
+              "fromLiquidator": "0"
+            },
+            "reconciliation": {
+              "strict": false,
+              "pass": true,
+              "note": "debt identity off by -1 raw unit (Morpho share rounding)",
+              "badDebt": "0",
+              "equalities": [
+                {
+                  "id": "sources-uses",
+                  "left": "516097323",
+                  "right": "516097323",
+                  "residual": "0",
+                  "holds": true
+                },
+                {
+                  "id": "advance",
+                  "left": "0",
+                  "right": "0",
+                  "residual": "0",
+                  "holds": true
+                },
+                {
+                  "id": "collateral",
+                  "left": "199306911",
+                  "right": "199306911",
+                  "residual": "0",
+                  "holds": true
+                },
+                {
+                  "id": "debt",
+                  "left": "4456889837",
+                  "right": "4456889838",
+                  "residual": "-1",
+                  "holds": false
+                },
+                {
+                  "id": "bad-debt",
+                  "left": "0",
+                  "right": "3940792515",
+                  "residual": "3940792515",
+                  "holds": true
+                }
+              ]
+            }
+          },
+          {
+            "scenario": "protected (50% deviation guard) step -24%",
+            "id": "bad-debt-probe:protected (50% deviation guard) step -24%:pre-liquidation",
+            "kind": "pre-liquidation",
+            "subject": "0x8E8745Acd6fbE3e70Afc96042c7F3eC84B1f0e9f",
+            "at": 1791651600,
+            "flows": {
+              "collateralIn": "195320336",
+              "sold": "188271719",
+              "retained": "7048617",
+              "remainingOnPosition": "2386155150",
+              "debtBefore": "3940794735",
+              "debtAfter": "3460477659",
+              "repaid": "480317076",
+              "proceeds": "480317076",
+              "fromLiquidator": "0"
+            },
+            "reconciliation": {
+              "strict": true,
+              "pass": true,
+              "badDebt": "0",
+              "equalities": [
+                {
+                  "id": "sources-uses",
+                  "left": "480317076",
+                  "right": "480317076",
+                  "residual": "0",
+                  "holds": true
+                },
+                {
+                  "id": "advance",
+                  "left": "0",
+                  "right": "0",
+                  "residual": "0",
+                  "holds": true
+                },
+                {
+                  "id": "collateral",
+                  "left": "195320336",
+                  "right": "195320336",
+                  "residual": "0",
+                  "holds": true
+                },
+                {
+                  "id": "debt",
+                  "left": "3940794735",
+                  "right": "3940794735",
+                  "residual": "0",
+                  "holds": true
+                },
+                {
+                  "id": "bad-debt",
+                  "left": "0",
+                  "right": "3460477659",
+                  "residual": "3460477659",
+                  "holds": true
+                }
+              ]
+            }
+          },
+          {
+            "scenario": "protected (50% deviation guard) step -28%",
+            "id": "bad-debt-probe:protected (50% deviation guard) step -28%:pre-liquidation",
+            "kind": "pre-liquidation",
+            "subject": "0x8E8745Acd6fbE3e70Afc96042c7F3eC84B1f0e9f",
+            "at": 1791653400,
+            "flows": {
+              "collateralIn": "190839013",
+              "sold": "183877791",
+              "retained": "6961222",
+              "remainingOnPosition": "2195316137",
+              "debtBefore": "3460479601",
+              "debtAfter": "3016062132",
+              "repaid": "444417469",
+              "proceeds": "444417469",
+              "fromLiquidator": "0"
+            },
+            "reconciliation": {
+              "strict": true,
+              "pass": true,
+              "badDebt": "0",
+              "equalities": [
+                {
+                  "id": "sources-uses",
+                  "left": "444417469",
+                  "right": "444417469",
+                  "residual": "0",
+                  "holds": true
+                },
+                {
+                  "id": "advance",
+                  "left": "0",
+                  "right": "0",
+                  "residual": "0",
+                  "holds": true
+                },
+                {
+                  "id": "collateral",
+                  "left": "190839013",
+                  "right": "190839013",
+                  "residual": "0",
+                  "holds": true
+                },
+                {
+                  "id": "debt",
+                  "left": "3460479601",
+                  "right": "3460479601",
+                  "residual": "0",
+                  "holds": true
+                },
+                {
+                  "id": "bad-debt",
+                  "left": "0",
+                  "right": "3016062132",
+                  "residual": "3016062132",
+                  "holds": true
+                }
+              ]
+            }
+          },
+          {
+            "scenario": "protected (50% deviation guard) step -32%",
+            "id": "bad-debt-probe:protected (50% deviation guard) step -32%:pre-liquidation",
+            "kind": "pre-liquidation",
+            "subject": "0x8E8745Acd6fbE3e70Afc96042c7F3eC84B1f0e9f",
+            "at": 1791655200,
+            "flows": {
+              "collateralIn": "186115814",
+              "sold": "179245500",
+              "retained": "6870314",
+              "remainingOnPosition": "2009200323",
+              "debtBefore": "3016063816",
+              "debtAfter": "2606910080",
+              "repaid": "409153736",
+              "proceeds": "409153736",
+              "fromLiquidator": "0"
+            },
+            "reconciliation": {
+              "strict": true,
+              "pass": true,
+              "badDebt": "0",
+              "equalities": [
+                {
+                  "id": "sources-uses",
+                  "left": "409153736",
+                  "right": "409153736",
+                  "residual": "0",
+                  "holds": true
+                },
+                {
+                  "id": "advance",
+                  "left": "0",
+                  "right": "0",
+                  "residual": "0",
+                  "holds": true
+                },
+                {
+                  "id": "collateral",
+                  "left": "186115814",
+                  "right": "186115814",
+                  "residual": "0",
+                  "holds": true
+                },
+                {
+                  "id": "debt",
+                  "left": "3016063816",
+                  "right": "3016063816",
+                  "residual": "0",
+                  "holds": true
+                },
+                {
+                  "id": "bad-debt",
+                  "left": "0",
+                  "right": "2606910080",
+                  "residual": "2606910080",
+                  "holds": true
+                }
+              ]
+            }
+          },
+          {
+            "scenario": "protected (50% deviation guard) step -36%",
+            "id": "bad-debt-probe:protected (50% deviation guard) step -36%:pre-liquidation",
+            "kind": "pre-liquidation",
+            "subject": "0x8E8745Acd6fbE3e70Afc96042c7F3eC84B1f0e9f",
+            "at": 1791657000,
+            "flows": {
+              "collateralIn": "180973676",
+              "sold": "174218425",
+              "retained": "6755251",
+              "remainingOnPosition": "1828226647",
+              "debtBefore": "2606911531",
+              "debtAfter": "2232625685",
+              "repaid": "374285846",
+              "proceeds": "374285846",
+              "fromLiquidator": "0"
+            },
+            "reconciliation": {
+              "strict": true,
+              "pass": true,
+              "badDebt": "0",
+              "equalities": [
+                {
+                  "id": "sources-uses",
+                  "left": "374285846",
+                  "right": "374285846",
+                  "residual": "0",
+                  "holds": true
+                },
+                {
+                  "id": "advance",
+                  "left": "0",
+                  "right": "0",
+                  "residual": "0",
+                  "holds": true
+                },
+                {
+                  "id": "collateral",
+                  "left": "180973676",
+                  "right": "180973676",
+                  "residual": "0",
+                  "holds": true
+                },
+                {
+                  "id": "debt",
+                  "left": "2606911531",
+                  "right": "2606911531",
+                  "residual": "0",
+                  "holds": true
+                },
+                {
+                  "id": "bad-debt",
+                  "left": "0",
+                  "right": "2232625685",
+                  "residual": "2232625685",
+                  "holds": true
+                }
+              ]
+            }
+          },
+          {
+            "scenario": "protected (50% deviation guard) step -40%",
+            "id": "bad-debt-probe:protected (50% deviation guard) step -40%:pre-liquidation",
+            "kind": "pre-liquidation",
+            "subject": "0x8E8745Acd6fbE3e70Afc96042c7F3eC84B1f0e9f",
+            "at": 1791658800,
+            "flows": {
+              "collateralIn": "175841806",
+              "sold": "169196252",
+              "retained": "6645554",
+              "remainingOnPosition": "1652384841",
+              "debtBefore": "2232626921",
+              "debtAfter": "1891849090",
+              "repaid": "340777831",
+              "proceeds": "340777831",
+              "fromLiquidator": "0"
+            },
+            "reconciliation": {
+              "strict": true,
+              "pass": true,
+              "badDebt": "0",
+              "equalities": [
+                {
+                  "id": "sources-uses",
+                  "left": "340777831",
+                  "right": "340777831",
+                  "residual": "0",
+                  "holds": true
+                },
+                {
+                  "id": "advance",
+                  "left": "0",
+                  "right": "0",
+                  "residual": "0",
+                  "holds": true
+                },
+                {
+                  "id": "collateral",
+                  "left": "175841806",
+                  "right": "175841806",
+                  "residual": "0",
+                  "holds": true
+                },
+                {
+                  "id": "debt",
+                  "left": "2232626921",
+                  "right": "2232626921",
+                  "residual": "0",
+                  "holds": true
+                },
+                {
+                  "id": "bad-debt",
+                  "left": "0",
+                  "right": "1891849090",
+                  "residual": "1891849090",
+                  "holds": true
+                }
+              ]
+            }
+          },
+          {
+            "scenario": "protected (50% deviation guard) step -44%",
+            "id": "bad-debt-probe:protected (50% deviation guard) step -44%:pre-liquidation",
+            "kind": "pre-liquidation",
+            "subject": "0x8E8745Acd6fbE3e70Afc96042c7F3eC84B1f0e9f",
+            "at": 1791660600,
+            "flows": {
+              "collateralIn": "170657933",
+              "sold": "164107797",
+              "retained": "6550136",
+              "remainingOnPosition": "1481726908",
+              "debtBefore": "1891850134",
+              "debtAfter": "1583356228",
+              "repaid": "308493906",
+              "proceeds": "308493906",
+              "fromLiquidator": "0"
+            },
+            "reconciliation": {
+              "strict": true,
+              "pass": true,
+              "badDebt": "0",
+              "equalities": [
+                {
+                  "id": "sources-uses",
+                  "left": "308493906",
+                  "right": "308493906",
+                  "residual": "0",
+                  "holds": true
+                },
+                {
+                  "id": "advance",
+                  "left": "0",
+                  "right": "0",
+                  "residual": "0",
+                  "holds": true
+                },
+                {
+                  "id": "collateral",
+                  "left": "170657933",
+                  "right": "170657933",
+                  "residual": "0",
+                  "holds": true
+                },
+                {
+                  "id": "debt",
+                  "left": "1891850134",
+                  "right": "1891850134",
+                  "residual": "0",
+                  "holds": true
+                },
+                {
+                  "id": "bad-debt",
+                  "left": "0",
+                  "right": "1583356228",
+                  "residual": "1583356228",
+                  "holds": true
+                }
+              ]
+            }
+          }
+        ]
+      },
+      "outcome": "Real borrower 0x8E8745Acd6fbE3e70Afc96042c7F3eC84B1f0e9f (35.3777 AAPLc on the Steakhouse AAPLc/USDC market), staged to venue LTV 0.5600 at Friday's close (debt 6,650.38 USDC). Reopen print -45% (venue LTV 1.0182): the raw venue liquidated all 35.3777 AAPLc, the liquidator repaid 5,796.82 USDC and kept 734.81 USDC of incentive in kind, and Morpho wrote off 853.92 USDC of bad debt against the suppliers (ledger bad debt 853.92, residual vs Morpho 0 units). The same position on a SessionGuard market refused the Saturday liquidation (MarketClosed(5)) and the Saturday borrow, accepted a Saturday repay, and still wrote off 852.96 USDC at the -45% reopen: a session-safe oracle refuses a held price, it does not prevent a gap. Protected mode, default ShadowGuard (30% deviation guard): 7 pre-liquidations as the DEX walked down (-4% to -28%; beyond -30% the guard stops pricing: NO_SHADOW_PRICE), 12.9493 AAPLc sold for 3,634.45 USDC of debt; at the -45% reopen (LTV 0.7442) the liquidation repaid every share, the borrower kept 3.5457 AAPLc and the bad debt was 0.00 USDC. Guard at its 50% maximum: 11 pre-liquidations to -44% and the position was healthy at the -45% reopen (LTV 0.5788; liquidation Error(position is healthy)). Reopen print -15%: the raw venue liquidated with every share repaid, 9.1142 AAPLc left to the borrower, no bad debt. 22 ledger events: 20 close exactly, 2 within one raw unit of Morpho's share rounding (protected (30% deviation guard) step -20%: debt identity off by -1 raw unit (Morpho share rounding); protected (50% deviation guard) step -20%: debt identity off by -1 raw unit (Morpho share rounding)); the ledger's bad debt and Morpho's badDebtAssets agree within one unit on every liquidation; 75 of 75 checks pass.",
+      "evidence": [
+        "contracts/test/drills/BadDebtProbeDrill.t.sol",
+        "contracts/test/drills/DrillBase.sol",
+        "scripts/drills/run-fork-drills.ts",
+        "packages/ledger/src/reconcile.ts",
+        "docs/evidence/drills/bad-debt-probe.json"
+      ],
+      "notes": "Fork run, no transactions. Prices move by rewriting the AAPLc aggregator's latest round in place (the replay's transmission-slot technique); the weekend DEX is a mock Slipstream pool at the stepped price (the real Aerodrome TWAP cannot move on a fork without trading through it). Morpho accrues interest inside liquidate before it writes bad debt off, so the supplier loss is measured against the interest-accrued totals (expectedMarketBalances). The SessionGuard leg is a clone account with the same collateral (moved from the Aerodrome pool) and debt on a new market with the same IRM and LLTV.",
+      "pass": true,
+      "evidenceHash": "0x4b2ff2ec526009f54b62476f07723801f9e2d44a82a98e0c356439abf04d6bd8"
+    }
+  ]
+}

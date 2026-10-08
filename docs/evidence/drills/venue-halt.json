@@ -1,0 +1,623 @@
+{
+  "drill": "venue-halt",
+  "runs": [
+    {
+      "ranAt": 1791444401,
+      "chainId": 8453,
+      "label": "Base mainnet fork at block 52327527: the real 24 Sep 2026 hub halt of the Aave V4 MAG7 spoke replayed through the Security Council Safe and its executor, then the AAPLc reserve frozen, the AAPLc reserve paused and the USDC reserve paused through the SpokeConfigurator, against the real borrower 0xC9Bc5Cab29dC93A9D2ea16Ef38620598FAd5ca66 enrolled on an AaveDesk line with a ProtectionVault",
+      "fork": {
+        "block": 52327527,
+        "blockTime": 1791444401,
+        "drillTime": 1791556200,
+        "drillTimeNote": "the fork is warped to Fri 9 Oct 2026 10:30 ET (REGULAR) and the AAPLc feed's own last answer is re-stamped one minute earlier, so the gate is OPEN whenever the drill runs; Aave's price is unchanged",
+        "harness": "contracts/test/drills/VenueHaltDrill.t.sol under base-forge (FOUNDRY_BASE=true), driven by scripts/drills/run-fork-drills.ts",
+        "forgeVersion": "forge Version: 1.6.0-v1.1.0",
+        "executedAt": 1791444402
+      },
+      "precedent": {
+        "what": "Aave V4 Equities Hub, Base mainnet: SpokeConfig.halted set on the hub for every asset (0-7) of the MAG7 spoke 0x1790…7B8D, the treasury spoke 0x5f8d…b674 and the tokenization spoke 0x7081…efdc; Hub._validateAdd/_validateRemove/_validateDraw/_validateRestore all require !halted",
+        "safe": "0x187AAE17d4931310B3fc75743e7F16Bdc9eD77e9",
+        "executor": "0xA9D9923A1ADC1200771aaaA38CFeD6A5b8483d70",
+        "haltPayload": "0xbff63E3ad59a5F06716FD2EDd0E3C2a7123E3ac1",
+        "goLivePayload": "0x6BDf957Ff2AE324fe23911f549aff9b5621b198E",
+        "hubConfigurator": "0x2Cd40DFF9f2F74e8765dA148102b6668A5e9778A",
+        "spokeConfigurator": "0x0191B1Aa743c6B3C545119B5D56a0577D7f3a57F",
+        "accessManager": "0x4010C94698EDE9d895814502B6EB122D764a1Cc6",
+        "roles": "AccessManager roles read live: 200 (HubConfigurator.updateSpokeHalted) and 400 (SpokeConfigurator.updateFrozen/updatePaused) held by the executor; 101 (Hub.updateSpokeConfig) by the HubConfigurator; 301 (Spoke.updateReserveConfig) by the SpokeConfigurator"
+      },
+      "borrower": {
+        "address": "0xC9Bc5Cab29dC93A9D2ea16Ef38620598FAd5ca66",
+        "aaplcSuppliedRaw": "1476903521",
+        "usdcDebtAfterHeadroomRepay": "1487381053",
+        "healthFactorAfterHeadroomRepay": "3908173732577968107",
+        "note": "the borrower's real position, repaid on the fork to 30% of its AAPLc value at Aave's price so a policy draw has headroom (as in the 6 Oct fork proof); AAPLc is about two thirds of its risk-weighted collateral, six other MAG7 stocks the rest"
+      },
+      "txs": [
+        {
+          "hash": "0xa003f9e6842d520d8034a33a278cc6812af86a78eab4710241a417df57b45b1a",
+          "label": "Go-live of the MAG7 spoke on the Aave V4 Equities Hub, Base mainnet: Safe 0x187A…77e9 → executor 0xA9D9…3d70.executeTransaction(payload 0x6BDf957Ff2AE324fe23911f549aff9b5621b198E, \"execute()\", delegatecall) → HubConfigurator 0x2Cd4…778A.updateSpokeHalted(hub, asset, spoke, false) for assets 0-7 (2026-09-24T16:17:23Z)",
+          "block": 51738648
+        },
+        {
+          "hash": "0x86de199821582541271107b04751115aafeec608901a6260b0a27af52c0eed8f",
+          "label": "Halt of the MAG7 spoke on the Aave V4 Equities Hub, Base mainnet: Safe 0x187A…77e9 → executor 0xA9D9…3d70.executeTransaction(payload 0xbff63E3ad59a5F06716FD2EDd0E3C2a7123E3ac1, \"execute()\", delegatecall) → HubConfigurator 0x2Cd4…778A.updateSpokeHalted(hub, asset, spoke, true) for assets 0-7 (2026-09-24T16:54:43Z)",
+          "block": 51739768
+        },
+        {
+          "hash": "0x9d66188f9e6f1b9136cb35260c3665c12d82b30fb9bdd7ce52de1aed46205d30",
+          "label": "Go-live of the MAG7 spoke on the Aave V4 Equities Hub, Base mainnet: Safe 0x187A…77e9 → executor 0xA9D9…3d70.executeTransaction(payload 0x6BDf957Ff2AE324fe23911f549aff9b5621b198E, \"execute()\", delegatecall) → HubConfigurator 0x2Cd4…778A.updateSpokeHalted(hub, asset, spoke, false) for assets 0-7 (2026-09-25T12:47:01Z)",
+          "block": 51775537
+        }
+      ],
+      "attempts": [
+        {
+          "what": "baseline: desk draw of 10 USDC through the Taker",
+          "result": "ok"
+        },
+        {
+          "what": "hub-halt (24 Sep payload): desk draw of 10 USDC",
+          "result": "SpokeHalted()"
+        },
+        {
+          "what": "hub-halt (24 Sep payload): protective repay of 20 USDC through the Giver",
+          "result": "SpokeHalted()"
+        },
+        {
+          "what": "hub-halt (24 Sep payload): repay of 1 USDC by the borrower at the venue",
+          "result": "SpokeHalted()"
+        },
+        {
+          "what": "hub-halt (24 Sep payload): withdrawal of 0.01 AAPLc at the venue",
+          "result": "SpokeHalted()"
+        },
+        {
+          "what": "hub-halt (24 Sep payload) -> reversed: desk draw of 10 USDC",
+          "result": "ok"
+        },
+        {
+          "what": "aaplc-reserve-frozen: desk draw of 10 USDC",
+          "result": "Refused(21)"
+        },
+        {
+          "what": "aaplc-reserve-frozen: new AAPLc supply at the venue",
+          "result": "ReserveFrozen()"
+        },
+        {
+          "what": "aaplc-reserve-frozen: USDC borrow straight at the venue (Aave freezes per reserve)",
+          "result": "ok"
+        },
+        {
+          "what": "aaplc-reserve-frozen -> unfrozen: desk draw of 10 USDC",
+          "result": "ok"
+        },
+        {
+          "what": "aaplc-reserve-paused: desk draw of 10 USDC",
+          "result": "Refused(20)"
+        },
+        {
+          "what": "aaplc-reserve-paused: protective repay of 20 USDC through the Giver",
+          "result": "ok"
+        },
+        {
+          "what": "aaplc-reserve-paused: withdrawal of 0.01 AAPLc at the venue",
+          "result": "ReservePaused()"
+        },
+        {
+          "what": "usdc-reserve-paused: desk draw of 10 USDC",
+          "result": "Refused(20)"
+        },
+        {
+          "what": "usdc-reserve-paused: protective repay of 20 USDC through the Giver",
+          "result": "ReservePaused()"
+        },
+        {
+          "what": "usdc-reserve-paused: repay of 1 USDC by the borrower at the venue",
+          "result": "ReservePaused()"
+        },
+        {
+          "what": "usdc-reserve-paused -> unpaused: protective repay of 20 USDC through the Giver",
+          "result": "ok"
+        },
+        {
+          "what": "hub-halt (24 Sep payload): liquidationCall covering 1% of the debt while the switch is on",
+          "result": "SpokeHalted()"
+        },
+        {
+          "what": "hub-halt (24 Sep payload) -> reversed: liquidationCall covering 1% of the debt",
+          "result": "ok"
+        },
+        {
+          "what": "aaplc-reserve-frozen: liquidationCall covering 1% of the debt while the switch is on",
+          "result": "ok"
+        },
+        {
+          "what": "aaplc-reserve-frozen -> reversed: liquidationCall covering 1% of the debt",
+          "result": "ok"
+        },
+        {
+          "what": "aaplc-reserve-paused: liquidationCall covering 1% of the debt while the switch is on",
+          "result": "ReservePaused()"
+        },
+        {
+          "what": "aaplc-reserve-paused -> reversed: liquidationCall covering 1% of the debt",
+          "result": "ok"
+        },
+        {
+          "what": "usdc-reserve-paused: liquidationCall covering 1% of the debt while the switch is on",
+          "result": "ReservePaused()"
+        },
+        {
+          "what": "usdc-reserve-paused -> reversed: liquidationCall covering 1% of the debt",
+          "result": "ok"
+        }
+      ],
+      "assertions": [
+        {
+          "scenario": "baseline",
+          "what": "gate state (0 = OPEN)",
+          "actual": "0",
+          "expected": "0",
+          "pass": true
+        },
+        {
+          "scenario": "baseline",
+          "what": "hub: MAG7 spoke halted for AAPLc",
+          "actual": false,
+          "expected": false,
+          "pass": true
+        },
+        {
+          "scenario": "baseline",
+          "what": "desk quote reason for a 10 USDC draw",
+          "actual": "NONE",
+          "expected": "NONE",
+          "pass": true
+        },
+        {
+          "scenario": "baseline",
+          "what": "obligation status",
+          "actual": "OPEN",
+          "expected": "OPEN",
+          "pass": true
+        },
+        {
+          "scenario": "baseline",
+          "what": "desk draw of 10 USDC through the Taker",
+          "actual": "ok",
+          "expected": "ok",
+          "pass": true
+        },
+        {
+          "scenario": "hub-halt (24 Sep payload)",
+          "what": "hub: MAG7 spoke halted for AAPLc (asset 0)",
+          "actual": true,
+          "expected": true,
+          "pass": true
+        },
+        {
+          "scenario": "hub-halt (24 Sep payload)",
+          "what": "hub: MAG7 spoke halted for USDC (asset 7)",
+          "actual": true,
+          "expected": true,
+          "pass": true
+        },
+        {
+          "scenario": "hub-halt (24 Sep payload)",
+          "what": "desk draw of 10 USDC",
+          "actual": "SpokeHalted()",
+          "expected": "SpokeHalted()",
+          "pass": true
+        },
+        {
+          "scenario": "hub-halt (24 Sep payload)",
+          "what": "borrower USDC unchanged after the refused draw",
+          "actual": "0",
+          "expected": "0",
+          "pass": true
+        },
+        {
+          "scenario": "hub-halt (24 Sep payload)",
+          "what": "protective repay of 20 USDC through the Giver",
+          "actual": "SpokeHalted()",
+          "expected": "SpokeHalted()",
+          "pass": true
+        },
+        {
+          "scenario": "hub-halt (24 Sep payload)",
+          "what": "vault USDC unchanged",
+          "actual": "550000000",
+          "expected": "550000000",
+          "pass": true
+        },
+        {
+          "scenario": "hub-halt (24 Sep payload)",
+          "what": "repay of 1 USDC by the borrower at the venue",
+          "actual": "SpokeHalted()",
+          "expected": "SpokeHalted()",
+          "pass": true
+        },
+        {
+          "scenario": "hub-halt (24 Sep payload)",
+          "what": "withdrawal of 0.01 AAPLc at the venue",
+          "actual": "SpokeHalted()",
+          "expected": "SpokeHalted()",
+          "pass": true
+        },
+        {
+          "scenario": "hub-halt (24 Sep payload) -> reversed",
+          "what": "hub: halted cleared by the go-live payload",
+          "actual": false,
+          "expected": false,
+          "pass": true
+        },
+        {
+          "scenario": "hub-halt (24 Sep payload) -> reversed",
+          "what": "desk quote reason for a 10 USDC draw",
+          "actual": "NONE",
+          "expected": "NONE",
+          "pass": true
+        },
+        {
+          "scenario": "hub-halt (24 Sep payload) -> reversed",
+          "what": "obligation status",
+          "actual": "OPEN",
+          "expected": "OPEN",
+          "pass": true
+        },
+        {
+          "scenario": "hub-halt (24 Sep payload) -> reversed",
+          "what": "desk draw of 10 USDC",
+          "actual": "ok",
+          "expected": "ok",
+          "pass": true
+        },
+        {
+          "scenario": "aaplc-reserve-frozen",
+          "what": "spoke: AAPLc reserve frozen",
+          "actual": true,
+          "expected": true,
+          "pass": true
+        },
+        {
+          "scenario": "aaplc-reserve-frozen",
+          "what": "desk quote reason for a 10 USDC draw",
+          "actual": "VENUE_FROZEN",
+          "expected": "VENUE_FROZEN",
+          "pass": true
+        },
+        {
+          "scenario": "aaplc-reserve-frozen",
+          "what": "obligation status",
+          "actual": "HOLD_VENUE",
+          "expected": "HOLD_VENUE",
+          "pass": true
+        },
+        {
+          "scenario": "aaplc-reserve-frozen",
+          "what": "desk draw of 10 USDC",
+          "actual": "Refused(21)",
+          "expected": "Refused(21)",
+          "pass": true
+        },
+        {
+          "scenario": "aaplc-reserve-frozen",
+          "what": "protective repay through the Giver: repaid (USDC units)",
+          "actual": "20000000",
+          "expected": "20000000",
+          "pass": true
+        },
+        {
+          "scenario": "aaplc-reserve-frozen",
+          "what": "funded from the user's reserve (USDC units)",
+          "actual": "20000000",
+          "expected": "20000000",
+          "pass": true
+        },
+        {
+          "scenario": "aaplc-reserve-frozen",
+          "what": "venue debt reduced by the repay (USDC units)",
+          "actual": "20000000",
+          "expected": "20000000 +/- 2",
+          "pass": true
+        },
+        {
+          "scenario": "aaplc-reserve-frozen",
+          "what": "health factor rose",
+          "actual": true,
+          "expected": true,
+          "pass": true
+        },
+        {
+          "scenario": "aaplc-reserve-frozen",
+          "what": "new AAPLc supply at the venue",
+          "actual": "ReserveFrozen()",
+          "expected": "ReserveFrozen()",
+          "pass": true
+        },
+        {
+          "scenario": "aaplc-reserve-frozen",
+          "what": "USDC borrow straight at the venue (Aave freezes per reserve)",
+          "actual": "ok",
+          "expected": "ok",
+          "pass": true
+        },
+        {
+          "scenario": "aaplc-reserve-frozen -> unfrozen",
+          "what": "desk quote reason for a 10 USDC draw",
+          "actual": "NONE",
+          "expected": "NONE",
+          "pass": true
+        },
+        {
+          "scenario": "aaplc-reserve-frozen -> unfrozen",
+          "what": "obligation status",
+          "actual": "OPEN",
+          "expected": "OPEN",
+          "pass": true
+        },
+        {
+          "scenario": "aaplc-reserve-frozen -> unfrozen",
+          "what": "desk draw of 10 USDC",
+          "actual": "ok",
+          "expected": "ok",
+          "pass": true
+        },
+        {
+          "scenario": "aaplc-reserve-paused",
+          "what": "spoke: AAPLc reserve paused",
+          "actual": true,
+          "expected": true,
+          "pass": true
+        },
+        {
+          "scenario": "aaplc-reserve-paused",
+          "what": "desk quote reason for a 10 USDC draw",
+          "actual": "VENUE_PAUSED",
+          "expected": "VENUE_PAUSED",
+          "pass": true
+        },
+        {
+          "scenario": "aaplc-reserve-paused",
+          "what": "obligation status",
+          "actual": "HOLD_VENUE",
+          "expected": "HOLD_VENUE",
+          "pass": true
+        },
+        {
+          "scenario": "aaplc-reserve-paused",
+          "what": "desk draw of 10 USDC",
+          "actual": "Refused(20)",
+          "expected": "Refused(20)",
+          "pass": true
+        },
+        {
+          "scenario": "aaplc-reserve-paused",
+          "what": "protective repay of 20 USDC through the Giver",
+          "actual": "ok",
+          "expected": "ok",
+          "pass": true
+        },
+        {
+          "scenario": "aaplc-reserve-paused",
+          "what": "withdrawal of 0.01 AAPLc at the venue",
+          "actual": "ReservePaused()",
+          "expected": "ReservePaused()",
+          "pass": true
+        },
+        {
+          "scenario": "aaplc-reserve-paused -> unpaused",
+          "what": "desk quote reason for a 10 USDC draw",
+          "actual": "NONE",
+          "expected": "NONE",
+          "pass": true
+        },
+        {
+          "scenario": "aaplc-reserve-paused -> unpaused",
+          "what": "obligation status",
+          "actual": "OPEN",
+          "expected": "OPEN",
+          "pass": true
+        },
+        {
+          "scenario": "usdc-reserve-paused",
+          "what": "spoke: USDC reserve paused",
+          "actual": true,
+          "expected": true,
+          "pass": true
+        },
+        {
+          "scenario": "usdc-reserve-paused",
+          "what": "desk quote reason for a 10 USDC draw",
+          "actual": "VENUE_PAUSED",
+          "expected": "VENUE_PAUSED",
+          "pass": true
+        },
+        {
+          "scenario": "usdc-reserve-paused",
+          "what": "obligation status",
+          "actual": "HOLD_VENUE",
+          "expected": "HOLD_VENUE",
+          "pass": true
+        },
+        {
+          "scenario": "usdc-reserve-paused",
+          "what": "desk draw of 10 USDC",
+          "actual": "Refused(20)",
+          "expected": "Refused(20)",
+          "pass": true
+        },
+        {
+          "scenario": "usdc-reserve-paused",
+          "what": "protective repay of 20 USDC through the Giver",
+          "actual": "ReservePaused()",
+          "expected": "ReservePaused()",
+          "pass": true
+        },
+        {
+          "scenario": "usdc-reserve-paused",
+          "what": "repay of 1 USDC by the borrower at the venue",
+          "actual": "ReservePaused()",
+          "expected": "ReservePaused()",
+          "pass": true
+        },
+        {
+          "scenario": "usdc-reserve-paused -> unpaused",
+          "what": "desk quote reason for a 10 USDC draw",
+          "actual": "NONE",
+          "expected": "NONE",
+          "pass": true
+        },
+        {
+          "scenario": "usdc-reserve-paused -> unpaused",
+          "what": "obligation status",
+          "actual": "OPEN",
+          "expected": "OPEN",
+          "pass": true
+        },
+        {
+          "scenario": "usdc-reserve-paused -> unpaused",
+          "what": "protective repay of 20 USDC through the Giver",
+          "actual": "ok",
+          "expected": "ok",
+          "pass": true
+        },
+        {
+          "scenario": "hub-halt (24 Sep payload)",
+          "what": "staged position liquidatable by health (HF < 1)",
+          "actual": true,
+          "expected": true,
+          "pass": true
+        },
+        {
+          "scenario": "hub-halt (24 Sep payload)",
+          "what": "liquidationCall covering 1% of the debt while the switch is on",
+          "actual": "SpokeHalted()",
+          "expected": "SpokeHalted()",
+          "pass": true
+        },
+        {
+          "scenario": "hub-halt (24 Sep payload) -> reversed",
+          "what": "liquidationCall covering 1% of the debt",
+          "actual": "ok",
+          "expected": "ok",
+          "pass": true
+        },
+        {
+          "scenario": "aaplc-reserve-frozen",
+          "what": "staged position liquidatable by health (HF < 1)",
+          "actual": true,
+          "expected": true,
+          "pass": true
+        },
+        {
+          "scenario": "aaplc-reserve-frozen",
+          "what": "liquidationCall covering 1% of the debt while the switch is on",
+          "actual": "ok",
+          "expected": "ok",
+          "pass": true
+        },
+        {
+          "scenario": "aaplc-reserve-frozen -> reversed",
+          "what": "liquidationCall covering 1% of the debt",
+          "actual": "ok",
+          "expected": "ok",
+          "pass": true
+        },
+        {
+          "scenario": "aaplc-reserve-paused",
+          "what": "staged position liquidatable by health (HF < 1)",
+          "actual": true,
+          "expected": true,
+          "pass": true
+        },
+        {
+          "scenario": "aaplc-reserve-paused",
+          "what": "liquidationCall covering 1% of the debt while the switch is on",
+          "actual": "ReservePaused()",
+          "expected": "ReservePaused()",
+          "pass": true
+        },
+        {
+          "scenario": "aaplc-reserve-paused -> reversed",
+          "what": "liquidationCall covering 1% of the debt",
+          "actual": "ok",
+          "expected": "ok",
+          "pass": true
+        },
+        {
+          "scenario": "usdc-reserve-paused",
+          "what": "staged position liquidatable by health (HF < 1)",
+          "actual": true,
+          "expected": true,
+          "pass": true
+        },
+        {
+          "scenario": "usdc-reserve-paused",
+          "what": "liquidationCall covering 1% of the debt while the switch is on",
+          "actual": "ReservePaused()",
+          "expected": "ReservePaused()",
+          "pass": true
+        },
+        {
+          "scenario": "usdc-reserve-paused -> reversed",
+          "what": "liquidationCall covering 1% of the debt",
+          "actual": "ok",
+          "expected": "ok",
+          "pass": true
+        }
+      ],
+      "values": [
+        {
+          "scenario": "hub-halt (24 Sep payload)",
+          "name": "desk quote reason for a 10 USDC draw (the desk reads spoke reserve flags only)",
+          "value": "NONE"
+        },
+        {
+          "scenario": "hub-halt (24 Sep payload)",
+          "name": "obligation status (the desk reads spoke reserve flags only)",
+          "value": "OPEN"
+        },
+        {
+          "scenario": "hub-halt (24 Sep payload)",
+          "name": "desk quote available (USDC units)",
+          "value": "991475970"
+        },
+        {
+          "scenario": "hub-halt (24 Sep payload)",
+          "name": "health factor of the staged position after the AAPLc feed is rewritten to 35%",
+          "value": "624279525847677078"
+        },
+        {
+          "scenario": "aaplc-reserve-frozen",
+          "name": "health factor of the staged position after the AAPLc feed is rewritten to 35%",
+          "value": "624279525847677078"
+        },
+        {
+          "scenario": "aaplc-reserve-paused",
+          "name": "health factor of the staged position after the AAPLc feed is rewritten to 35%",
+          "value": "624279525847677078"
+        },
+        {
+          "scenario": "usdc-reserve-paused",
+          "name": "health factor of the staged position after the AAPLc feed is rewritten to 35%",
+          "value": "624279525847677078"
+        }
+      ],
+      "outcome": "Real switch (hub halt, the 24 Sep payload replayed as the Safe): draw SpokeHalted(), protective repay through the Giver SpokeHalted(), venue repay SpokeHalted(), withdrawal SpokeHalted(), liquidation of an under-water position SpokeHalted(): nothing moves either way; the go-live payload restores draws and liquidations. The AaveDesk reads only the spoke's reserve flags, so during the hub halt it quoted NONE with 991.48 USDC available and recorded OPEN (no funds moved: the venue refused the draw). AAPLc reserve frozen: desk VENUE_FROZEN / HOLD_VENUE, draw Refused(21), protective repay 20.00 USDC from the user's reserve, new AAPLc supply ReserveFrozen(), a USDC borrow straight at the venue ok, liquidation ok. AAPLc reserve paused: desk VENUE_PAUSED / HOLD_VENUE, protective repay ok, withdrawal ReservePaused(), liquidation ReservePaused(). USDC reserve paused: desk VENUE_PAUSED / HOLD_VENUE, protective repay ReservePaused(), liquidation ReservePaused(). Every switch reversed returns the line to OPEN. 59 of 59 checks pass.",
+      "findings": [
+        "The real Aave halt switch is the hub's SpokeConfig.halted, not the spoke's reserve paused/frozen flags. AaveDeskLib.stateReason and obligationStatus read only Spoke.getReserveConfig, so during a hub halt the desk quotes capacity and records OPEN while every venue action reverts SpokeHalted(). No funds can move (the venue refuses), but the record is wrong for the duration: the desk should also read Hub.getSpokeConfig(assetId, spoke).halted/.active for the collateral and USDC assets (VENUE_PAUSED or a VENUE_HALTED reason, HOLD_VENUE).",
+        "A hub halt also blocks repays, so the protective repay cannot run while it lasts; it blocks liquidations too, so a halted position is frozen in both directions until the go-live payload.",
+        "Aave freezes per reserve: with only AAPLc frozen, Aave itself still lends USDC against it; the desk refuses (VENUE_FROZEN) because it never lends against a halted asset."
+      ],
+      "evidence": [
+        "contracts/test/drills/VenueHaltDrill.t.sol",
+        "contracts/test/drills/DrillBase.sol",
+        "scripts/drills/run-fork-drills.ts",
+        "docs/evidence/drills/venue-halt.json"
+      ],
+      "notes": "Fork run, no transactions of its own: the three hashes are the real mainnet precedent (receipts checked by the runner). Scenario state is restored from one EVM snapshot between scenarios; liquidation checks stage an under-water position (borrow to health 1.10, AAPLc feed rewritten to 35% through the aggregator's transmission slot) before the switch is thrown.",
+      "pass": true,
+      "evidenceHash": "0x01a1269addcc4045fc8cfafccda9801fd8ac867ed137952a3393ecf3ca6ad4b3"
+    }
+  ]
+}
