@@ -9,6 +9,7 @@ import {TestPriceFeed} from "../../src/test/TestPriceFeed.sol";
 import {MirrorOracleRegistry} from "../../src/test/MirrorOracleRegistry.sol";
 import {MockB20} from "../../src/test/MockB20.sol";
 import {ProtectionVault} from "../../src/aave/ProtectionVault.sol";
+import {AaveTypes as T} from "../../src/aave/AaveTypes.sol";
 import {IAaveSpoke, ITakerPositionManager, IGiverPositionManager} from "../../src/aave/interfaces/IAaveV4.sol";
 import {MockAaveSpoke} from "./mocks/MockAaveSpoke.sol";
 import {MockTaker, MockGiver} from "./mocks/MockPositionManagers.sol";
@@ -30,6 +31,7 @@ contract VaultHandler is Test {
     uint256 public protects;
     uint256 public advances;
     uint256 public recoveries;
+    uint256 public halts;
     mapping(address => uint256) public accrued;
 
     constructor(
@@ -131,9 +133,21 @@ contract VaultHandler is Test {
             protects += 1;
             if (got.fromAdvance != 0) advances += 1;
         } catch {
-            // the keeper asked for more than the ladder covers; the preview said so
-            assertGt(f.shortfall, 0, "protect may only fail on a shortfall");
+            // the keeper asked for more than the ladder covers (the preview said so), or the venue refuses repays
+            assertTrue(
+                f.shortfall > 0 || vault.venueReason(usdcRes) != T.Reason.NONE,
+                "protect may only fail on a shortfall or a venue switch"
+            );
         }
+    }
+
+    /// @dev Aave's own switch flips during the run: the hub halts USDC's or AAPLc's asset, or lifts it. Protection,
+    ///      recovery and settlement must keep every identity through it.
+    function switchHub(uint256 seed) external {
+        uint256 asset = seed % 2 == 0 ? usdcRes : aaplRes;
+        bool halt = (seed >> 1) % 2 == 0;
+        spoke.setHubHalted(asset, halt);
+        if (halt) halts += 1;
     }
 
     function repayAdvance(uint256 seed, uint256 amount) external {

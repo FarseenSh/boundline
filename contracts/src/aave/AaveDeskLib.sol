@@ -11,6 +11,7 @@ import {IEligibility} from "../interfaces/IEligibility.sol";
 import {SessionGate} from "../oracle/SessionGate.sol";
 import {IAaveSpoke, ITakerPositionManager, IGiverPositionManager, IAavePriceOracle} from "./interfaces/IAaveV4.sol";
 import {AaveTypes as T} from "./AaveTypes.sol";
+import {AaveVenue} from "./AaveVenue.sol";
 
 /// @title AaveDeskLib
 /// @notice The AaveDesk's pricing and venue logic as an external library (DELEGATECALL), the same split
@@ -68,6 +69,10 @@ library AaveDeskLib {
         if (!v.spoke.isPositionManager(l.user, address(v.giver))) {
             revert Refused(T.Reason.NOT_AUTHORIZED_ON_VENUE);
         }
+        // The venue refuses a repay while the hub halts USDC's asset or the spoke pauses the reserve: say so by
+        // name. An unreadable hub is left to the venue, so a bad read never blocks the one always-safe action.
+        T.Reason closed = AaveVenue.settleReason(v.spoke, v.usdcReserveId, false);
+        if (closed != T.Reason.NONE) revert Refused(closed);
         uint256 debt = v.spoke.getUserTotalDebt(v.usdcReserveId, l.user);
         if (debt == 0) revert NothingToRepay();
         full = amount == REPAY_ALL || amount >= debt;
@@ -107,6 +112,7 @@ library AaveDeskLib {
         if (l.status == T.LineStatus.NONE) return T.ObligationStatus.NONE;
         if (l.status == T.LineStatus.CLOSED) return T.ObligationStatus.CLOSED;
         if (l.status == T.LineStatus.HELD) return T.ObligationStatus.HOLD_KEEPER;
+        if (!hubLive(v, l.reserveId)) return T.ObligationStatus.HOLD_VENUE;
         IAaveSpoke.ReserveConfig memory c = v.spoke.getReserveConfig(l.reserveId);
         IAaveSpoke.ReserveConfig memory u = v.spoke.getReserveConfig(v.usdcReserveId);
         if (c.paused || c.frozen || u.paused || u.frozen) return T.ObligationStatus.HOLD_VENUE;
@@ -148,7 +154,8 @@ library AaveDeskLib {
 
     // ---------------------------------------------------------------- quote steps
 
-    /// @dev Desk, line, partner, reserve and venue switches, then the gate, then eligibility.
+    /// @dev Desk, line, partner, reserve and venue switches (the hub's halt first, then the spoke's pause and
+    ///      freeze), then the gate, then eligibility.
     function stateReason(
         Venue memory v,
         T.Line storage l,
@@ -163,6 +170,7 @@ library AaveDeskLib {
         if (!p.active) return T.Reason.PARTNER_INACTIVE;
         if (!reserveEnabled) return T.Reason.MARKET_DISABLED;
         if (!t.allowed) return T.Reason.TICKER_NOT_ALLOWED;
+        if (!hubLive(v, l.reserveId)) return T.Reason.VENUE_HALTED;
         IAaveSpoke.ReserveConfig memory c = v.spoke.getReserveConfig(l.reserveId);
         IAaveSpoke.ReserveConfig memory u = v.spoke.getReserveConfig(v.usdcReserveId);
         if (c.paused || u.paused) return T.Reason.VENUE_PAUSED;
@@ -230,6 +238,15 @@ library AaveDeskLib {
     }
 
     // ---------------------------------------------------------------- internals
+
+    /// @dev The hub lets the spoke act on both the collateral's asset and USDC's (`active && !halted` in the hub's
+    ///      `SpokeConfig`). Fail closed: a hub that cannot be read counts as halted for anything that lends.
+    function hubLive(Venue memory v, uint256 collateralReserveId) internal view returns (bool) {
+        (bool readable, bool live) = AaveVenue.hubState(v.spoke, collateralReserveId);
+        if (!readable || !live) return false;
+        (readable, live) = AaveVenue.hubState(v.spoke, v.usdcReserveId);
+        return readable && live;
+    }
 
     /// @dev What Aave alone would still lend: collateral value x average collateral factor minus debt,
     ///      in oracle units, converted to USDC units at the oracle's USDC price. Fails closed to zero

@@ -11,6 +11,7 @@ import {IPriceGate} from "../interfaces/IPriceGate.sol";
 import {SessionGate} from "../oracle/SessionGate.sol";
 import {IAaveSpoke, ITakerPositionManager, IGiverPositionManager} from "./interfaces/IAaveV4.sol";
 import {AaveTypes as T} from "./AaveTypes.sol";
+import {AaveVenue} from "./AaveVenue.sol";
 import {IAdvanceSink} from "../reserve/IAdvanceSink.sol";
 
 /// @title ProtectionVault
@@ -287,7 +288,9 @@ contract ProtectionVault is Ownable2Step, ReentrancyGuard, IAdvanceSink {
     }
 
     /// @notice Repay up to `amount` of the user's USDC debt on the spoke through the Giver, funded down
-    ///         the ladder. Works at any hour. Returns what was actually repaid (the Giver caps at debt).
+    ///         the ladder. Works at any hour, except while the venue itself refuses repays: the hub halted the
+    ///         spoke for USDC's asset (Refused(VENUE_HALTED)) or the spoke paused the USDC reserve
+    ///         (Refused(VENUE_PAUSED)); nothing moves then. Returns what was actually repaid (the Giver caps at debt).
     function protect(address user, bytes32 partnerId, uint256 amount)
         external
         onlyKeeper
@@ -296,6 +299,8 @@ contract ProtectionVault is Ownable2Step, ReentrancyGuard, IAdvanceSink {
     {
         if (amount == 0) revert ZeroAmount();
         if (!SPOKE.isPositionManager(user, address(GIVER))) revert NotEnrolled(user, address(GIVER));
+        T.Reason closed = AaveVenue.settleReason(SPOKE, LOAN_RESERVE_ID, false);
+        if (closed != T.Reason.NONE) revert Refused(closed);
         uint256 debt = SPOKE.getUserTotalDebt(LOAN_RESERVE_ID, user);
         if (debt == 0) revert NothingToProtect(user);
         uint256 want = Math.min(amount, debt);
@@ -339,7 +344,9 @@ contract ProtectionVault is Ownable2Step, ReentrancyGuard, IAdvanceSink {
 
     /// @notice Recover collateral for an outstanding advance through the Taker, into this vault, only in
     ///         an open session with a fresh feed (the sale that settles the advance happens at that
-    ///         price, never at a held one). Needs the user's `approveWithdraw` on the Taker.
+    ///         price, never at a held one) and while the venue lets the collateral move: not while the hub
+    ///         halts the spoke for its asset or cannot be read (VENUE_HALTED), nor while the reserve is paused
+    ///         (VENUE_PAUSED). Needs the user's `approveWithdraw` on the Taker.
     function recover(address user, uint256 reserveId, uint256 amount)
         external
         onlyKeeper
@@ -352,6 +359,8 @@ contract ProtectionVault is Ownable2Step, ReentrancyGuard, IAdvanceSink {
         address token = SPOKE.getReserve(reserveId).underlying;
         IPriceGate.Verdict memory v = GATE.check(token);
         if (v.state != IPriceGate.GateState.OPEN) revert Refused(_gateReason(v.state));
+        T.Reason closed = AaveVenue.settleReason(SPOKE, reserveId, true);
+        if (closed != T.Reason.NONE) revert Refused(closed);
         uint256 allowance = TAKER.withdrawAllowance(address(SPOKE), reserveId, user, address(this));
         if (allowance < amount) revert InsufficientWithdrawAllowance(allowance, amount);
         (, withdrawn) = TAKER.withdrawOnBehalfOf(address(SPOKE), reserveId, amount, user);
@@ -417,6 +426,13 @@ contract ProtectionVault is Ownable2Step, ReentrancyGuard, IAdvanceSink {
 
     function advanceOf(address user) external view returns (Advance memory) {
         return _advances[user];
+    }
+
+    /// @notice What the venue refuses right now for a repay or a withdrawal on `reserveId`: VENUE_HALTED (the
+    ///         hub halted or deactivated the spoke for the asset), VENUE_PAUSED (the reserve is paused) or NONE.
+    ///         A keeper reads it for the loan reserve before arming `protect`, so it never arms what cannot land.
+    function venueReason(uint256 reserveId) external view returns (T.Reason) {
+        return AaveVenue.settleReason(SPOKE, reserveId, false);
     }
 
     /// @notice Which managers the user has approved, and how much collateral this vault may recover.

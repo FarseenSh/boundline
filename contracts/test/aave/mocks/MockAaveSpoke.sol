@@ -3,13 +3,16 @@ pragma solidity ^0.8.28;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import {IAaveSpoke, IAavePriceOracle} from "../../../src/aave/interfaces/IAaveV4.sol";
+import {IAaveSpoke, IAaveHub, IAavePriceOracle} from "../../../src/aave/interfaces/IAaveV4.sol";
 
 /// @notice A small Aave V4 spoke for unit tests: reserves with a collateral factor, a price and
 ///         pause/frozen/borrowable flags; per-user supplied assets and debt (no interest unless
 ///         `accrue` is called); the position-manager rule of the real spoke (`msg.sender == onBehalfOf`
 ///         or an active manager the user approved); a health-factor check after borrow and withdraw;
-///         and the account data shape the desk reads. It is also its own `IPriceOracle`.
+///         and the account data shape the desk reads. It is also its own `IPriceOracle` and its own hub:
+///         `getReserve` names this contract as the hub with asset id = reserve id, `getSpokeConfig` answers the
+///         hub's `SpokeConfig` (active, halted), and supply, withdraw, borrow and repay refuse while the asset is
+///         halted or inactive, as `Hub._validateAdd/_validateRemove/_validateDraw/_validateRestore` do.
 ///         Value units follow Aave: prices and `totalCollateralValue` have 8 decimals, debt value is RAY.
 contract MockAaveSpoke is IAavePriceOracle {
     using SafeERC20 for IERC20;
@@ -35,6 +38,10 @@ contract MockAaveSpoke is IAavePriceOracle {
     mapping(address => mapping(uint256 => bool)) public collateralEnabled;
     mapping(address => bool) public managerActive;
     mapping(address => mapping(address => bool)) public managerApproved; // manager => user => approved
+    // The hub face: per asset (= reserve id here), Aave's halt switch and the spoke's activation.
+    mapping(uint256 => bool) public hubHalted;
+    mapping(uint256 => bool) public hubInactive;
+    bool public hubUnreadable; // getSpokeConfig reverts, as an upgraded or misconfigured hub might
 
     error HealthFactorBelowThreshold();
     error ReserveNotBorrowable();
@@ -42,6 +49,8 @@ contract MockAaveSpoke is IAavePriceOracle {
     error ReserveFrozen();
     error Unauthorized();
     error Unsupported();
+    error SpokeNotActive();
+    error SpokeHalted();
 
     event SetUserPositionManager(address indexed user, address indexed positionManager, bool approve);
     event Borrow(
@@ -77,6 +86,19 @@ contract MockAaveSpoke is IAavePriceOracle {
         _reserves[reserveId].collateralFactorBps = bps;
     }
 
+    /// @dev The hub's halt switch for an asset (the 24 Sep 2026 kind), and the spoke's activation on the hub.
+    function setHubHalted(uint256 assetId, bool halted) external {
+        hubHalted[assetId] = halted;
+    }
+
+    function setHubActive(uint256 assetId, bool active) external {
+        hubInactive[assetId] = !active;
+    }
+
+    function setHubUnreadable(bool value) external {
+        hubUnreadable = value;
+    }
+
     /// @dev Simulates interest: adds `amount` of debt to the user without any transfer.
     function accrue(uint256 reserveId, address user, uint256 amount) external {
         debt[reserveId][user] += amount;
@@ -100,6 +122,7 @@ contract MockAaveSpoke is IAavePriceOracle {
         returns (uint256, uint256)
     {
         R storage r = _reserves[reserveId];
+        _requireHubLive(reserveId);
         if (r.paused) revert ReservePaused();
         if (r.frozen) revert ReserveFrozen();
         IERC20(r.underlying).safeTransferFrom(msg.sender, address(this), amount);
@@ -115,6 +138,7 @@ contract MockAaveSpoke is IAavePriceOracle {
         returns (uint256, uint256)
     {
         R storage r = _reserves[reserveId];
+        _requireHubLive(reserveId);
         if (r.paused) revert ReservePaused();
         uint256 have = supplied[reserveId][onBehalfOf];
         uint256 out = amount > have ? have : amount;
@@ -131,6 +155,7 @@ contract MockAaveSpoke is IAavePriceOracle {
         returns (uint256, uint256)
     {
         R storage r = _reserves[reserveId];
+        _requireHubLive(reserveId);
         if (r.paused) revert ReservePaused();
         if (r.frozen) revert ReserveFrozen();
         if (!r.borrowable) revert ReserveNotBorrowable();
@@ -148,6 +173,7 @@ contract MockAaveSpoke is IAavePriceOracle {
         returns (uint256, uint256)
     {
         R storage r = _reserves[reserveId];
+        _requireHubLive(reserveId);
         if (r.paused) revert ReservePaused();
         uint256 owed = debt[reserveId][onBehalfOf];
         uint256 pay = amount > owed ? owed : amount;
@@ -280,7 +306,18 @@ contract MockAaveSpoke is IAavePriceOracle {
         return _reserves[reserveId].price8;
     }
 
+    // IHub face
+    function getSpokeConfig(uint256 assetId, address) external view returns (IAaveHub.SpokeConfig memory) {
+        if (hubUnreadable) revert Unsupported();
+        return IAaveHub.SpokeConfig(type(uint40).max, type(uint40).max, 0, !hubInactive[assetId], hubHalted[assetId]);
+    }
+
     // ------------------------------------------------------------ internals
+
+    function _requireHubLive(uint256 assetId) internal view {
+        if (hubInactive[assetId]) revert SpokeNotActive();
+        if (hubHalted[assetId]) revert SpokeHalted();
+    }
 
     function _isPositionManager(address user, address manager) internal view returns (bool) {
         return managerActive[manager] && managerApproved[manager][user];

@@ -25,7 +25,7 @@ library AaveTypes {
         HOLD_TRANSFER,
         HOLD_KEEPER,
         CLOSED,
-        HOLD_VENUE // the Aave reserve is paused or frozen (the venue's own halt switch)
+        HOLD_VENUE // the hub halted the spoke for the asset (Aave's halt switch), or the reserve is paused or frozen
     }
 
     enum Reason {
@@ -53,7 +53,8 @@ library AaveTypes {
         VENUE_FROZEN, // Aave reserve frozen (no new activity)
         NO_COLLATERAL, // nothing supplied on the line's reserve
         COLLATERAL_DISABLED, // supplied but not enabled as collateral on the spoke
-        VENUE_UNHEALTHY // the venue's own health factor is already at or below 1
+        VENUE_UNHEALTHY, // the venue's own health factor is already at or below 1
+        VENUE_HALTED // the hub halted or deactivated the spoke for the asset: nothing moves, repays included
     }
 
     struct Partner {

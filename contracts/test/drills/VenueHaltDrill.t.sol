@@ -177,6 +177,16 @@ contract VenueHaltDrillTest is DrillBase {
         (ok, ret) = address(SPOKE).call(abi.encodeCall(IAaveSpoke.repay, (USDC_RESERVE, amount, borrower)));
     }
 
+    /// @dev The desk's own repay (anyone may fund it): a stranger with fresh USDC.
+    function _deskRepay(uint256 amount) internal returns (bool ok, bytes memory ret) {
+        address payer = makeAddr("payer");
+        deal(USDC, payer, amount);
+        vm.startPrank(payer);
+        IERC20(USDC).approve(address(desk), amount);
+        (ok, ret) = address(desk).call(abi.encodeCall(AaveDesk.repay, (lineId, amount)));
+        vm.stopPrank();
+    }
+
     function _venueBorrow(uint256 amount) internal returns (bool ok, bytes memory ret) {
         vm.prank(borrower);
         (ok, ret) = address(SPOKE).call(abi.encodeCall(IAaveSpoke.borrow, (USDC_RESERVE, amount, borrower)));
@@ -231,7 +241,7 @@ contract VenueHaltDrillTest is DrillBase {
     }
 
     function _reason(T.Reason r) internal pure returns (string memory) {
-        string[25] memory names = [
+        string[26] memory names = [
             "NONE",
             "DESK_PAUSED",
             "LINE_NOT_OPEN",
@@ -256,7 +266,8 @@ contract VenueHaltDrillTest is DrillBase {
             "VENUE_FROZEN",
             "NO_COLLATERAL",
             "COLLATERAL_DISABLED",
-            "VENUE_UNHEALTHY"
+            "VENUE_UNHEALTHY",
+            "VENUE_HALTED"
         ];
         return names[uint256(r)];
     }
@@ -393,27 +404,30 @@ contract VenueHaltDrillTest is DrillBase {
 
     /// @dev A. The real switch: the hub halts the spoke. Every hub action reverts SpokeHalted() (add, remove, draw
     ///      and restore), so nothing moves in either direction: no draw, no repay, no withdrawal (and, below, no
-    ///      liquidation). The desk reads the spoke's reserve flags only, so its quote is recorded, not asserted.
+    ///      liquidation). The desk and the vault read the hub's SpokeConfig, record HOLD_VENUE and refuse by name
+    ///      (VENUE_HALTED) before the venue is called.
     function _scenarioHubHalt() internal {
         string memory s = "hub-halt (24 Sep payload)";
         _switch(SW_HUB_HALT, true);
         _checkB(s, "hub: MAG7 spoke halted for AAPLc (asset 0)", HUB.getSpokeConfig(0, address(SPOKE)).halted, true);
         _checkB(s, "hub: MAG7 spoke halted for USDC (asset 7)", HUB.getSpokeConfig(7, address(SPOKE)).halted, true);
-        T.Quote memory q = desk.quote(lineId, 10e6);
-        _valueS(s, "desk quote reason for a 10 USDC draw (the desk reads spoke reserve flags only)", _reason(q.reason));
-        _valueS(
-            s, "obligation status (the desk reads spoke reserve flags only)", _status(desk.obligationStatus(lineId))
-        );
-        _value(s, "desk quote available (USDC units)", q.available);
+        // The desk and the vault read the hub's SpokeConfig: the record says HOLD_VENUE, nothing is quoted, and
+        // both refuse by name before any call reaches the venue.
+        _deskView(s, "VENUE_HALTED", "HOLD_VENUE");
+        _checkU(s, "desk quote available (USDC units)", desk.quote(lineId, 10e6).available, 0);
+        _checkS(s, "vault venueReason for the USDC reserve", _reason(vault.venueReason(USDC_RESERVE)), "VENUE_HALTED");
+        _checkS(s, "vault venueReason for the AAPLc reserve", _reason(vault.venueReason(AAPL_RESERVE)), "VENUE_HALTED");
 
         uint256 usdcBefore = IERC20(USDC).balanceOf(borrower);
         (bool ok, bytes memory ret) = _draw(10e6);
-        _checkCall(s, "desk draw of 10 USDC", ok, ret, false, "SpokeHalted()");
+        _checkCall(s, "desk draw of 10 USDC", ok, ret, false, "Refused(25)");
         _checkU(s, "borrower USDC unchanged after the refused draw", IERC20(USDC).balanceOf(borrower), usdcBefore);
         uint256 vaultBefore = IERC20(USDC).balanceOf(address(vault));
         (ok, ret) = _protect(20e6);
-        _checkCall(s, "protective repay of 20 USDC through the Giver", ok, ret, false, "SpokeHalted()");
+        _checkCall(s, "protective repay of 20 USDC through the Giver", ok, ret, false, "Refused(25)");
         _checkU(s, "vault USDC unchanged", IERC20(USDC).balanceOf(address(vault)), vaultBefore);
+        (ok, ret) = _deskRepay(1e6);
+        _checkCall(s, "desk repay of 1 USDC (anyone, any hour)", ok, ret, false, "Refused(25)");
         (ok, ret) = _venueRepay(1e6);
         _checkCall(s, "repay of 1 USDC by the borrower at the venue", ok, ret, false, "SpokeHalted()");
         (ok, ret) = _venueWithdraw(1e6);
@@ -423,6 +437,9 @@ contract VenueHaltDrillTest is DrillBase {
         string memory r = string.concat(s, " -> reversed");
         _checkB(r, "hub: halted cleared by the go-live payload", HUB.getSpokeConfig(0, address(SPOKE)).halted, false);
         _deskView(r, "NONE", "OPEN");
+        _checkS(r, "vault venueReason for the USDC reserve", _reason(vault.venueReason(USDC_RESERVE)), "NONE");
+        (ok, ret) = _deskRepay(1e6);
+        _checkCall(r, "desk repay of 1 USDC (anyone, any hour)", ok, ret, true, "");
         (ok, ret) = _draw(10e6);
         _checkCall(r, "desk draw of 10 USDC", ok, ret, true, "");
         vm.revertToState(baseSnap);
@@ -436,6 +453,12 @@ contract VenueHaltDrillTest is DrillBase {
         _switch(SW_AAPL_FROZEN, true);
         _checkB(s, "spoke: AAPLc reserve frozen", SPOKE.getReserveConfig(AAPL_RESERVE).frozen, true);
         _deskView(s, "VENUE_FROZEN", "HOLD_VENUE");
+        _checkS(
+            s,
+            "vault venueReason for the AAPLc reserve (a frozen reserve still withdraws)",
+            _reason(vault.venueReason(AAPL_RESERVE)),
+            "NONE"
+        );
         (bool ok, bytes memory ret) = _draw(10e6);
         _checkCall(s, "desk draw of 10 USDC", ok, ret, false, "Refused(21)");
 
@@ -477,6 +500,8 @@ contract VenueHaltDrillTest is DrillBase {
         _switch(SW_AAPL_PAUSED, true);
         _checkB(s, "spoke: AAPLc reserve paused", SPOKE.getReserveConfig(AAPL_RESERVE).paused, true);
         _deskView(s, "VENUE_PAUSED", "HOLD_VENUE");
+        _checkS(s, "vault venueReason for the AAPLc reserve", _reason(vault.venueReason(AAPL_RESERVE)), "VENUE_PAUSED");
+        _checkS(s, "vault venueReason for the USDC reserve", _reason(vault.venueReason(USDC_RESERVE)), "NONE");
         (bool ok, bytes memory ret) = _draw(10e6);
         _checkCall(s, "desk draw of 10 USDC", ok, ret, false, "Refused(20)");
         uint256 snap = vm.snapshotState();
@@ -498,10 +523,11 @@ contract VenueHaltDrillTest is DrillBase {
         _switch(SW_USDC_PAUSED, true);
         _checkB(s, "spoke: USDC reserve paused", SPOKE.getReserveConfig(USDC_RESERVE).paused, true);
         _deskView(s, "VENUE_PAUSED", "HOLD_VENUE");
+        _checkS(s, "vault venueReason for the USDC reserve", _reason(vault.venueReason(USDC_RESERVE)), "VENUE_PAUSED");
         (bool ok, bytes memory ret) = _draw(10e6);
         _checkCall(s, "desk draw of 10 USDC", ok, ret, false, "Refused(20)");
         (ok, ret) = _protect(20e6);
-        _checkCall(s, "protective repay of 20 USDC through the Giver", ok, ret, false, "ReservePaused()");
+        _checkCall(s, "protective repay of 20 USDC through the Giver", ok, ret, false, "Refused(20)");
         (ok, ret) = _venueRepay(1e6);
         _checkCall(s, "repay of 1 USDC by the borrower at the venue", ok, ret, false, "ReservePaused()");
 

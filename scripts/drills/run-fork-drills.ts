@@ -5,7 +5,7 @@
 // in the shape of the other drill files (drill, runs[] with ranAt, chainId, label, txs, attempts, outcome, evidence,
 // notes) plus fork, assertions, values, ledger and a keccak256 evidence hash over the canonical run.
 //
-//   pnpm tsx scripts/drills/run-fork-drills.ts [--block N] [--forge-log path] [--out docs/evidence/drills]
+//   pnpm tsx scripts/drills/run-fork-drills.ts [--block N] [--only venue-halt|bad-debt-probe] [--forge-log path] [--out docs/evidence/drills]
 //
 // Needs BASE_RPC_URL (an archive endpoint) or BOUNDLINE_ALCHEMY_API_KEY, and base-forge at ~/.foundry/bin/base-forge
 // (both drills move B20 tokens). The RPC URL never reaches the evidence or the logs. Exits 1 when a check fails or a
@@ -26,8 +26,11 @@ const PRECEDENT = [
   { hash: "0x9d66188f9e6f1b9136cb35260c3665c12d82b30fb9bdd7ce52de1aed46205d30", what: "go-live", payload: "0x6BDf957Ff2AE324fe23911f549aff9b5621b198E" },
 ] as const;
 
+const DRILL_FILES: Record<string, string> = { "venue-halt": "VenueHaltDrill.t.sol", "bad-debt-probe": "BadDebtProbeDrill.t.sol" };
+
 interface Args {
   block: number | null;
+  only: string | null;
   forgeLog: string | null;
   out: string;
 }
@@ -38,7 +41,9 @@ function args(): Args {
     const i = a.indexOf(flag);
     return i >= 0 ? a[i + 1] : undefined;
   };
-  return { block: get("--block") ? Number(get("--block")) : null, forgeLog: get("--forge-log") ?? null, out: get("--out") ?? "docs/evidence/drills" };
+  const only = get("--only") ?? null;
+  if (only && !DRILL_FILES[only]) throw new Error(`--only takes ${Object.keys(DRILL_FILES).join(" or ")}`);
+  return { block: get("--block") ? Number(get("--block")) : null, only, forgeLog: get("--forge-log") ?? null, out: get("--out") ?? "docs/evidence/drills" };
 }
 
 function rpcUrl(): string {
@@ -152,11 +157,10 @@ async function venueHalt(recs: Rec[], url: string | null, meta: RunMeta) {
   const a = assertions(recs);
   const pass = a.every((x) => x.pass);
   const outcome = [
-    `Real switch (hub halt, the 24 Sep payload replayed as the Safe): draw ${L.check(hub, "desk draw of 10 USDC")}, protective repay through the Giver ${L.check(hub, "protective repay of 20 USDC through the Giver")}, venue repay ${L.check(hub, "repay of 1 USDC by the borrower at the venue")}, withdrawal ${L.check(hub, "withdrawal of 0.01 AAPLc at the venue")}, liquidation of an under-water position ${L.check(hub, "liquidationCall covering 1% of the debt while the switch is on")}: nothing moves either way; the go-live payload restores draws and liquidations.`,
-    `The AaveDesk reads only the spoke's reserve flags, so during the hub halt it quoted ${L.value(hub, "desk quote reason for a 10 USDC draw (the desk reads spoke reserve flags only)")} with ${usdc(L.value(hub, "desk quote available (USDC units)"))} USDC available and recorded ${L.value(hub, "obligation status (the desk reads spoke reserve flags only)")} (no funds moved: the venue refused the draw).`,
+    `Real switch (hub halt, the 24 Sep payload replayed as the Safe): the desk quotes ${L.check(hub, "desk quote reason for a 10 USDC draw")} with ${usdc(L.check(hub, "desk quote available (USDC units)"))} USDC available and records ${L.check(hub, "obligation status")}; the desk's draw (${L.check(hub, "desk draw of 10 USDC")}), the desk's repay (${L.check(hub, "desk repay of 1 USDC (anyone, any hour)")}) and the vault's protective repay (${L.check(hub, "protective repay of 20 USDC through the Giver")}) are refused by name before the venue is called; the venue itself refuses a repay (${L.check(hub, "repay of 1 USDC by the borrower at the venue")}), a withdrawal (${L.check(hub, "withdrawal of 0.01 AAPLc at the venue")}) and the liquidation of an under-water position (${L.check(hub, "liquidationCall covering 1% of the debt while the switch is on")}): nothing moves either way. The go-live payload restores draws, repays and liquidations.`,
     `AAPLc reserve frozen: desk ${L.check("aaplc-reserve-frozen", "desk quote reason for a 10 USDC draw")} / ${L.check("aaplc-reserve-frozen", "obligation status")}, draw ${L.check("aaplc-reserve-frozen", "desk draw of 10 USDC")}, protective repay ${usdc(L.check("aaplc-reserve-frozen", "protective repay through the Giver: repaid (USDC units)"))} USDC from the user's reserve, new AAPLc supply ${L.check("aaplc-reserve-frozen", "new AAPLc supply at the venue")}, a USDC borrow straight at the venue ${L.check("aaplc-reserve-frozen", "USDC borrow straight at the venue (Aave freezes per reserve)")}, liquidation ${L.check("aaplc-reserve-frozen", "liquidationCall covering 1% of the debt while the switch is on")}.`,
     `AAPLc reserve paused: desk ${L.check("aaplc-reserve-paused", "desk quote reason for a 10 USDC draw")} / ${L.check("aaplc-reserve-paused", "obligation status")}, protective repay ${L.check("aaplc-reserve-paused", "protective repay of 20 USDC through the Giver")}, withdrawal ${L.check("aaplc-reserve-paused", "withdrawal of 0.01 AAPLc at the venue")}, liquidation ${L.check("aaplc-reserve-paused", "liquidationCall covering 1% of the debt while the switch is on")}.`,
-    `USDC reserve paused: desk ${L.check("usdc-reserve-paused", "desk quote reason for a 10 USDC draw")} / ${L.check("usdc-reserve-paused", "obligation status")}, protective repay ${L.check("usdc-reserve-paused", "protective repay of 20 USDC through the Giver")}, liquidation ${L.check("usdc-reserve-paused", "liquidationCall covering 1% of the debt while the switch is on")}. Every switch reversed returns the line to OPEN.`,
+    `USDC reserve paused: desk ${L.check("usdc-reserve-paused", "desk quote reason for a 10 USDC draw")} / ${L.check("usdc-reserve-paused", "obligation status")}, the vault refuses the protective repay by name (${L.check("usdc-reserve-paused", "protective repay of 20 USDC through the Giver")}), the venue refuses a repay (${L.check("usdc-reserve-paused", "repay of 1 USDC by the borrower at the venue")}) and the liquidation (${L.check("usdc-reserve-paused", "liquidationCall covering 1% of the debt while the switch is on")}). Every switch reversed returns the line to OPEN.`,
     `${a.filter((x) => x.pass).length} of ${a.length} checks pass.`,
   ].join(" ");
   const run = {
@@ -196,9 +200,9 @@ async function venueHalt(recs: Rec[], url: string | null, meta: RunMeta) {
     values: values(recs),
     outcome,
     findings: [
-      "The real Aave halt switch is the hub's SpokeConfig.halted, not the spoke's reserve paused/frozen flags. AaveDeskLib.stateReason and obligationStatus read only Spoke.getReserveConfig, so during a hub halt the desk quotes capacity and records OPEN while every venue action reverts SpokeHalted(). No funds can move (the venue refuses), but the record is wrong for the duration: the desk should also read Hub.getSpokeConfig(assetId, spoke).halted/.active for the collateral and USDC assets (VENUE_PAUSED or a VENUE_HALTED reason, HOLD_VENUE).",
-      "A hub halt also blocks repays, so the protective repay cannot run while it lasts; it blocks liquidations too, so a halted position is frozen in both directions until the go-live payload.",
-      "Aave freezes per reserve: with only AAPLc frozen, Aave itself still lends USDC against it; the desk refuses (VENUE_FROZEN) because it never lends against a halted asset.",
+      "Fixed on 8 Oct 2026, proven by this run: the AaveDesk (AaveDeskLib) and the ProtectionVault read the hub's SpokeConfig through AaveVenue (the spoke's getReserve(id) names the hub and the asset id; getSpokeConfig(assetId, spoke).active/.halted). A hub halt is the new reason VENUE_HALTED (appended last: the 20 reasons and 8 obligation statuses shared with the CreditDesk keep their order; the status is the existing HOLD_VENUE) with HOLD_VENUE; lending fails closed on a hub that cannot be read; a repay is refused only on a positive read, so a bad read never blocks protection. The first run of this drill (commit 464efe1, evidence hash 0x01a1269addcc4045fc8cfafccda9801fd8ac867ed137952a3393ecf3ca6ad4b3) recorded the blind spot it closes: during the halt the desk quoted NONE with 991.48 USDC available and recorded OPEN.",
+      "A hub halt blocks repays as well as draws, so no protective repay can land while it lasts: protection has to act before the switch; it blocks liquidations too, so a halted position is frozen in both directions until the go-live payload. The vault's venueReason(reserveId) view lets the keeper see it and stop arming.",
+      "Aave freezes per reserve: with only AAPLc frozen, Aave itself still lends USDC against it; the desk refuses (VENUE_FROZEN) because it never lends against a halted asset. A frozen reserve still repays and withdraws, so the vault's protect and recover go on.",
     ],
     evidence: ["contracts/test/drills/VenueHaltDrill.t.sol", "contracts/test/drills/DrillBase.sol", "scripts/drills/run-fork-drills.ts", "docs/evidence/drills/venue-halt.json"],
     notes: "Fork run, no transactions of its own: the three hashes are the real mainnet precedent (receipts checked by the runner). Scenario state is restored from one EVM snapshot between scenarios; liquidation checks stage an under-water position (borrow to health 1.10, AAPLc feed rewritten to 35% through the aggregator's transmission slot) before the switch is thrown.",
@@ -354,7 +358,8 @@ async function main() {
     const forge = `${homedir()}/.foundry/bin/base-forge`;
     meta.forgeVersion = spawnSync(forge, ["--version"], { encoding: "utf8" }).stdout.trim().split("\n")[0] ?? "";
     console.error(`fork drills: block ${block}, ${meta.forgeVersion}`);
-    const run = spawnSync(forge, ["test", "--root", "contracts", "--match-path", "test/drills/*", "-vv"], {
+    const matchPath = a.only ? `test/drills/${DRILL_FILES[a.only]}` : "test/drills/*";
+    const run = spawnSync(forge, ["test", "--root", "contracts", "--match-path", matchPath, "-vv"], {
       cwd: ROOT,
       encoding: "utf8",
       maxBuffer: 256 * 1024 * 1024,
@@ -367,12 +372,13 @@ async function main() {
     if (run.status !== 0) console.error(`base-forge exited ${run.status}`);
   }
   const byDrill = parseForgeLog(log);
-  const vh = byDrill.get("venue-halt");
-  const bd = byDrill.get("bad-debt-probe");
-  if (!vh || !bd) throw new Error(`missing drill output (venue-halt: ${vh?.length ?? 0} lines, bad-debt-probe: ${bd?.length ?? 0} lines)`);
+  const wanted = a.only ? [a.only] : Object.keys(DRILL_FILES);
+  for (const id of wanted) if (!byDrill.get(id)) throw new Error(`missing drill output for ${id}`);
   const out = resolve(ROOT, a.out);
   mkdirSync(out, { recursive: true });
-  const docs = [await venueHalt(vh, url, meta), badDebtProbe(bd, meta)];
+  const docs = [];
+  if (wanted.includes("venue-halt")) docs.push(await venueHalt(byDrill.get("venue-halt")!, url, meta));
+  if (wanted.includes("bad-debt-probe")) docs.push(badDebtProbe(byDrill.get("bad-debt-probe")!, meta));
   let ok = true;
   for (const d of docs) {
     writeFileSync(resolve(out, `${d.drill}.json`), `${JSON.stringify(d, null, 2)}\n`);

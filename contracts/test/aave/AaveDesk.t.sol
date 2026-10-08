@@ -253,6 +253,76 @@ contract AaveDeskTest is Test {
         assertLt(q.venueHealthFactor, WAD);
     }
 
+    // ------------------------------------------------------------ the hub's halt switch
+
+    /// @dev Aave's real halt is the hub's SpokeConfig (the Security Council set `halted` for every MAG7 asset on
+    ///      24 Sep 2026), not the spoke's reserve flags. Whichever asset it hits, collateral or USDC, the desk
+    ///      quotes VENUE_HALTED, records HOLD_VENUE and refuses draws and withdrawals; a deactivated spoke reads the
+    ///      same; lifting it reopens the line.
+    function test_hubHalt_refusesDrawsAndWithdrawals_recordsHoldVenue() public {
+        spoke.setHubHalted(aaplRes, true);
+        T.Quote memory q = desk.capacity(lineId);
+        assertEq(uint256(q.reason), uint256(T.Reason.VENUE_HALTED));
+        assertEq(q.available, 0);
+        assertEq(uint256(desk.obligationStatus(lineId)), uint256(T.ObligationStatus.HOLD_VENUE));
+        vm.prank(user);
+        vm.expectRevert(_refused(T.Reason.VENUE_HALTED));
+        desk.draw(lineId, 100e6);
+        vm.prank(user);
+        vm.expectRevert(_refused(T.Reason.VENUE_HALTED));
+        desk.withdrawCollateral(lineId, 1e8);
+        spoke.setHubHalted(aaplRes, false);
+
+        spoke.setHubHalted(usdcRes, true);
+        assertEq(uint256(desk.capacity(lineId).reason), uint256(T.Reason.VENUE_HALTED));
+        assertEq(uint256(desk.obligationStatus(lineId)), uint256(T.ObligationStatus.HOLD_VENUE));
+        spoke.setHubHalted(usdcRes, false);
+
+        spoke.setHubActive(aaplRes, false);
+        assertEq(uint256(desk.capacity(lineId).reason), uint256(T.Reason.VENUE_HALTED));
+        assertEq(uint256(desk.obligationStatus(lineId)), uint256(T.ObligationStatus.HOLD_VENUE));
+        spoke.setHubActive(aaplRes, true);
+
+        assertEq(uint256(desk.capacity(lineId).reason), uint256(T.Reason.NONE));
+        assertEq(uint256(desk.obligationStatus(lineId)), uint256(T.ObligationStatus.OPEN));
+        _draw(100e6);
+        assertEq(spoke.debt(usdcRes, user), 100e6);
+    }
+
+    /// @dev The hub's halt outranks the spoke's own flags and the session: one reason, the hardest one.
+    function test_hubHalt_outranksReserveFlagsAndTheWeekend() public {
+        spoke.setHubHalted(aaplRes, true);
+        spoke.setFlags(aaplRes, true, true, false);
+        assertEq(uint256(desk.capacity(lineId).reason), uint256(T.Reason.VENUE_HALTED));
+        vm.warp(T_SAT);
+        assertEq(uint256(desk.capacity(lineId).reason), uint256(T.Reason.VENUE_HALTED));
+        assertEq(uint256(desk.obligationStatus(lineId)), uint256(T.ObligationStatus.HOLD_VENUE));
+        spoke.setHubHalted(aaplRes, false);
+        assertEq(uint256(desk.capacity(lineId).reason), uint256(T.Reason.VENUE_PAUSED));
+    }
+
+    /// @dev A hub that cannot be read is a halted one for anything that lends (fail closed).
+    function test_hubUnreadable_failsClosedForDraws() public {
+        spoke.setHubUnreadable(true);
+        assertEq(uint256(desk.capacity(lineId).reason), uint256(T.Reason.VENUE_HALTED));
+        assertEq(uint256(desk.obligationStatus(lineId)), uint256(T.ObligationStatus.HOLD_VENUE));
+        vm.prank(user);
+        vm.expectRevert(_refused(T.Reason.VENUE_HALTED));
+        desk.draw(lineId, 100e6);
+    }
+
+    /// @dev The reasons the CreditDesk shares keep their places; the hub's halt is appended after VENUE_UNHEALTHY
+    ///      and the obligation statuses are unchanged.
+    function test_reasonOrder_venueHaltedAppendedLast() public pure {
+        assertEq(uint256(T.Reason.NOT_AUTHORIZED_ON_VENUE), 19);
+        assertEq(uint256(T.Reason.VENUE_PAUSED), 20);
+        assertEq(uint256(T.Reason.VENUE_FROZEN), 21);
+        assertEq(uint256(T.Reason.VENUE_UNHEALTHY), 24);
+        assertEq(uint256(T.Reason.VENUE_HALTED), 25);
+        assertEq(uint256(T.ObligationStatus.CLOSED), 7);
+        assertEq(uint256(T.ObligationStatus.HOLD_VENUE), 8);
+    }
+
     function test_draw_policyBounds() public {
         assertEq(uint256(desk.quote(lineId, 5e6).reason), uint256(T.Reason.BELOW_MIN_DRAW));
         assertEq(uint256(desk.quote(lineId, 5001e6).reason), uint256(T.Reason.ABOVE_MAX_DRAW));
@@ -363,6 +433,42 @@ contract AaveDeskTest is Test {
         vm.prank(user);
         vm.expectRevert(AaveDesk.NothingToRepay.selector);
         desk.repay(lineId, 10e6);
+    }
+
+    /// @dev Repays through the Giver restore USDC's asset only: a hub halt of the collateral's asset leaves them
+    ///      open, a halt of USDC's asset (or a paused USDC reserve) refuses them by name before any USDC moves, and
+    ///      an unreadable hub never blocks one (the venue decides; repaying can only help the borrower).
+    function test_repay_refusedOnlyWhileTheVenueRefusesUsdcRepays() public {
+        _draw(100e6);
+        usdc.mint(stranger, 100e6);
+        vm.prank(stranger);
+        usdc.approve(address(desk), type(uint256).max);
+
+        spoke.setHubHalted(aaplRes, true);
+        vm.prank(stranger);
+        assertEq(desk.repay(lineId, 10e6), 10e6);
+        spoke.setHubHalted(aaplRes, false);
+
+        spoke.setHubHalted(usdcRes, true);
+        vm.prank(stranger);
+        vm.expectRevert(_refused(T.Reason.VENUE_HALTED));
+        desk.repay(lineId, 10e6);
+        spoke.setHubHalted(usdcRes, false);
+
+        spoke.setFlags(usdcRes, true, false, true);
+        vm.prank(stranger);
+        vm.expectRevert(_refused(T.Reason.VENUE_PAUSED));
+        desk.repay(lineId, 10e6);
+        spoke.setFlags(usdcRes, false, true, true); // frozen still repays
+        vm.prank(stranger);
+        assertEq(desk.repay(lineId, 10e6), 10e6);
+        spoke.setFlags(usdcRes, false, false, true);
+
+        spoke.setHubUnreadable(true);
+        vm.prank(stranger);
+        assertEq(desk.repay(lineId, 10e6), 10e6);
+        assertEq(spoke.debt(usdcRes, user), 70e6);
+        assertEq(usdc.balanceOf(stranger), 70e6);
     }
 
     // ------------------------------------------------------------ withdraw collateral

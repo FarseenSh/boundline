@@ -364,6 +364,91 @@ contract ProtectionVaultTest is Test {
         vault.recover(user, aaplRes, 1e8);
     }
 
+    // ------------------------------------------------------------ the venue's switches
+
+    /// @dev A protective repay restores USDC's asset on the hub: while the hub halts it (Aave's 24 Sep switch) or
+    ///      the spoke pauses the USDC reserve, the vault refuses by name before any reserve is touched; a halt of the
+    ///      collateral's asset, a frozen USDC reserve or an unreadable hub leave protection running.
+    function test_protect_refusedOnlyWhileTheVenueRefusesUsdcRepays() public {
+        vm.prank(user);
+        vault.deposit(300e6);
+        vm.warp(T_SAT);
+
+        spoke.setHubHalted(usdcRes, true);
+        assertEq(uint256(vault.venueReason(usdcRes)), uint256(T.Reason.VENUE_HALTED));
+        vm.prank(keeper);
+        vm.expectRevert(abi.encodeWithSelector(ProtectionVault.Refused.selector, T.Reason.VENUE_HALTED));
+        vault.protect(user, PARTNER, 50e6);
+        spoke.setHubHalted(usdcRes, false);
+        spoke.setHubActive(usdcRes, false);
+        vm.prank(keeper);
+        vm.expectRevert(abi.encodeWithSelector(ProtectionVault.Refused.selector, T.Reason.VENUE_HALTED));
+        vault.protect(user, PARTNER, 50e6);
+        spoke.setHubActive(usdcRes, true);
+
+        spoke.setFlags(usdcRes, true, false, true);
+        assertEq(uint256(vault.venueReason(usdcRes)), uint256(T.Reason.VENUE_PAUSED));
+        vm.prank(keeper);
+        vm.expectRevert(abi.encodeWithSelector(ProtectionVault.Refused.selector, T.Reason.VENUE_PAUSED));
+        vault.protect(user, PARTNER, 50e6);
+        assertEq(vault.userBalance(user), 300e6, "nothing moved while the venue refused");
+
+        spoke.setFlags(usdcRes, false, true, true); // frozen: repays still land
+        assertEq(uint256(vault.venueReason(usdcRes)), uint256(T.Reason.NONE));
+        vm.prank(keeper);
+        (uint256 repaid,) = vault.protect(user, PARTNER, 50e6);
+        assertEq(repaid, 50e6);
+        spoke.setFlags(usdcRes, false, false, true);
+
+        spoke.setHubHalted(aaplRes, true); // the collateral's asset halted: USDC restores are untouched
+        vm.prank(keeper);
+        (repaid,) = vault.protect(user, PARTNER, 50e6);
+        assertEq(repaid, 50e6);
+        spoke.setHubHalted(aaplRes, false);
+
+        spoke.setHubUnreadable(true); // never block the always-safe action on a bad read
+        vm.prank(keeper);
+        (repaid,) = vault.protect(user, PARTNER, 50e6);
+        assertEq(repaid, 50e6);
+        assertEq(spoke.debt(usdcRes, user), 850e6);
+        assertEq(vault.userBalance(user), 150e6);
+        _conserved();
+    }
+
+    /// @dev Recovery withdraws collateral toward a sale: it waits for an open session and for a venue that lets the
+    ///      collateral move. The hub's halt (or an unreadable hub: fail closed) and a paused reserve refuse it by
+    ///      name; a frozen reserve still withdraws.
+    function test_recover_refusedWhileTheVenueHoldsTheCollateral() public {
+        vm.prank(owner);
+        vault.fundAdvances(1000e6);
+        vm.prank(keeper);
+        vault.protect(user, PARTNER, 200e6); // an advance to recover against
+
+        spoke.setHubHalted(aaplRes, true);
+        vm.prank(keeper);
+        vm.expectRevert(abi.encodeWithSelector(ProtectionVault.Refused.selector, T.Reason.VENUE_HALTED));
+        vault.recover(user, aaplRes, 1e8);
+        spoke.setHubHalted(aaplRes, false);
+
+        spoke.setHubUnreadable(true);
+        vm.prank(keeper);
+        vm.expectRevert(abi.encodeWithSelector(ProtectionVault.Refused.selector, T.Reason.VENUE_HALTED));
+        vault.recover(user, aaplRes, 1e8);
+        spoke.setHubUnreadable(false);
+
+        spoke.setFlags(aaplRes, true, false, false);
+        vm.prank(keeper);
+        vm.expectRevert(abi.encodeWithSelector(ProtectionVault.Refused.selector, T.Reason.VENUE_PAUSED));
+        vault.recover(user, aaplRes, 1e8);
+
+        spoke.setFlags(aaplRes, false, true, false); // frozen: withdrawals go on
+        vm.prank(keeper);
+        uint256 withdrawn = vault.recover(user, aaplRes, 1e8);
+        assertEq(withdrawn, 1e8);
+        assertEq(vault.heldCollateral(user, address(aapl)), 1e8);
+        _conserved();
+    }
+
     function test_constructor_checksManagers() public {
         spoke.updatePositionManager(address(giver), false);
         vm.expectRevert(abi.encodeWithSelector(ProtectionVault.ManagerNotActive.selector, address(giver)));

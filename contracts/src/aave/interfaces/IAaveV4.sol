@@ -213,3 +213,24 @@ interface IAavePriceOracle {
     function decimals() external view returns (uint8);
     function getReservePrice(uint256 reserveId) external view returns (uint256);
 }
+
+/// @notice The hub's view of one spoke for one asset (`src/hub/interfaces/IHub.sol`, v0.5.11). `halted` is Aave's
+///         own halt switch: the Base Security Council set it for every asset of the MAG7 spoke on 24 Sep 2026
+///         (16:54:43 UTC) through the governance executor and `HubConfigurator.updateSpokeHalted`. While a spoke
+///         is halted, or not `active`, for an asset, `Hub` refuses add, remove, draw and restore for it, so the
+///         spoke's supply, withdraw, borrow, repay and liquidation all revert `SpokeHalted()` / `SpokeNotActive()`.
+///         The spoke's `getReserve(id)` names the hub and the asset id to read.
+interface IAaveHub {
+    struct SpokeConfig {
+        uint40 addCap;
+        uint40 drawCap;
+        uint24 riskPremiumThreshold;
+        bool active;
+        bool halted;
+    }
+
+    error SpokeNotActive();
+    error SpokeHalted();
+
+    function getSpokeConfig(uint256 assetId, address spoke) external view returns (SpokeConfig memory);
+}

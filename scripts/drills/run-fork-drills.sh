@@ -6,7 +6,8 @@
 #
 # Needs: base-forge at ~/.foundry/bin (base-foundryup), pnpm, and either BASE_RPC_URL (archive) or
 # BOUNDLINE_ALCHEMY_API_KEY. Locally: `set -a; . ~/.boundline/base-sepolia.env; set +a; scripts/drills/run-fork-drills.sh`.
-# Pin a block with DRILL_FORK_BLOCK=<n>; FOUNDRY_PROFILE defaults to lane-d. Keys never print.
+# Pin a block with DRILL_FORK_BLOCK=<n>, run one drill with DRILL_ONLY=venue-halt|bad-debt-probe; FOUNDRY_PROFILE
+# defaults to lane-d. Keys never print.
 set -euo pipefail
 cd "$(dirname "$0")/../.."
 if [ -z "${BASE_RPC_URL:-}" ] && [ -z "${BOUNDLINE_ALCHEMY_API_KEY:-}" ]; then
@@ -17,4 +18,5 @@ export PATH="$HOME/.foundry/bin:$PATH"
 command -v base-forge >/dev/null || { echo "fork drills: base-forge missing (run base-foundryup)" >&2; exit 2; }
 ARGS=()
 [ -n "${DRILL_FORK_BLOCK:-}" ] && ARGS+=(--block "$DRILL_FORK_BLOCK")
+[ -n "${DRILL_ONLY:-}" ] && ARGS+=(--only "$DRILL_ONLY")
 pnpm tsx scripts/drills/run-fork-drills.ts "${ARGS[@]+"${ARGS[@]}"}"
