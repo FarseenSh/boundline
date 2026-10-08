@@ -1,8 +1,9 @@
 import { Hono } from "hono";
+import { PatternRouter } from "hono/router/pattern-router";
 import { getMirrorChain, type MirrorChain } from "./chain.js";
 import { CHAINS, KEEPER_ADDRESS, MAINNET_REGISTRY, MAX_TX_PER_TICK, PAIRS, SEPOLIA_REGISTRY } from "./config.js";
 import { HOLD_KEY, keeperKey, mainnetRpc, protectKey, readHold, sepoliaRpc, sequencerUrl, type Env, type HoldView } from "./env.js";
-import { STATE_KEY, borrowerKey, decodeExecutions, emitEvents, executionReads, lineKey, parseState, transitions, type Execution, type KeeperEvent, type KeeperState } from "./events.js";
+import { STATE_KEY, apiTick, borrowerKey, decodeExecutions, emitEvents, executionReads, lineKey, parseState, transitions, type Execution, type KeeperEvent, type KeeperState } from "./events.js";
 import { BACKOFF_BLOCKS, encodeProtect, parseTargets } from "./protect.js";
 import { liveProtectRpc, protectAccount, runProtect, simulate, type ProtectReport } from "./protect-job.js";
 import { collectStatus } from "./status.js";
@@ -30,7 +31,10 @@ export function maxTxPerTick(env: Pick<Env, "MAX_TX_PER_TICK">): number {
 const nowSeconds = (): number => Math.floor(Date.now() / 1000);
 const ADDRESS = /^0x[0-9a-fA-F]{40}$/;
 
-export const app = new Hono<{ Bindings: Env }>();
+// PatternRouter, not Hono's default SmartRouter: the default compiles a regular expression over every route on the
+// first request of a cold isolate (24-26 ms CPU measured in apps/api, 8 Oct 2026); PatternRouter's first match costs
+// 0.2-0.3 ms, which the Free plan's 10 ms CPU per invocation can afford.
+export const app = new Hono<{ Bindings: Env }>({ router: new PatternRouter() });
 
 app.get("/health", (c) => c.json({ ok: true, service: "boundline-keeper" }));
 
@@ -344,6 +348,8 @@ export async function runCron(env: Env): Promise<void> {
   const vault = await vaultTick(env, cfg, signerBusy, state);
   if (state) await eventsTick(env, state, protect, vault, cfg);
   await tick(env, hold);
+  // Last, so it can never delay a protection or a mirror write: the API's webhook tick (its own cron does not fire).
+  console.log(JSON.stringify({ apiTick: await apiTick(env.API_EVENTS) }));
 }
 
 export default {

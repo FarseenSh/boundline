@@ -30,6 +30,8 @@ export interface KeeperEvent {
 /** The API's RPC entrypoint as the keeper sees it (Lane I implements `Events.ingest`). */
 export interface EventsBinding {
   ingest(evt: KeeperEvent): Promise<{ accepted: boolean; id: string; deliveries: number }>;
+  /** One bounded, idempotent webhook tick of the API (its own cron trigger never fires on this account). */
+  tick?(): Promise<Record<string, unknown>>;
 }
 
 /** The Protector's `Protected(uint256 indexed decision, address indexed preLiquidation, address indexed borrower, …)` topic. */
@@ -272,6 +274,20 @@ export function transitions(prev: KeeperState, input: TransitionInput): { next: 
 
   const changed = JSON.stringify(next) !== JSON.stringify(prev);
   return { next, events, changed };
+}
+
+/**
+ * Drives the partner API's webhook tick (bounded indexer poll, retries) once a minute: the API's own cron trigger has
+ * never fired on this account (8 Oct 2026), while this one does. A missing binding or a failed call never fails the tick.
+ */
+export async function apiTick(binding: EventsBinding | undefined, timeoutMs = 10_000): Promise<string> {
+  if (!binding?.tick) return "unbound";
+  try {
+    const r = await Promise.race([binding.tick(), new Promise<never>((_, rej) => setTimeout(() => rej(new Error("timeout")), timeoutMs))]);
+    return typeof r.cron === "string" ? r.cron : "ok";
+  } catch (err) {
+    return `failed(${err instanceof Error ? err.message : String(err)})`;
+  }
 }
 
 /** Sends every event through the binding; a missing binding or a failed call never fails the tick. */

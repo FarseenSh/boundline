@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   ARMED_EXPIRY_BLOCKS,
   PROTECTOR_PROTECTED_TOPIC,
+  apiTick,
   decodeExecutions,
   emitEvents,
   executionReads,
@@ -134,6 +135,22 @@ describe("emitEvents", () => {
     expect(seen).toEqual([evt]);
     const bad: EventsBinding = { ingest: async () => { throw new Error("no such entrypoint"); } };
     expect(await emitEvents(bad, [evt])).toEqual(["grace:failed(no such entrypoint)"]);
+  });
+});
+
+describe("apiTick", () => {
+  const ingest: EventsBinding["ingest"] = async () => ({ accepted: true, id: "ev_1", deliveries: 0 });
+  it("is a no-op without a binding or without tick", async () => {
+    expect(await apiTick(undefined)).toBe("unbound");
+    expect(await apiTick({ ingest })).toBe("unbound");
+  });
+  it("reports the API's cron outcome and never throws", async () => {
+    let calls = 0;
+    expect(await apiTick({ ingest, tick: async () => (calls++, { cron: "ok", polled: "credit-desk" }) })).toBe("ok");
+    expect(await apiTick({ ingest, tick: async () => ({ polled: 0 }) })).toBe("ok");
+    expect(await apiTick({ ingest, tick: async () => { throw new Error("no such method"); } })).toBe("failed(no such method)");
+    expect(await apiTick({ ingest, tick: () => new Promise(() => {}) }, 5)).toBe("failed(timeout)");
+    expect(calls).toBe(1);
   });
 });
 
