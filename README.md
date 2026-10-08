@@ -2,50 +2,162 @@
 
 **Borrow against your stocks on Base. Paid in your currency. Never liquidated while Wall Street is closed.**
 
-Coinbase tokenized stocks trade on Base every hour of every day. Their Chainlink feeds publish
-from Sunday 20:00 ET to Friday 20:00 ET and hold Friday's close all weekend. The two live credit
-venues on Base read that held price with no staleness check, no pause check and no market-hours
-logic, and liquidate around the clock. Base's own docs say "never settle or liquidate against a
-frozen feed". Boundline is the credit-operations layer that enforces it: session-aware credit
-across Aave V4 and Morpho, protection seven days a week instead of penalty liquidation at the
-reopen, one auditable obligation record, embeddable by any wallet or neobroker, non-custodial.
+Coinbase's tokenized stocks (B20 assets) trade on Base every hour of every day. Their Chainlink feeds publish from
+Sunday 20:00 ET to Friday 20:00 ET and hold Friday's close in between: over the 2 to 4 October 2026 weekend all ten
+feeds printed zero rounds for 52 hours while the stocks kept trading on Aerodrome. The two live credit venues for
+these stocks on Base, Aave V4's Equities Hub and Morpho's B20 markets, read that held price with no staleness, pause or
+market-hours check and liquidate at any hour, so the weekend's move lands in one block at the Sunday reopen. Base's
+docs say "never settle or liquidate against a frozen feed". Boundline is the credit layer that enforces it:
+
+- an onchain NYSE calendar and a verdict engine that decide, per stock, whether a price is safe to use;
+- Morpho oracles that refuse to price a held feed (borrow, withdraw and liquidate stop; repay and add-collateral never do);
+- protection that runs on Saturday at the 24/7 DEX price: Morpho's audited pre-liquidation with a live-price oracle,
+  and protective repays down a funding ladder that ends at an ERC-4626 Reserve, submitted as Cobalt validity
+  transactions that Base includes only while the feed is still frozen;
+- partner-scoped, self-custody credit lines on Morpho and Aave V4 with a partner API, SDK, console, app, local-money
+  payout and an MCP agent surface;
+- a public Observatory over Base mainnet and a replay harness that takes real positions through weekend gaps.
+
+Boundline never holds a stock or a loan: users keep their own venue position and authorise contracts with one
+signature.
+
+## What runs where
+
+| Network | What |
+| --- | --- |
+| **Base Sepolia** | Everything that writes: three real B20 test stocks issued through the B20 factory precompile with Cobalt composite policies, their feeds mirrored from mainnet every minute, session-safe Morpho markets, the CreditDesk with live lines, protected mode (pre-liquidation + Protector), the Reserve and the desk-side protection vault, the payout router. Every contract is verified on sepolia.basescan.org. |
+| **Base mainnet** | Read live every minute by the Observatory (ten Coinbase stock feeds, the OracleRegistry, all 13 Morpho B20 markets, the Aave V4 MAG7 spoke, Aerodrome pools); every mechanism proven against the live contracts on mainnet forks; the replay harness. Deploys wait for a funded mainnet key. |
+
+## Live
+
+| Service | URL |
+| --- | --- |
+| Site | https://boundline-site.papermind-ai.workers.dev |
+| App (partner #1, Base Sepolia) | https://boundline-app.papermind-ai.workers.dev |
+| Observatory (Base mainnet) | https://boundline-observatory.papermind-ai.workers.dev |
+| Partner console | https://boundline-console.papermind-ai.workers.dev |
+| Partner API | https://boundline-api.papermind-ai.workers.dev/health |
+| Agent surface (MCP + REST) | https://boundline-agent.papermind-ai.workers.dev/v1/tools |
+| Keeper (live protection sizing) | https://boundline-keeper.papermind-ai.workers.dev/v1/protect |
+| Indexer | https://boundline-indexer.papermind-ai.workers.dev/v1/sources |
+
+## Verify every claim
+
+Nothing below needs a key. `cast` is Foundry's CLI.
+
+**1. A session-safe Morpho market refuses a frozen price.** Ask the AAPLt `SessionGuard` for a price at a block from
+Saturday 3 October 2026:
+
+```sh
+cast call --rpc-url https://sepolia.base.org --block 47634983 \
+  0x1589aAb40fF0b2E0C4c679e70865eb97A24e5854 "price()(uint256)"
+# execution reverted, data: 0x3e363de9…0005  →  MarketClosed(5), 5 = WEEKEND
+```
+
+On a weekday it prices (`cast call … "price()(uint256)"` without `--block` → `3.356e36` = $335.683 on Thu 8 Oct). In the
+same Saturday block the borrower added collateral, which never reads the oracle:
+[`0x01191a77…760b`](https://sepolia.basescan.org/tx/0x01191a773774584bdbf4a72aff4397c870bf455c3277d7d0adf8396a42cb760b).
+
+**2. The calendar and the verdict.**
+
+```sh
+cast call --rpc-url https://sepolia.base.org 0x70575eb938645A9D3E18Dda035f5A6a7713696B8 \
+  "sessionAt(uint256)(uint8)" 1791633600          # Sat 10 Oct 12:00 UTC → 5 (WEEKEND)
+cast call --rpc-url https://sepolia.base.org 0x70575eb938645A9D3E18Dda035f5A6a7713696B8 \
+  "nextTransition(uint256,uint256)(uint8,uint256)" 1791633600 7   # → 4 (OVERNIGHT) at 1791763200 = Sun 11 Oct 20:00 ET
+cast call --rpc-url https://sepolia.base.org 0x92f59437d4ef5CDcEAe2CcDE89B03A7B4B1Ae427 \
+  "check(address)((uint8,uint8,int256,uint256,uint256,bool,bool))" 0xB2000000000000000000000E063E65377cA34141
+# (state, session, answer, updatedAt, multiplier, registryPaused, transferPaused); state 0 = OPEN, 1 = MARKET_CLOSED
+```
+
+**3. The transactions.** All on Base Sepolia; open them on Basescan.
+
+| What | Transaction |
+| --- | --- |
+| A 5 USDC draw on a partner line in the PRE session at $332.67 (6 Oct) | [`0x661ebb1a…8bac`](https://sepolia.basescan.org/tx/0x661ebb1abc30e1fffe987b4598b006004ed746943afcc1e67ea82595854b8bac) |
+| A partial repay on the same line | [`0xe3bc2f0b…771b`](https://sepolia.basescan.org/tx/0xe3bc2f0b3a58975b5870d624fd4772656deab41ef9fbc3b5c0f727d3f464771b) |
+| Validity transaction included only while the feed's `updatedAt` slot held its round | [`0x6b17288f…49dd`](https://sepolia.basescan.org/tx/0x6b17288ff94723934a83a308ad4d350fd4403c639777bb2317646f3834c949dd) |
+| Validity transaction held by the sequencer until the feed printed a new round | [`0xbbd84631…b2fb`](https://sepolia.basescan.org/tx/0xbbd8463132d3863f135ce30e5618d92919e4c3832b80b76510e97f18b99cb2fb) |
+| The keeper's automatic pre-liquidation of an in-band position at the live price (shadow LTV 60.12% → 58.00%) | [`0x982c7327…b695`](https://sepolia.basescan.org/tx/0x982c7327efa9f0460b92501a4322ec5dc730e5faaca3ce1d87dc80f708dfb695) |
+| …and its second one when the price moved the position back into the band | [`0x6d45ddc9…40d9`](https://sepolia.basescan.org/tx/0x6d45ddc95b314de50f3a3375b2d764302e07a920869fd2000fa768fdc84a40d9) |
+| Protective repays on a live line through the vault's ladder (a repay never reads the oracle, so the path works at any hour), the second partly funded by a Reserve advance | [`0xa0efe0c4…9f07`](https://sepolia.basescan.org/tx/0xa0efe0c47d788acb8e0f756b62ebf01e155cb33c553d6e4ccdfc2d20065c9f07), [`0x28c1ec44…08a4`](https://sepolia.basescan.org/tx/0x28c1ec4479d58ff7e362499b3e0b3f41517a1ec7ee4cd2fa83523de2ca5c08a4) |
+| The advance settled with its 1% fee; the fee harvested into the Reserve's share price | [`0x14c4ffbd…db9a`](https://sepolia.basescan.org/tx/0x14c4ffbdd12e2a52785b28c1837fd9c9cff2400b07bf22e2922faf96152cdb9a), [`0xf2574764…da67`](https://sepolia.basescan.org/tx/0xf257476420589a5455369f2337802911420427909f803684bd15d0173984da67) |
+| 0.5 USDC paid out as 0.46 EURCt inside an open session | [`0x9090633c…5bd3`](https://sepolia.basescan.org/tx/0x9090633cf6559f5935a9e5659f4faa7ad6b278e4db93c8141154d2aded5b5bd3) |
+| Two x402 settlements for keyless API calls ($0.01 test USDC each) | [`0x8816d08f…c6ff`](https://sepolia.basescan.org/tx/0x8816d08fb7d6fadb8983f116bb4963bb5040e9666db6f15076272eb81cf5c6ff), [`0x055981d8…a8f9`](https://sepolia.basescan.org/tx/0x055981d83ca73612b1677326f1ecb5847c9ccbfcdcad1b8a25f3a2c81eaca8f9) |
+| `[pending: the Saturday 10 Oct rescue and Thursday's drills]` | |
+
+Every address and every other hash: [`deployments/base-sepolia.json`](deployments/base-sepolia.json).
+
+**4. The data.**
+
+```sh
+curl -s https://boundline-observatory.papermind-ai.workers.dev/v1/sessions          # session, feed liveness, next transition
+curl -s https://boundline-observatory.papermind-ai.workers.dev/v1/tokens            # every Coinbase stock feed vs the DEX
+curl -s https://boundline-observatory.papermind-ai.workers.dev/v1/venues/aave/positions   # real Aave V4 positions, shadow health
+curl -s https://boundline-observatory.papermind-ai.workers.dev/v1/assurance         # the latest replay result and its hash
+curl -si https://boundline-api.papermind-ai.workers.dev/v1/positions/0xB789aD318945B37566E2549F65526Cc269a482Fc/shadow | head -1   # HTTP 402: x402-metered without a key
+```
+
+**5. The evidence files.**
+
+| File | What it shows |
+| --- | --- |
+| [`docs/evidence/reopen-2026-10-04.md`](docs/evidence/reopen-2026-10-04.md) | The 2–4 Oct weekend on all ten feeds: zero rounds for 52 h, first prints 23–53 s after 20:00 ET, gaps −7.5 to +282 bps; rebuild with `BASE_RPC_URL=<archive rpc> python3 scripts/reopen-evidence.py --close 1790985600 --reopen 1791158400 --out <file>` |
+| [`docs/evidence/validity-transactions-sepolia.md`](docs/evidence/validity-transactions-sepolia.md) | How the sequencer treats validity transactions (the 32-block bound, re-arming, "not before" vs "as soon as") |
+| [`docs/evidence/assurance/2026-10-07.md`](docs/evidence/assurance/2026-10-07.md) | The replay: 5 positions × gaps of −3/−8/−15% at fork block 52,295,895; raw venues 3 liquidations at the reopen, Boundline 0; hash `0xa626f0997c74896d125080de615e1407fdc4abb6d8f8296ce62caabbc8793c45` |
+| [`docs/evidence/drills/`](docs/evidence/drills) | Drill runs with every transaction (also served by the API at `/v1/drills` and shown in the console) |
+
+**6. The tests.**
+
+```sh
+pnpm install
+forge test --root contracts            # 240 passed; the 5 mainnet-fork suites skip without BASE_RPC_URL
+pnpm test                              # 691 tests across the packages and apps
+pnpm typecheck
+# mainnet-fork suites (live Morpho, Aave V4 spoke, Aerodrome pools), with Base's Foundry for the B20 precompiles:
+#   base-foundryup --install v1.1.0
+BASE_RPC_URL=<archive rpc> FOUNDRY_BASE=true ~/.foundry/bin/base-forge test --root contracts --match-path 'test/fork/*'
+pnpm replay                            # the replay harness (scripts/replay/run.ts), writes docs/evidence/assurance/<date>.*
+```
+
+## How it is built
+
+| Layer | Component | Decides |
+| --- | --- | --- |
+| Time | `MarketCalendar`, `@boundline/calendar` | which NYSE session an instant belongs to; three independent implementations agree on 5,643 instants |
+| Verdict | `SessionGate` | per stock: `MARKET_CLOSED > FEED_PAUSED > TRANSFER_PAUSED > FEED_INVALID > FEED_STALE > OPEN`; fails closed |
+| Venue oracle | `SessionGuard` (Morpho `IOracle`) | reverts unless `OPEN`, so borrow, withdraw and liquidate stop while the feed is held |
+| Protection oracle | `ShadowGuard` | the fresh feed in session; the Aerodrome TWAP less a haircut while held, bounded against the held feed |
+| Credit | `CreditDesk` (Morpho), `AaveDesk` (Aave V4) | partner-scoped self-custody lines, policy, decision hashes |
+| Protection | Morpho pre-liquidation + `Protector`; `ProtectionVault` (Aave), `DeskProtectionVault` (Morpho) | any-hour pre-liquidation in the band; any-hour repay down the ladder; recovery in session only |
+| Capital | `BoundlineReserve` (ERC-4626) | capital providers fund bounded advances; utilisation cap, cooldown |
+| Payout | `LocalPayoutRouter` | USDC → a local stablecoin at the end of the borrow batch, slippage- and session-checked |
+| Keeper, data | `apps/keeper`, `apps/observatory`, `apps/indexer`, `scripts/replay` | mirroring, validity-transaction protection, snapshots, hash-chained roots, the replay |
+| Partners | `apps/api`, `packages/sdk`, `packages/router`, `apps/app`, `apps/console`, `apps/agent` | keys, quotes, obligations, x402, batches, the reference app, the console, MCP |
+
+One page each: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md), [`docs/THREAT-MODEL.md`](docs/THREAT-MODEL.md).
 
 ## Layout
 
 | Path | What |
 |---|---|
-| `contracts/` | Foundry. `calendar/` NYSE session calendar in ET; `oracle/` SessionGate (verdict engine), SessionGuard (Morpho market oracle), ShadowGuard (pre-liquidation oracle on the Aerodrome TWAP); `desk/` CreditDesk (partner-scoped self-custody lines on Morpho); `protection/` Protector over Morpho's pre-liquidation; `aave/` AaveDesk and ProtectionVault on Aave V4; `reserve/` the Boundline Reserve (ERC-4626) and the desk-side protection vault; `payout/` the local-money payout router; `test/` simulators for Base Sepolia; `script/` deploys. |
-| `packages/calendar` | The same calendar in TypeScript, checked against the Solidity one on thousands of instants. |
-| `packages/chain` | Base mainnet and Sepolia addresses, ABIs, viem clients, price math. |
-| `packages/sdk` | `@boundline/sdk`: reads, quotes, prepared calls, `wallet_sendCalls` batches with the paymaster, Builder Code and payout leg. |
-| `packages/router` | The credit router: venue and market by session, LTV, liquidity, protection and rate; signed route plans. |
-| `packages/ledger` | The five-way conservation ledger for protection and liquidation events. |
-| `apps/observatory` | The B20 credit Observatory: a Cloudflare Worker that snapshots every feed, registry flag, pause, corporate action, DEX price and venue position on Base mainnet, reopen captures, the nightly assurance status, as a public page and JSON API. |
-| `apps/keeper` | Mirrors mainnet feeds onto the Sepolia simulators and arms protection as validity transactions. |
-| `apps/indexer` | Events into D1 with hash-chained daily roots and reconciliation. |
-| `apps/api` | The partner API: keys, quotes, obligations, decisions, policy versions, drills, evidence export; x402-metered public routes. |
-| `apps/app`, `apps/console`, `apps/site`, `apps/agent` | The reference app (partner #1), the partner console, the landing page, the MCP agent surface. |
-| `scripts/replay` | The fork replay harness behind the nightly assurance run. |
-| `docs/ARCHITECTURE.md`, `docs/THREAT-MODEL.md` | One page each. |
-| `docs/CONTEXT.md` | **Start here.** The living build context: everything built so far, deployments, live services, toolchain facts, decisions and open items. |
-| `docs/BUILD.md` | The day-by-day build schedule and ledger. |
-| `deployments/` | Addresses, transactions and live proofs per network (Base Sepolia is live). |
-
-## Run
-
-```sh
-pnpm install
-forge test --root contracts          # contracts (fork suites need BASE_RPC_URL)
-pnpm test                            # every TypeScript package and app
-pnpm --filter @boundline/observatory dev
-```
-
-Live: Observatory https://boundline-observatory.papermind-ai.workers.dev, app https://boundline-app.papermind-ai.workers.dev,
-console https://boundline-console.papermind-ai.workers.dev, site https://boundline-site.papermind-ai.workers.dev, agent
-https://boundline-agent.papermind-ai.workers.dev, API https://boundline-api.papermind-ai.workers.dev. The Base Sepolia
-stack (test stocks, oracle stack, session-safe Morpho markets, CreditDesk, protected mode, Reserve, payout router) with
-every proof hash is in `deployments/base-sepolia.json`; the evidence is under `docs/evidence/`.
+| `contracts/` | Foundry. `calendar/`, `oracle/` (SessionGate, SessionGuard, ShadowGuard), `desk/` (CreditDesk), `protection/` (Protector, vendored Morpho pre-liquidation), `aave/` (AaveDesk, ProtectionVault), `reserve/` (BoundlineReserve, DeskProtectionVault), `payout/`, `test/` (Sepolia simulators), `script/` (deploys; `script/README.md` has the recipes) |
+| `packages/calendar` | The calendar in TypeScript, checked against the Solidity one |
+| `packages/chain` | Base mainnet and Sepolia addresses, ABIs, viem clients, price math |
+| `packages/sdk` | `@boundline/sdk`: reads, quotes, prepared calls, `wallet_sendCalls` batches, the payout leg |
+| `packages/router` | The credit router: venue and market by session, LTV, liquidity, protection and rate |
+| `packages/ledger` | The five-way conservation ledger for protection and liquidation events |
+| `apps/observatory` | The B20 credit Observatory (Cloudflare Worker): snapshots, reopen captures, positions, gaps, assurance |
+| `apps/keeper` | Mirrors mainnet feeds onto Sepolia; arms protection as validity transactions |
+| `apps/indexer` | Events into D1 with hash-chained daily roots and reconciliation |
+| `apps/api` | The partner API; x402-metered public routes |
+| `apps/app`, `apps/console`, `apps/site`, `apps/agent` | The reference app, the partner console, the landing page, the MCP agent surface |
+| `scripts/` | `replay/` (the replay harness), `reopen-evidence.py` (weekend reconstruction), `gen-calendar-tests.py` |
+| `deployments/` | Addresses, transactions and live proofs per network |
+| `docs/` | `ARCHITECTURE.md`, `THREAT-MODEL.md`, `evidence/`, `runbooks/`, `submission/`, and `CONTEXT.md` + `BUILD.md` (the build log) |
 
 ## Licence
 
-MIT. `contracts/src/libraries/TickMath.sol` is Uniswap's, GPL-2.0-or-later, under its own header.
+MIT (see `LICENSE`). Two exceptions keep their own headers: `contracts/src/libraries/TickMath.sol` (Uniswap,
+GPL-2.0-or-later) and the vendored Morpho pre-liquidation contracts in `contracts/src/protection/vendor/`
+(GPL-2.0-or-later).

@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 520 128" role="img" aria-label="Boundline">
+  <rect width="520" height="128" fill="#0E1116"/>
+  <g transform="translate(24 24)">
+    <rect width="80" height="80" rx="15" fill="#FF6B57"/>
+    <rect x="17.5" y="22.5" width="25" height="6.25" fill="#0E1116"/>
+    <rect x="17.5" y="37.5" width="45" height="6.25" fill="#0E1116"/>
+    <rect x="17.5" y="52.5" width="35" height="6.25" fill="#0E1116"/>
+  </g>
+  <text x="128" y="87" font-family="'Instrument Serif', 'New York', Georgia, 'Times New Roman', serif" font-size="70" fill="#E9ECEF" letter-spacing="-0.7">Boundline<tspan fill="#FF6B57">.</tspan></text>
+</svg>
