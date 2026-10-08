@@ -74,7 +74,7 @@ describe("phase-2 routes", () => {
   it("/v1/sources lists every source with its cursor and the mainnet constants", async () => {
     const { get } = await setup();
     const r = await get("/v1/sources");
-    expect(r.body.count).toBe(8);
+    expect(r.body.count).toBe(10); // 3 Sepolia (market, oracle stack, protection) + desk + 6 mainnet
     const feeds = (r.body.sources as { id: string; cursor: { lastBlock: number } | null; addresses: number }[]).find((s) => s.id === "mainnet-feeds")!;
     expect(feeds.cursor?.lastBlock).toBe(210);
     expect(feeds.addresses).toBe(10);

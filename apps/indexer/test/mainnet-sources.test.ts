@@ -65,7 +65,7 @@ describe("topic filters", () => {
 });
 
 describe("mainnetSources", () => {
-  it("registers the five sources with the right filters and start blocks", () => {
+  it("registers the six sources with the right filters and start blocks", () => {
     const s = mainnetSources();
     expect(s.map((x) => x.id)).toEqual([
       SOURCE_IDS.mainnetFeeds,
@@ -73,9 +73,14 @@ describe("mainnetSources", () => {
       SOURCE_IDS.mainnetB20Tokens,
       SOURCE_IDS.mainnetMorphoB20Markets,
       SOURCE_IDS.mainnetAaveSpoke,
+      SOURCE_IDS.mainnetPolicyRegistry,
     ]);
     expect(s.every((x) => x.chainId === MAINNET)).toBe(true);
-    const [feeds, registry, tokens, morpho, aave] = s;
+    const [feeds, registry, tokens, morpho, aave, policies] = s;
+    // seize watch: every membership change of every B20 policy (whole-chain volume was 2 events in 129,000 blocks)
+    expect(policies!.addresses).toEqual(["0x8453000000000000000000000000000000000002"]);
+    expect(policies!.topics).toEqual([]);
+    expect(policies!.startBlock).toBe(MAINNET_STACK.blocks.phase2Start);
     expect(feeds!.addresses).toEqual(MAINNET_STACK.feeds.map((f) => f.aggregator));
     expect(feeds!.topics).toEqual([ANSWER_UPDATED_TOPIC0]);
     expect(feeds!.startBlock).toBe(MAINNET_STACK.blocks.feedsStart);

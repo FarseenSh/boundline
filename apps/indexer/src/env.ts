@@ -22,6 +22,8 @@ export interface Env {
   MAX_RANGES_TOTAL_PER_TICK?: string;
   /** Logs decoded per tick before no further range starts (default 200); the rest waits for the next tick. */
   MAX_LOGS_PER_TICK?: string;
+  /** Stored events hashed per tick for the daily roots (default ROOT_HASHES_PER_TICK in tick.ts). */
+  ROOT_HASHES_PER_TICK?: string;
   /** Secret shared with the Observatory, whose cron calls POST /__tick through a service binding (fallback for this Worker's own cron). */
   TICK_TOKEN?: string;
 }
@@ -59,4 +61,9 @@ export function blockFromEnv(value: string | undefined): number | undefined {
   if (value === undefined || value.trim() === "") return undefined;
   const n = Number(value);
   return Number.isInteger(n) && n >= 0 ? n : undefined;
+}
+
+export function rootHashesPerTick(env: Env, fallback: number): number {
+  const n = Number(env.ROOT_HASHES_PER_TICK ?? "");
+  return Number.isInteger(n) && n >= 0 ? n : fallback;
 }

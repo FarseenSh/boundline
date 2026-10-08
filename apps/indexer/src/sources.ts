@@ -1,5 +1,5 @@
 import { aaveSpokeAbi, b20AssetAbi, type ChainId } from "@boundline/chain";
-import { encodeEventTopics, isAddress, type Abi, type Address, type Hex } from "viem";
+import type { Abi, AbiEvent, Address, Hex } from "viem";
 import {
   AAVE_SPOKE_EVENT_NAMES,
   B20_TOKEN_EVENT_NAMES,
@@ -9,7 +9,10 @@ import {
   creditDeskAbi,
   mainnetOracleRegistryEventsAbi,
   morphoEventsAbi,
+  policyRegistryEventsAbi,
+  sepoliaProtectionAbi,
 } from "./abis.js";
+import { topic0Of } from "./topics.js";
 import { blockFromEnv, type Env } from "./env.js";
 
 /** One `eth_getLogs` filter plus the ABI that decodes its logs and the block the scan starts at. */
@@ -50,24 +53,37 @@ export const SEPOLIA_STACK = {
   blocks: { stocks: 47_634_622, oracleStack: 47_634_676, market: 47_634_839 },
 } as const;
 
+/**
+ * The protection and capital stack on Base Sepolia (deployments/base-sepolia.json → protection, reserve, payout):
+ * the Protector (6 Oct, block 47,760,183), the BoundlineReserve and the DeskProtectionVault (7 Oct, 47,806,313–14) and
+ * the LocalPayoutRouter (7 Oct, 47,806,347). One source, scanned from just before the Protector.
+ */
+export const SEPOLIA_PROTECTION = {
+  protector: "0x5c546946c909718040dd686f63df6cb5e4df442c",
+  deskProtectionVault: "0x87f600279F021ca859b9903DE884d3A7A169f38c",
+  boundlineReserve: "0x7AcE5c9ca94d5B67feC97348Ff41778D092a6B6E",
+  localPayoutRouter: "0x1a6Dbc873F32f3dcE7719F213cf81842856F6354",
+  startBlock: 47_760_000,
+} as const;
+
 export const SEPOLIA: ChainId = 84532;
 export const MAINNET: ChainId = 8453;
 
 /** topic0 of every market-scoped Morpho event. */
-export const MORPHO_MARKET_TOPIC0S: Hex[] = MORPHO_MARKET_EVENTS.map(
-  (eventName) => encodeEventTopics({ abi: morphoEventsAbi, eventName })[0] as Hex,
-);
+export const MORPHO_MARKET_TOPIC0S: Hex[] = topic0s(morphoEventsAbi as Abi, MORPHO_MARKET_EVENTS);
 
 export const SOURCE_IDS = {
   morphoMarketAaplt: "morpho-market-aaplt",
   oracleStack: "oracle-stack",
   creditDesk: "credit-desk",
+  sepoliaProtection: "sepolia-protection",
   // phase 2, Base mainnet
   mainnetFeeds: "mainnet-feeds",
   mainnetOracleRegistry: "mainnet-oracle-registry",
   mainnetB20Tokens: "mainnet-b20-tokens",
   mainnetMorphoB20Markets: "mainnet-morpho-b20-markets",
   mainnetAaveSpoke: "mainnet-aave-mag7-spoke",
+  mainnetPolicyRegistry: "mainnet-policy-registry",
 } as const;
 
 /** The phase-1 sources on Base Sepolia. The desk source appears once `CREDIT_DESK_SEPOLIA` holds an address. */
@@ -98,17 +114,25 @@ export function sepoliaSources(env: Pick<Env, "CREDIT_DESK_SEPOLIA">): Source[] 
     },
   ];
   const desk = env.CREDIT_DESK_SEPOLIA?.trim();
-  if (desk && isAddress(desk)) {
+  if (desk && /^0x[0-9a-fA-F]{40}$/.test(desk)) {
     sources.push({
       id: SOURCE_IDS.creditDesk,
       chainId: SEPOLIA,
-      addresses: [desk],
+      addresses: [desk as Address],
       topics: [],
       abi: creditDeskAbi,
       // The desk is deployed after the oracle stack; scanning from there costs a few thousand empty blocks once.
       startBlock: SEPOLIA_STACK.blocks.oracleStack,
     });
   }
+  sources.push({
+    id: SOURCE_IDS.sepoliaProtection,
+    chainId: SEPOLIA,
+    addresses: [SEPOLIA_PROTECTION.protector, SEPOLIA_PROTECTION.deskProtectionVault, SEPOLIA_PROTECTION.boundlineReserve, SEPOLIA_PROTECTION.localPayoutRouter],
+    topics: [],
+    abi: sepoliaProtectionAbi as Abi,
+    startBlock: SEPOLIA_PROTECTION.startBlock,
+  });
   return sources;
 }
 
@@ -136,6 +160,8 @@ export interface MainnetMarket {
  */
 export const MAINNET_STACK = {
   oracleRegistry: "0x3f3E8cf41cdd3b1D118c16471aB0113DfDDd5CaD" as Address,
+  /** The B20 PolicyRegistry precompile (same address on every Base network). */
+  policyRegistry: "0x8453000000000000000000000000000000000002" as Address,
   morpho: "0xBBBBBbbBBb9cC5e90e3b3Af64bdAF62C37EEFFCb" as Address,
   aaveMag7Spoke: "0x17905Db0e4A3514467539956c084180616AE7B8D" as Address,
   feeds: [
@@ -180,7 +206,11 @@ export const MAINNET_FEED_BY_SYMBOL: Readonly<Record<string, MainnetFeed>> = Obj
 export const MAINNET_MORPHO_EVENTS = ["Borrow", "Repay", "SupplyCollateral", "WithdrawCollateral", "Liquidate", "AccrueInterest"] as const;
 
 function topic0s(abi: Abi, names: readonly string[]): Hex[] {
-  return names.map((eventName) => encodeEventTopics({ abi, eventName } as never)[0] as Hex);
+  return names.map((eventName) => {
+    const item = abi.find((x): x is AbiEvent => x.type === "event" && x.name === eventName);
+    if (!item) throw new Error(`no event ${eventName} in the ABI`);
+    return topic0Of(item);
+  });
 }
 
 function eventsOnly(abi: Abi, names: readonly string[]): Abi {
@@ -242,8 +272,18 @@ export function mainnetSources(env: Pick<Env, "MAINNET_START_BLOCK" | "MAINNET_F
       abi: aaveSpokeEventsAbi,
       startBlock: start,
     },
+    {
+      // Seize watch (plan M9): blocklist/allowlist membership of the policies the stocks bind to SEIZE_EXEMPT_POLICY.
+      id: SOURCE_IDS.mainnetPolicyRegistry,
+      chainId: MAINNET,
+      addresses: [MAINNET_STACK.policyRegistry],
+      topics: [],
+      abi: policyRegistryEventsAbi as Abi,
+      startBlock: start,
+    },
   ];
 }
+
 
 /** What a source follows, for `GET /v1/sources` and the README. */
 export function describeSource(s: Source): { id: string; chainId: number; addresses: number; topic0s: number; indexedFilter: boolean; startBlock: number } {

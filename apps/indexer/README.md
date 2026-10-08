@@ -44,28 +44,44 @@ addresses being followed and a feed that stops printing while its proxy keeps up
 constant must be refreshed. No reconciliation runs for the mainnet markets (the replay needs every
 Supply/Withdraw, which we skip); the Sepolia market keeps its reconciliation.
 
-## Tick (cron `* * * * *`, in practice `POST /__tick` from the Observatory's cron)
+## Tick (cron `* * * * *`, and `POST /__tick` from the Observatory's cron as a fallback)
 
-1. The sources are visited in an order that rotates every minute (so a busy source never starves the
-   others). For each source: `eth_getLogs` from `cursor + 1` in ranges of 500 blocks (Base's public RPCs cap `eth_getLogs` at a 500-block range) up to `head − 1`, at
-   most `MAX_RANGES_PER_TICK` (default 5, deployed 4) ranges per source, inside an 18 s budget, and inside a
-   budget shared by the whole tick: `MAX_RANGES_TOTAL_PER_TICK` (default 8, deployed 12) ranges and
-   `MAX_LOGS_PER_TICK` (default 200, deployed 300) decoded logs; a range that starts is finished, no further range starts
-   once either is spent, and the rest waits for the next tick. Logs are decoded with viem, inserted with
-   `INSERT OR IGNORE` in batches of 100, and the cursor moves only after a range is stored (a crash re-scans
-   the range; duplicates are ignored). Block timestamps come from `eth_getBlockByNumber` with a per-tick cache.
-2. Daily roots, per chain, only when the tick stored events or ten minutes passed since the last check (the
-   `roots` cursor row): every complete UTC day without a root is rooted in order (see the scheme).
-3. Reconciliation of the AAPLt/USDC market when new market events arrived or ten minutes passed.
+Rebuilt on 8 Oct 2026 for the Workers Free plan (10 ms of CPU per invocation): before, every cron tick ended
+`exceededCpu` and the Observatory's kick was always skipped, so the sources advanced only now and then. Live, every
+`fetch` and every D1 round trip costs CPU, so the tick makes few of both and keeps viem off its path.
 
-A tick that starts less than 40 s after the previous one is skipped (the `tick` cursor row): the Worker's own cron
-and the Observatory's `/__tick` kick both fire every minute, and two ticks at once would scan the same ranges twice.
+1. **One read, one claim.** All cursors are read in one query. A tick that finished under 40 s ago wins nothing; else
+   the tick claims a 20 s lease with one atomic upsert (`store.claimTick`), so the cron and the kick, which fire
+   together, never both run (before, both read the marker before either wrote it and scanned the same ranges twice),
+   and a tick killed mid-run blocks the next one for 20 s at most.
+2. **Scan.** Sources in an order that rotates every minute. A source within `MIN_LAG_BLOCKS` of the head (Sepolia 45
+   blocks = 90 s, mainnet 150 = 5 min) waits; otherwise `eth_getLogs` from `cursor + 1` in ranges of 500 blocks up to
+   `head − 3` (load-balanced RPC nodes disagree on the head by a block or two), at most `MAX_RANGES_PER_TICK` ranges per
+   source fetched as one JSON-RPC batch (an item the first URL refuses, e.g. Tenderly's `-32016 over rate limit`, is
+   retried alone down the fallback list; a refused batch falls back to parallel single calls), inside the tick's shared budget (`MAX_RANGES_TOTAL_PER_TICK` ranges, `MAX_LOGS_PER_TICK`
+   logs; the log cap stops the next source). JSON-RPC is hand-rolled (`src/rpc.ts`); logs are decoded by a hand-rolled
+   ABI decoder (`src/decode.ts`) that reproduces viem's `decodeEventLog` (`strict: false`) byte for byte, held to it by
+   a differential test on every event of every ABI and by `scripts/verify-live.ts` on stored rows; block times come from
+   the logs' `blockTimestamp` (every Base RPC returns it) and one header read per cursor, parsed with a regex instead of
+   a JSON parse of the transaction list.
+3. **One commit.** Every source's events (multi-row `INSERT OR IGNORE`, 11 rows a statement under D1's 100-parameter
+   cap) and cursor upserts go in one D1 batch. A tick that dies before it only costs a re-scan.
+4. **Maintenance when due.** Daily roots, incrementally: hashing a 166-event day in one tick cost 45 ms of CPU live
+   (mainnet days hold 300-700 events), so each tick hashes `ROOT_HASHES_PER_TICK` (8; a var) stored events into
+   `event_hashes` (migration 0003), oldest unrooted first, and a day is rooted with one keccak over its stored hashes once
+   every cursor has passed its end and every event has a hash (same scheme, same values; the root step then runs every
+   tick until nothing is pending, else every ten minutes); a source that has never scanned holds day closure back. The AAPLt/USDC reconciliation every
+   ten minutes or after new market events, through two hand-encoded `eth_call`s (`market`, `position`), not viem's
+   multicall. Then the completion marker (riding in the commit when nothing is due).
 
-The budget exists because this account runs on the Workers Free plan: 10 ms of CPU per invocation, and the
-tick is one invocation whether the cron fires it or the Observatory calls `/__tick`.
+Measured live on 8 Oct 2026 (`wrangler tail boundline-indexer --format json`): before, cron ticks `exceededCpu` at the
+10 ms cap; after the raw-RPC rewrite 24–43 ms with the cron and the kick both running; with the single commit, the
+lease and parallel ranges 11–13 ms, one run a minute, ~2.3 s wall (see the lane report for the final figures).
+Offline, `scripts/bench-tick.ts` records a real tick from the live cursors and replays it (Node: ~1 ms warm).
 
 Nothing throws out of the cron; every source reports its own error in the log line
-`ingest <source> head=… cursor=a->b ranges=… logs=… inserted=… [error=…]`.
+`ingest <source> head=… cursor=a->b ranges=… logs=… inserted=… [error=…]`, and each tick ends with
+`tick done: <ranges> ranges, <logs> logs, <n> store calls`.
 
 ## Root scheme
 
@@ -105,9 +121,10 @@ Fee shares are minted to Morpho's fee recipient, which the events do not name; o
 | `GET /v1/feeds/:symbol/rounds?chainId=8453&since=&limit=200&before=` | a stock's `AnswerUpdated` prints newest first (`AAPLc` … on mainnet, `AAPLt` … with `chainId=84532`) plus `gaps`: every pause of 6 h or more between consecutive prints on the page with the held answer, the next answer and the move in bps (the weekend-gap history) |
 | `GET /v1/venues/aave/borrowers?since=&limit=500` | distinct borrowers of the Aave MAG7 spoke from its `Borrow` events since the cutoff block, with first/last block and reserve ids |
 | `GET /v1/desk/lines?chainId=84532&partnerId=0x…&limit=&before=` | `LineOpened` events of the CreditDesk, newest first, optionally one partner's |
-| `GET /v1/desk/lines/:id/timeline?chainId=84532` | every desk event of one line, oldest first (LineOpened, CollateralAdded, Drawn, Repaid, CollateralWithdrawn, LineHeld, LineReleased, LineClosed and the `Decision` rows with their hashes) |
+| `GET /v1/desk/lines/:id/timeline?chainId=84532` | every event of one line, oldest first: the desk's (LineOpened, CollateralAdded, Drawn, Repaid, CollateralWithdrawn, LineHeld, LineReleased, LineClosed and the `Decision` rows with their hashes) and the DeskProtectionVault's (Protected, AdvanceSettled, CollateralRecovered, CollateralReturned; its own `Decision` rows stay off so a consumer's decision list remains the desk's), each labelled `contract` |
+| `GET /v1/seize-watch` | who can seize the ten Coinbase stocks (SEIZE_ROLE holders from a full-history baseline plus indexed events), the SEIZE_EXEMPT/SEIZE_RECEIVER policies live, whether Morpho Blue, the Aave V4 hub, spoke, Taker, Giver and the Aerodrome pools are exempt under the exemption policy (live `isAuthorized`), the policy's membership changes; live reads memoised 60 s |
 | `GET /v1/cursors` | every source cursor |
-| `GET /v1/roots?chain=84532` | the last 60 daily roots, the scheme, and `today` (rolling) |
+| `GET /v1/roots?chain=84532` | the last 60 daily roots (each with `eventsStoredNow` and `drift`: a source added later stored events in a day already rooted), the scheme, and `today` (rolling) |
 | `GET /v1/roots/:day?chain=84532` | one day's root or 404 |
 | `GET /v1/reconcile/latest?chain=84532` | the most recent run: per-subject checks with expected and actual, rolled-up status |
 
@@ -119,10 +136,10 @@ Fee shares are minted to Morpho's fee recipient, which the events do not name; o
 | `BASE_RPC_URL`, `BASE_SEPOLIA_RPC_URL` | vars | comma-separated RPC lists, first answers, rest fall back. Mainnet: Tenderly's public gateway first (serves 500-block log windows back to September, max 1,000), then `mainnet.base.org` (500-block cap, rate-limits Workers), then publicnode (recent ranges only). Measured 6 Oct 2026; Alchemy's free tier allows 10-block log windows and is not in the list |
 | `BASE_RPC_URL_PRIVATE`, `BASE_SEPOLIA_RPC_URL_PRIVATE` | secrets, optional | keyed RPCs tried first |
 | `CREDIT_DESK_SEPOLIA` | var | the desk address once deployed; empty skips the source |
-| `INDEX_MAINNET` | var | `"true"` enables the five phase-2 mainnet sources (on since 6 Oct 2026) |
+| `INDEX_MAINNET` | var | `"true"` enables the six phase-2 mainnet sources (on since 6 Oct 2026; the policy registry since 8 Oct) |
 | `MAINNET_START_BLOCK`, `MAINNET_FEEDS_START_BLOCK` | vars | first block the mainnet sources scan (defaults 52,198,000 and 51,640,000) |
-| `MAX_RANGES_PER_TICK` | var | ranges per source per tick, default 5 (deployed 4) |
-| `MAX_RANGES_TOTAL_PER_TICK`, `MAX_LOGS_PER_TICK` | vars | the tick's shared budget: ranges across all sources (default 8, deployed 12) and decoded logs (default 200, deployed 300) |
+| `MAX_RANGES_PER_TICK` | var | ranges per source per tick, fetched in parallel, default 5 (deployed 6) |
+| `MAX_RANGES_TOTAL_PER_TICK`, `MAX_LOGS_PER_TICK` | vars | the tick's shared budget: ranges across all sources (default 8, deployed 12; also bounded by the Free plan's 50 subrequests) and decoded logs (default 200, deployed 150) |
 
 ## Deploy (main session)
 
@@ -139,31 +156,37 @@ After the CreditDesk deploy: set `CREDIT_DESK_SEPOLIA` in `wrangler.jsonc` and r
 
 ## Budget (Workers Free)
 
-D1 allows 100k row writes and 5M row reads a day. A quiet day costs one cursor write per source per tick
-(8 sources × 1,440 = 11,520 at the limit; a source whose head is not far enough ahead writes nothing) plus the
-events themselves. The mainnet feeds print roughly 20–60 rounds a day per stock on a trading day and none on
-the weekend; the Morpho B20 markets add an `AccrueInterest` row per interaction; the Aave spoke a handful a
-day. The feed backfill from block 51,640,000 is about 1,200 ranges of 500 blocks and proceeds at the tick budget's pace (a few hours).
-Reconciliation reads the Sepolia market's events once per run (≤ 144 runs a day). No KV, no R2.
+D1 allows 100k row writes and 5M row reads a day: one commit a tick writes the cursors that moved plus the events.
+The Free plan allows 50 subrequests an invocation (every `eth_getLogs`, header read and retry): 12 ranges, 2 heads, a
+few header reads and the reconciliation's reads stay under it. CPU is the scarce resource (10 ms an invocation); see
+the tick section for the measurements and `scripts/bench-tick.ts` for the offline bench.
 
-CPU is the scarcer resource: 10 ms per invocation on the Free plan. A cold isolate decoding a few hundred logs
-with viem exceeds it, which is what the per-tick log cap and the range caps are for; `wrangler tail
-boundline-indexer --format json` shows `outcome` and `cpuTime` per `/__tick` call.
+Adding a source with an earlier start block stores events in days that may already be rooted (8 Oct 2026:
+`sepolia-protection` backfilled 6 and 7 Oct): `GET /v1/roots` flags those days with `drift`, and they are re-rooted only
+by deleting their rows and the later ones (`DELETE FROM daily_roots WHERE chain_id = … AND day >= '…'`, a human
+decision; the chain re-forms by itself, one day per tick, once every cursor has passed each day).
 
 ## Tests
 
-`pnpm --filter @boundline/indexer test` (68 tests, no network): decoding from EVM-shaped fixture logs
-(Borrow, SupplyCollateral, AnswerUpdated, Decision, unknown topic, an Aave `Repay` with its `PremiumDelta`
-tuple, a B20 `Paused` with a feature array), canonical JSON, root determinism and sensitivity, range
-planning, ingestion against a fake RPC (cursor advance, duplicates, head not far enough, deadline, RPC error,
-the shared tick budget), the tick's source rotation and root gating, the replay and reconciliation (PASS,
-FAIL, pinned-block fallback, SKIP), daily-root closure, the event query builder and the memory store's
-filters, the routes on the in-memory store (including the phase-2 routes with a synthetic weekend gap), the
-address cross-check against the deployment record, and the mainnet constants against `@boundline/chain` and
-the event signatures. The D1 SQL in `src/store-d1.ts` is exercised live after a deploy, not by the unit tests.
+`pnpm --filter @boundline/indexer test` (102 tests, no network): the lean decoder against viem on 40 random logs of every
+event of every ABI plus edge cases (truncated data, an out-of-range bool, missing and extra topics, unknown topic0),
+byte-level roots against the abi.encode reference, ingestion against a fake RPC (cursor advance, duplicates,
+`blockTimestamp`, one header read, a failed range keeping the prefix, the raw client's memoisation), the tick (rotation,
+shared budget, the atomic lease against two concurrent ticks, a killed tick, store round trips, minimum lag, root cadence
+and the one-day cap, a never-scanned source holding closure back), reconciliation, routes (phase-2, the line timeline
+with the vault, seize watch with a fake RPC, roots drift), and the addresses against the deployment record.
+`scripts/verify-live.ts` re-decodes a sample of stored rows of every source from the RPC and recomputes stored roots
+(8 Oct 2026: 137 of 137 rows identical; roots identical except the backfilled Sepolia 6 Oct, see Budget).
+
+## Sources added on 8 Oct 2026
+
+| id | What | From |
+| --- | --- | --- |
+| `sepolia-protection` | Protector `0x5c54…442c`, DeskProtectionVault `0x87f6…f38c`, BoundlineReserve `0x7AcE…B6E`, LocalPayoutRouter `0x1a6D…6354`, every event (ABI generated from the forge artifacts: `sepoliaProtectionAbi`) | 47,760,000 |
+| `mainnet-policy-registry` | the B20 PolicyRegistry precompile `0x8453…0002`, every event (whole-chain volume: 2 events in 129,000 blocks) | 52,198,000 |
 
 ## Still open
 
 Mainnet market reconciliation (needs Supply/Withdraw for the replay), B20 `B20Created` discovery for the ten
-unpriced tokens, re-resolving the feed aggregators on a Chainlink phase change, and the Observatory reading
-`/v1/venues/aave/borrowers` to show Aave positions.
+unpriced tokens, re-resolving the feed aggregators on a Chainlink phase change, and re-rooting the Sepolia days the
+protection backfill drifted (a human decision, see Budget).

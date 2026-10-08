@@ -3,13 +3,17 @@ import type { Address } from "viem";
 import { rollingRoot } from "./daily.js";
 import type { EventRow } from "./decode.js";
 import type { Env } from "./env.js";
-import { MAINNET, MAINNET_FEED_BY_SYMBOL, MAINNET_STACK, SEPOLIA, SEPOLIA_STACK, SOURCE_IDS, describeSource, type Source } from "./sources.js";
+import type { RawRpc } from "./rpc.js";
+import { seizeWatch } from "./seize.js";
+import { MAINNET, MAINNET_FEED_BY_SYMBOL, MAINNET_STACK, SEPOLIA, SEPOLIA_PROTECTION, SEPOLIA_STACK, SOURCE_IDS, describeSource, type Source } from "./sources.js";
 import type { EventQuery, ReconciliationRow, Store } from "./store.js";
 
 export interface AppDeps {
   store: (env: Env) => Store;
   /** The sources this deployment follows; drives `/v1/sources`, the `source=` filter and the desk routes. */
   sources?: (env: Env) => Source[];
+  /** JSON-RPC for the request-driven live reads (seize watch); absent in tests that do not need it. */
+  rpc?: (env: Env, chainId: number) => RawRpc;
   now?: () => number;
 }
 
@@ -53,6 +57,9 @@ export function argNeedle(name: string, value: string): string {
   const v = /^0x[0-9a-fA-F]*$/.test(value) ? value.toLowerCase() : value;
   return `"${name}":"${v}"`;
 }
+
+/** The DeskProtectionVault events that belong on a line's timeline. */
+const VAULT_TIMELINE_EVENTS = ["Protected", "AdvanceSettled", "CollateralRecovered", "CollateralReturned"] as const;
 
 /** Query-string argument filters, in the order the first one becomes the SQL filter and the rest post-filter the page. */
 const ARG_FILTERS = ["lineId", "partnerId", "decisionHash", "user", "borrower", "onBehalf", "token"] as const;
@@ -221,9 +228,18 @@ export function createApp(deps: AppDeps): Hono<{ Bindings: Env }> {
   app.get("/v1/roots", async (c) => {
     const chainId = chainOf(c.req.query("chainId") ?? c.req.query("chain"));
     const store = deps.store(c.env);
-    const roots = await store.listRoots(chainId, 60);
-    const today = await rollingRoot(store, chainId, now());
-    return c.json({ chainId, scheme: "keccak256(prev_root || h1 || ... || hn), h = keccak256(abi.encode(chainId, txHash, logIndex, address, topic0, keccak256(args_json)))", roots, today });
+    const [roots, today, counts] = await Promise.all([store.listRoots(chainId, 60), rollingRoot(store, chainId, now()), store.countEventsByDay(chainId)]);
+    // A root covers the events stored when its day closed. A source added later with an earlier start block stores more
+    // events in an already-rooted day (8 Oct 2026: sepolia-protection backfilled 6 and 7 Oct): `drift` says so, and the
+    // day is re-rooted only by deleting its row and the later ones (a human decision; the chain re-forms by itself).
+    const annotated = roots.map((r) => ({ ...r, eventsStoredNow: counts[r.day] ?? 0, drift: (counts[r.day] ?? 0) !== r.eventCount }));
+    return c.json({
+      chainId,
+      scheme: "keccak256(prev_root || h1 || ... || hn), h = keccak256(abi.encode(chainId, txHash, logIndex, address, topic0, keccak256(args_json)))",
+      coverage: "each root covers the events stored when its UTC day closed; drift = events stored in that day since (a source added later)",
+      roots: annotated,
+      today,
+    });
   });
 
   app.get("/v1/roots/:day", async (c) => {
@@ -357,16 +373,33 @@ export function createApp(deps: AppDeps): Hono<{ Bindings: Env }> {
     return c.json({ chainId, desk, partnerId: partnerId?.toLowerCase() ?? null, count: lines.length, lines, next: nextCursor(rows, limit) });
   });
 
-  /** Every desk event of one line, oldest first: the obligation timeline with its decision hashes. */
+  /** Every event of one line, oldest first: the desk's (obligation, decisions) and, on Sepolia, the DeskProtectionVault's
+   *  protective repays, advance settlements and collateral recovered and returned (each carries the vault's decision
+   *  hash; the vault's own `Decision` rows are left out so a consumer's decision list stays the desk's). `contract`
+   *  tells the emitters apart. */
   app.get("/v1/desk/lines/:id/timeline", async (c) => {
     const chainId = chainOf(c.req.query("chainId") ?? c.req.query("chain"));
     const desk = deskOf(c.env);
     if (!desk) return c.json({ error: "no desk source on this deployment" }, 503);
     const id = c.req.param("id");
     if (!/^[1-9]\d*$/.test(id)) return c.json({ error: "line id must be a positive integer" }, 400);
-    const rows = await deps.store(c.env).queryEvents({ chainId, address: desk, argsContains: argNeedle("lineId", id), limit: MAX_LIMIT });
-    const events = rows.map(eventJson).reverse();
-    return c.json({ chainId, desk, lineId: id, count: events.length, events });
+    const needle = argNeedle("lineId", id);
+    const vault = chainId === SEPOLIA && sourcesOf(c.env).some((s) => s.id === SOURCE_IDS.sepoliaProtection) ? SEPOLIA_PROTECTION.deskProtectionVault.toLowerCase() : null;
+    const store = deps.store(c.env);
+    const [deskRows, vaultRows] = await Promise.all([
+      store.queryEvents({ chainId, address: desk, argsContains: needle, limit: MAX_LIMIT }),
+      vault ? store.queryEvents({ chainId, address: vault, names: VAULT_TIMELINE_EVENTS, argsContains: needle, limit: MAX_LIMIT }) : Promise.resolve([] as EventRow[]),
+    ]);
+    const events = [...deskRows, ...vaultRows]
+      .sort((a, b) => a.blockNumber - b.blockNumber || a.logIndex - b.logIndex)
+      .map((e) => ({ ...eventJson(e), contract: e.address === vault ? "DeskProtectionVault" : "CreditDesk" }));
+    return c.json({ chainId, desk, vault, lineId: id, count: events.length, events });
+  });
+
+  /** Seize watch (plan M9): who can seize the ten Coinbase stocks, under which exemption policy, and are the venues exempt. */
+  app.get("/v1/seize-watch", async (c) => {
+    const body = await seizeWatch(deps.store(c.env), deps.rpc ? deps.rpc(c.env, MAINNET) : null, now());
+    return c.json(body);
   });
 
   return app;

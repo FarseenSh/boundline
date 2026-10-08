@@ -1,5 +1,5 @@
-import { morphoAbi, type BaseClient } from "@boundline/chain";
 import type { Address, Hex } from "viem";
+import type { RawRpc } from "./rpc.js";
 import type { EventRow } from "./decode.js";
 import type { ReconciliationRow, Store } from "./store.js";
 
@@ -128,27 +128,51 @@ export function totalsJson(t: MarketTotals): string {
   });
 }
 
-/** Live reads the reconciliation compares against; `viemChainReader` is the real one. */
+/** Live reads the reconciliation compares against; `rawChainReader` is the real one. */
 export interface ChainReader {
   position(morpho: Address, marketId: Hex, user: Address, blockNumber: number | null): Promise<PositionState>;
   market(morpho: Address, marketId: Hex, blockNumber: number | null): Promise<MarketTotals>;
 }
 
-export function viemChainReader(client: BaseClient): ChainReader {
-  const block = (n: number | null) => (n === null ? {} : { blockNumber: BigInt(n) });
+// Morpho Blue `market(bytes32)` and `position(bytes32,address)` (morpho-blue v1.0.0), encoded by hand: the reads are two
+// fixed shapes, and viem's readContract runs its multicall batcher, which cost ~17 ms warm / ~90 ms cold in the
+// Observatory on 6 Oct 2026, over the Free plan's 10 ms.
+const MARKET_SELECTOR = "5c60e39a";
+const POSITION_SELECTOR = "93c52062";
+
+function words(result: Hex, count: number): bigint[] {
+  const body = result.startsWith("0x") ? result.slice(2) : result;
+  if (body.length < count * 64) throw new Error(`short eth_call answer: ${body.length / 2} bytes, want ${count * 32}`);
+  return Array.from({ length: count }, (_, i) => BigInt(`0x${body.slice(i * 64, i * 64 + 64)}`));
+}
+
+function id32(marketId: Hex): string {
+  const body = marketId.slice(2).toLowerCase();
+  if (body.length !== 64) throw new Error(`market id must be bytes32: ${marketId}`);
+  return body;
+}
+
+export function marketCalldata(marketId: Hex): Hex {
+  return `0x${MARKET_SELECTOR}${id32(marketId)}`;
+}
+
+export function positionCalldata(marketId: Hex, user: Address): Hex {
+  return `0x${POSITION_SELECTOR}${id32(marketId)}${user.slice(2).toLowerCase().padStart(64, "0")}`;
+}
+
+/** The ChainReader over a raw JSON-RPC client: `eth_call` at the pinned block, or `latest` when it is null. */
+export function rawChainReader(rpc: RawRpc): ChainReader {
+  const tag = (n: number | null) => (n === null ? "latest" : `0x${n.toString(16)}`);
   return {
     async position(morpho, marketId, user, blockNumber) {
-      const p = await client.readContract({ address: morpho, abi: morphoAbi, functionName: "position", args: [marketId, user], ...block(blockNumber) });
-      return { supplyShares: p.supplyShares, borrowShares: p.borrowShares, collateral: p.collateral };
+      const r = await rpc.call<Hex>("eth_call", [{ to: morpho, data: positionCalldata(marketId, user) }, tag(blockNumber)]);
+      const [supplyShares, borrowShares, collateral] = words(r, 3) as [bigint, bigint, bigint];
+      return { supplyShares, borrowShares, collateral };
     },
     async market(morpho, marketId, blockNumber) {
-      const m = await client.readContract({ address: morpho, abi: morphoAbi, functionName: "market", args: [marketId], ...block(blockNumber) });
-      return {
-        totalSupplyAssets: m.totalSupplyAssets,
-        totalSupplyShares: m.totalSupplyShares,
-        totalBorrowAssets: m.totalBorrowAssets,
-        totalBorrowShares: m.totalBorrowShares,
-      };
+      const r = await rpc.call<Hex>("eth_call", [{ to: morpho, data: marketCalldata(marketId) }, tag(blockNumber)]);
+      const [totalSupplyAssets, totalSupplyShares, totalBorrowAssets, totalBorrowShares] = words(r, 6) as [bigint, bigint, bigint, bigint];
+      return { totalSupplyAssets, totalSupplyShares, totalBorrowAssets, totalBorrowShares };
     },
   };
 }
