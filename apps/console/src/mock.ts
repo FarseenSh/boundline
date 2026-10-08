@@ -1,6 +1,7 @@
 // Fixtures for every endpoint the console reads, used when the build sets VITE_CONSOLE_MOCK=1. Shapes follow
 // the API contract exactly; numbers are the Sepolia book as of 7 Oct 2026 so the pages look real.
-import type { ConsoleConfig, DecisionsResponse, Drill, EvidenceBundle, LineResponse, ObligationsResponse, ObservatorySessions, PolicyResponse, PolicyVersion, ReconciliationResponse, SourcesResponse } from "./types.js";
+import type { PartnerEvent, WebhookCreated, WebhookDelivery, WebhookSummary } from "@boundline/sdk";
+import type { ConsoleConfig, DecisionsResponse, Drill, EvidenceBundle, LineResponse, ObligationsResponse, ObservatorySessions, PolicyChange, PolicyResponse, PolicyVersion, ReconciliationResponse, SaturdayModePolicy, SourcesResponse } from "./types.js";
 import { hashOf } from "./hashing.js";
 
 const DESK = "0x39aB4Bb0d4fF4b6e2D6cF2B8bC0B5C3f0E5a399a";
@@ -81,7 +82,27 @@ export const mockPolicy: PolicyResponse = {
     { symbol: "NVDAt", collateral: NVDAT, marketId: "0x7cb7fcc828a7296f8ea18256e0f5763a5588cfe22df9c943088021c762e58cc9", allowed: true, maxLtvWad: "550000000000000000", minDraw: "1000000", maxDraw: "100000000", exposureCap: "300000000", exposure: "0", marketLltvWad: "625000000000000000" },
     { symbol: "TSLAt", collateral: TSLAT, marketId: "0xb0e8d25d1c9b822cc718c89666b887698922a7b49fdb00dbdecd70dd4ed9e2f1", allowed: true, maxLtvWad: "500000000000000000", minDraw: "1000000", maxDraw: "50000000", exposureCap: "200000000", exposure: "0", marketLltvWad: "625000000000000000" },
   ],
+  saturdayMode: { enabled: false, capacityFraction: 0.5, haircutBps: 300 },
 };
+
+export const mockWebhooks: (WebhookSummary & { secret: string })[] = [
+  { id: "wh_0001", url: "https://ops.partner.example/boundline", events: ["grace", "protect", "settle"], description: "risk desk pager", active: true, createdAt: 1791380000, lastDelivery: { status: "delivered", at: 1791382000, code: 200 }, secret: "whsec_mock_0001" },
+];
+
+export const mockDeliveries: Record<string, WebhookDelivery[]> = {
+  wh_0001: [
+    { id: "dl_0002", eventId: "ev_0002", type: "protect", status: "delivered", attempts: 1, lastCode: 200, lastAttemptAt: 1791382000, nextAttemptAt: null, payloadHash: "0x" + "5e".repeat(32) },
+    { id: "dl_0001", eventId: "ev_0001", type: "grace", status: "delivered", attempts: 2, lastCode: 200, lastAttemptAt: 1791381060, nextAttemptAt: null, payloadHash: "0x" + "4d".repeat(32) },
+  ],
+};
+
+export const mockEvents: PartnerEvent[] = [
+  { id: "ev_0002", type: "protect", chainId: 84532, at: 1791381990, source: "indexer", lineId: "1", borrower: USER, txHash: "0x28c1ec44" + "00".repeat(26) + "08a4", decisionHash: "0x87c3ecb6" + "00".repeat(26) + "b53e", data: { repaidUsdc: "0.700000", fromUser: "0.500000", fromPartner: "0.000000", fromAdvance: "0.200000" } },
+  { id: "ev_0001", type: "grace", chainId: 84532, at: 1791381000, source: "keeper", lineId: "1", borrower: USER, data: { shadowLtvBps: 5310, graceLtvBps: 5200, targetLtvBps: 4500, amountUsdc: "0.700000" } },
+];
+
+/** The built-in echo receiver's memory, per token. */
+export const mockEcho: Record<string, unknown[]> = {};
 
 export const mockVersions: PolicyVersion[] = [
   {
@@ -191,7 +212,7 @@ export function mockEvidence(): EvidenceBundle {
   return { ...without, hash: hashOf(without) };
 }
 
-export type MockMethod = "GET" | "POST";
+export type MockMethod = "GET" | "POST" | "DELETE";
 
 /** Answers one request from the fixtures; unknown paths get a 404 so the pages exercise their error states. */
 export function mockRequest(method: MockMethod, path: string, body?: unknown): { status: number; body: unknown } {
@@ -217,13 +238,63 @@ export function mockRequest(method: MockMethod, path: string, body?: unknown): {
     if (p === "/v1/reconciliation") return { status: 200, body: mockReconciliation };
     if (p === "/v1/evidence/export") return { status: 200, body: mockEvidence() };
     if (p === "/indexer/v1/sources") return { status: 200, body: mockSources };
+    if (p === "/v1/webhooks") return { status: 200, body: { webhooks: mockWebhooks.map(({ secret: _secret, ...w }) => w) } };
+    const deliveries = /^\/v1\/webhooks\/([^/]+)\/deliveries$/.exec(p);
+    if (deliveries) return mockWebhooks.some((w) => w.id === deliveries[1]) ? { status: 200, body: { deliveries: mockDeliveries[deliveries[1]!] ?? [] } } : { status: 404, body: { error: "unknown webhook" } };
+    const echo = /^\/v1\/webhooks\/echo\/([0-9a-f]+)$/.exec(p);
+    if (echo) return { status: 200, body: { token: echo[1], deliveries: mockEcho[echo[1]!] ?? [] } };
+    if (p === "/v1/events") return { status: 200, body: { events: mockEvents } };
     return { status: 404, body: { error: "not found (mock)" } };
   }
+  if (method === "DELETE") {
+    const one = /^\/v1\/webhooks\/([^/]+)$/.exec(p);
+    const i = one ? mockWebhooks.findIndex((w) => w.id === one[1]) : -1;
+    if (i < 0) return { status: 404, body: { error: "unknown webhook" } };
+    mockWebhooks.splice(i, 1);
+    return { status: 204, body: null };
+  }
+  if (p === "/v1/webhooks") {
+    const b = (body ?? {}) as { url?: string; events?: string[]; description?: string };
+    if (!b.url || !/^https:\/\//.test(b.url)) return { status: 400, body: { error: "url must be https" } };
+    if (!b.events?.length) return { status: 400, body: { error: "choose at least one event" } };
+    const id = `wh_${String(mockWebhooks.length + 2).padStart(4, "0")}`;
+    const created: WebhookCreated = { id, url: b.url, events: b.events as WebhookCreated["events"], description: b.description ?? null, active: true, createdAt: Math.floor(Date.now() / 1000), lastDelivery: null, secret: `whsec_mock_${id}` };
+    mockWebhooks.unshift(created);
+    return { status: 201, body: created };
+  }
+  const test = /^\/v1\/webhooks\/([^/]+)\/test$/.exec(p);
+  if (test) {
+    const hook = mockWebhooks.find((w) => w.id === test[1]);
+    if (!hook) return { status: 404, body: { error: "unknown webhook" } };
+    const now = Math.floor(Date.now() / 1000);
+    const deliveryId = `dl_${now}`;
+    (mockDeliveries[hook.id] ??= []).unshift({ id: deliveryId, eventId: `ev_${now}`, type: "ping", status: "delivered", attempts: 1, lastCode: 200, lastAttemptAt: now, nextAttemptAt: null, payloadHash: "0x" + "9a".repeat(32) });
+    const echo = /\/v1\/webhooks\/echo\/([0-9a-f]+)$/.exec(hook.url);
+    if (echo) (mockEcho[echo[1]!] ??= []).unshift({ receivedAt: now, type: "ping", deliveryId, verified: true, body: { id: `ev_${now}`, type: "ping", createdAt: now, chainId: 84532, partnerId: PARTNER_ID, data: {} } });
+    return { status: 202, body: { deliveryId } };
+  }
   if (p === "/v1/policy/versions") {
-    const b = (body ?? {}) as { note?: string; tickers?: unknown[]; partner?: unknown };
-    const v: PolicyVersion = { id: `pv_${String(mockVersions.length + 1).padStart(4, "0")}`, status: "prepared", createdAt: Math.floor(Date.now() / 1000), note: b.note ?? "", changes: [], calls: [{ to: DESK, data: "0x" + "44".repeat(100), description: "setTickerPolicy(...)" }], policyVersionBefore: mockPolicy.policyVersion };
+    const b = (body ?? {}) as { note?: string; tickers?: unknown[]; partner?: unknown; saturdayMode?: SaturdayModePolicy };
+    const onDesk = Boolean(b.tickers?.length) || b.partner !== undefined;
+    const changes: PolicyChange[] = [];
+    if (b.saturdayMode && mockPolicy.saturdayMode) {
+      for (const f of ["enabled", "capacityFraction", "haircutBps"] as const) {
+        if (b.saturdayMode[f] !== mockPolicy.saturdayMode[f]) changes.push({ scope: "routing", field: `saturdayMode.${f}`, before: mockPolicy.saturdayMode[f], after: b.saturdayMode[f] });
+      }
+    }
+    const v: PolicyVersion & { saturdayMode?: SaturdayModePolicy } = {
+      id: `pv_${String(mockVersions.length + 1).padStart(4, "0")}`,
+      status: "prepared",
+      createdAt: Math.floor(Date.now() / 1000),
+      note: b.note ?? "",
+      changes,
+      // Saturday mode is an off-chain routing policy: a version that changes only it has no desk call to sign.
+      calls: onDesk ? [{ to: DESK, data: "0x" + "44".repeat(100), description: "setTickerPolicy(...)" }] : [],
+      policyVersionBefore: mockPolicy.policyVersion,
+      ...(b.saturdayMode ? { saturdayMode: { ...b.saturdayMode } } : {}),
+    };
     mockVersions.unshift(v);
-    return { status: 201, body: v };
+    return { status: 201, body: { policyVersion: mockPolicy.policyVersion, version: v } };
   }
   const applied = /^\/v1\/policy\/versions\/([^/]+)\/applied$/.exec(p);
   if (applied) {
@@ -232,8 +303,11 @@ export function mockRequest(method: MockMethod, path: string, body?: unknown): {
     v.status = "applied";
     v.txHash = (body as { txHash?: string })?.txHash ?? null;
     v.appliedAt = Math.floor(Date.now() / 1000);
-    v.policyVersionAfter = v.policyVersionBefore + 1;
-    return { status: 200, body: v };
+    // Only a desk call bumps the desk's policy version; a routing-only version applies off chain.
+    v.policyVersionAfter = v.calls.length > 0 ? v.policyVersionBefore + 1 : v.policyVersionBefore;
+    const sat = (v as PolicyVersion & { saturdayMode?: SaturdayModePolicy }).saturdayMode;
+    if (sat) mockPolicy.saturdayMode = { ...sat };
+    return { status: 200, body: { policyVersion: v.policyVersionAfter, version: v } };
   }
   return { status: 404, body: { error: "not found (mock)" } };
 }

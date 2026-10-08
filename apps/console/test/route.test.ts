@@ -102,6 +102,18 @@ describe("console Worker routing", () => {
     expect(res?.status).toBe(502);
     expect(await res!.json()).toMatchObject({ error: "upstream unavailable", detail: "binding down" });
   });
+  it("forwards DELETE only for webhook removal, with the key and no body", async () => {
+    const e = env();
+    const res = await routeApi(new Request("https://console/api/v1/webhooks/wh_1", { method: "DELETE" }), e);
+    expect(res?.status).toBe(200);
+    expect(e.api[0]?.url).toBe("https://api/v1/webhooks/wh_1");
+    expect(e.api[0]?.method).toBe("DELETE");
+    expect(e.api[0]?.headers.authorization).toBe("Bearer secret-key");
+    expect(e.api[0]?.body ?? "").toBe("");
+    expect((await routeApi(new Request("https://console/api/v1/policy/versions/pv_1", { method: "DELETE" }), e))?.status).toBe(405);
+    expect((await routeApi(new Request("https://console/api/indexer/v1/events", { method: "DELETE" }), e))?.status).toBe(405);
+    expect((await routeApi(new Request("https://console/api/v1/webhooks/wh_1", { method: "PUT" }), e))?.status).toBe(405);
+  });
   it("parses bearers strictly", () => {
     expect(bearerOf(new Request("https://x", { headers: { authorization: "Bearer abc" } }))).toBe("abc");
     expect(bearerOf(new Request("https://x", { headers: { authorization: "bearer  abc " } }))).toBe("abc");

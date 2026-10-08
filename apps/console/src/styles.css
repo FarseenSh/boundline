@@ -216,3 +216,13 @@ table.inner tr.coral td { color: var(--coral); }
 .hashline { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
 .hashline code { word-break: break-all; }
 main h1 + .row, .row.between h1 { margin-top: 0; }
+
+/* Webhooks and events (8 Oct): event checkboxes, the echo receiver panel, the verification snippet. */
+fieldset.events { border: 1px solid var(--line); border-radius: 8px; padding: 6px 12px 10px; margin: 12px 0; }
+fieldset.events legend { color: var(--ink-2); font-size: 14px; padding: 0 4px; }
+fieldset.events .field.check { margin: 6px 0; flex-wrap: wrap; }
+.inner-panel { border-top: 1px solid var(--line); margin-top: 12px; padding-top: 10px; }
+.inner-panel h4 { margin: 0 0 6px; font-size: 14px; font-weight: 600; }
+.small { font-size: 12.5px; }
+.panel pre { margin: 0; overflow-x: auto; font-size: 13px; line-height: 1.5; }
+.tag + .tag { margin-left: 6px; }

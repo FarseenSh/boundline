@@ -1,4 +1,5 @@
 // Data hooks over the proxy. React Query keeps the reads fresh; the pasted key re-runs everything on change.
+import type { EchoReceived, PartnerEvent, WebhookDelivery, WebhookSummary } from "@boundline/sdk";
 import { useQuery, useQueryClient, type UseQueryResult } from "@tanstack/react-query";
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { apiGet } from "./api.js";
@@ -100,6 +101,34 @@ export function useSources(): UseQueryResult<SourcesResponse> {
 export function useEvidence(enabled: boolean): UseQueryResult<EvidenceBundle> {
   const key = usePastedKey();
   return useQuery({ queryKey: ["evidence", key ? "pasted" : "console"], enabled, queryFn: async () => (await apiGet<EvidenceBundle>("/v1/evidence/export")).data, staleTime: 30_000, retry: (n, err) => n < 1 && !(err as { notLive?: boolean }).notLive });
+}
+
+const notLiveRetry = (n: number, err: Error): boolean => n < 1 && !(err as Error & { notLive?: boolean }).notLive;
+
+export function useWebhooks(): UseQueryResult<WebhookSummary[]> {
+  const key = usePastedKey();
+  return useQuery({ queryKey: ["webhooks", key ? "pasted" : "console"], queryFn: async () => (await apiGet<{ webhooks: WebhookSummary[] }>("/v1/webhooks")).data.webhooks ?? [], refetchInterval: 30_000, retry: notLiveRetry });
+}
+
+export function useDeliveries(id: string | null): UseQueryResult<WebhookDelivery[]> {
+  const key = usePastedKey();
+  return useQuery({
+    queryKey: ["deliveries", key ? "pasted" : "console", id],
+    enabled: Boolean(id),
+    queryFn: async () => (await apiGet<{ deliveries: WebhookDelivery[] }>(`/v1/webhooks/${encodeURIComponent(id!)}/deliveries?limit=50`)).data.deliveries ?? [],
+    refetchInterval: 10_000,
+    retry: notLiveRetry,
+  });
+}
+
+export function usePartnerEvents(): UseQueryResult<PartnerEvent[]> {
+  const key = usePastedKey();
+  return useQuery({ queryKey: ["partner-events", key ? "pasted" : "console"], queryFn: async () => (await apiGet<{ events: PartnerEvent[] }>("/v1/events?limit=50")).data.events ?? [], refetchInterval: 30_000, retry: notLiveRetry });
+}
+
+/** What the API's built-in echo receiver got for `token`, polled while the panel is open. */
+export function useEcho(token: string | null): UseQueryResult<EchoReceived> {
+  return useQuery({ queryKey: ["echo", token], enabled: Boolean(token), queryFn: async () => (await apiGet<EchoReceived>(`/v1/webhooks/echo/${token}`)).data, refetchInterval: 5_000, retry: notLiveRetry });
 }
 
 /** Call after the key changes so nothing from the other partner lingers. */

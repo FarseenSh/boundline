@@ -16,7 +16,7 @@ export interface RouteEnv {
 
 const FORWARDED_REQUEST_HEADERS = ["content-type", "accept", "idempotency-key", "x-correlation-id"];
 const FORWARDED_RESPONSE_HEADERS = ["content-type", "content-disposition", "x-correlation-id", "x-policy-version", "x-quote-hash", "x-idempotent-replay"];
-const METHODS = new Set(["GET", "POST", "HEAD"]);
+const METHODS = new Set(["GET", "POST", "HEAD", "DELETE"]);
 
 export function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json", "cache-control": "no-store" } });
@@ -61,6 +61,8 @@ export async function routeApi(request: Request, env: RouteEnv): Promise<Respons
   const path = url.pathname;
   if (!path.startsWith("/api/")) return null;
   if (!METHODS.has(request.method)) return json({ error: "method not allowed" }, 405);
+  // DELETE exists for one thing (removing a webhook), so it only ever goes to the partner API's webhook routes.
+  if (request.method === "DELETE" && !path.startsWith("/api/v1/webhooks/")) return json({ error: "method not allowed" }, 405);
 
   if (path === "/api/health") return proxy(env.API, "https://api/health", request);
   if (path === "/api/config") {

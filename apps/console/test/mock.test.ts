@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { rehashBundle } from "../src/hashing.js";
+import { versionOf } from "../src/policy.js";
 import { mockRequest } from "../src/mock.js";
 import type { EvidenceBundle, PolicyResponse, PolicyVersion } from "../src/types.js";
 
@@ -18,14 +19,14 @@ describe("fixtures (VITE_CONSOLE_MOCK=1)", () => {
   });
   it("prepares and applies a policy version", () => {
     const before = (mockRequest("GET", "/v1/policy/versions").body as { versions: PolicyVersion[] }).versions.length;
-    const created = mockRequest("POST", "/v1/policy/versions", { note: "test", tickers: [] });
+    const created = mockRequest("POST", "/v1/policy/versions", { note: "test", tickers: [{ collateral: "0xb2", allowed: true }] });
     expect(created.status).toBe(201);
-    const v = created.body as PolicyVersion;
+    const v = versionOf(created.body);
     expect(v.status).toBe("prepared");
     expect((mockRequest("GET", "/v1/policy/versions").body as { versions: PolicyVersion[] }).versions).toHaveLength(before + 1);
     const applied = mockRequest("POST", `/v1/policy/versions/${v.id}/applied`, { txHash: "0x" + "ab".repeat(32) });
     expect(applied.status).toBe(200);
-    expect((applied.body as PolicyVersion).status).toBe("applied");
+    expect(versionOf(applied.body).status).toBe("applied");
     expect((mockRequest("GET", `/v1/policy/versions/${v.id}`).body as PolicyVersion).txHash).toBe("0x" + "ab".repeat(32));
     expect(mockRequest("POST", "/v1/policy/versions/missing/applied", {}).status).toBe(404);
   });

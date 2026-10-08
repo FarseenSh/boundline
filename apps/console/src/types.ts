@@ -117,12 +117,24 @@ export interface TickerPolicy {
   marketLltvWad: string;
 }
 
+/** Saturday mode, a partner routing policy (off-chain, versioned with the rest): weekend draws on venues that price around
+ *  the clock at the held feed (Aave V4), at `capacityFraction` of capacity and the lower of the held feed and the TWAP less
+ *  `haircutBps`. Boundline's own SessionGuard markets never draw while the feed is held, whatever this says. */
+export interface SaturdayModePolicy {
+  enabled: boolean;
+  /** Share of normal capacity, at most 0.5. */
+  capacityFraction: number;
+  haircutBps: number;
+}
+
 export interface PolicyResponse {
   partnerId: string;
   name: string;
   policyVersion: number;
   partner: PartnerConfig;
   tickers: TickerPolicy[];
+  /** Absent while the API does not serve Saturday mode yet. */
+  saturdayMode?: SaturdayModePolicy;
 }
 
 export interface TickerDraft {
@@ -145,10 +157,11 @@ export interface PolicyDraftBody {
   note: string;
   tickers?: TickerDraft[];
   partner?: PartnerDraft;
+  saturdayMode?: SaturdayModePolicy;
 }
 
 export interface PolicyChange {
-  scope: "partner" | "ticker" | string;
+  scope: "partner" | "ticker" | "routing" | string;
   collateral?: string;
   field: string;
   before: string | boolean | number | null;

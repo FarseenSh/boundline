@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { buildDraftBody, describeChange, formatUsdc, hasChanges, localChanges, parsePercent, parseUsdc, partnerDraftFrom, percentToWad, tickerDraftFrom, validateDraft, wadToPercent, type EditedPolicy } from "../src/policy.js";
+import { versionOf } from "../src/policy.js";
+import { buildDraftBody, describeChange, formatFieldValue, formatUsdc, hasChanges, localChanges, offChainOnly, parseBps, parseFraction, parsePercent, parseUsdc, partnerDraftFrom, percentToWad, SATURDAY_DEFAULT, tickerDraftFrom, validateDraft, wadToPercent, type EditedPolicy } from "../src/policy.js";
 import type { PolicyResponse } from "../src/types.js";
 
 const AAPLT = "0xb200000000000000000000000000000000000001";
@@ -101,5 +102,69 @@ describe("validation", () => {
   });
   it("accepts the unchanged policy and a max draw of zero (no cap)", () => {
     expect(validateDraft(policy, unchanged())).toEqual([]);
+  });
+});
+
+describe("Saturday mode (routing policy, off chain)", () => {
+  const withSat: PolicyResponse = { ...policy, saturdayMode: { enabled: false, capacityFraction: 0.5, haircutBps: 300 } };
+  const editedSat = (patch: Partial<NonNullable<PolicyResponse["saturdayMode"]>>): EditedPolicy => ({ ...unchanged(), saturdayMode: { ...withSat.saturdayMode!, ...patch } });
+
+  it("diffs and drafts only what changed, as a routing change", () => {
+    expect(localChanges(withSat, editedSat({}))).toEqual([]);
+    const changes = localChanges(withSat, editedSat({ enabled: true, haircutBps: 400 }));
+    expect(changes).toEqual([
+      { scope: "routing", field: "saturdayMode.enabled", before: false, after: true },
+      { scope: "routing", field: "saturdayMode.haircutBps", before: 300, after: 400 },
+    ]);
+    expect(changes.map((c) => describeChange(c))).toEqual(["routing Saturday mode off → on", "routing Saturday haircut 300 bps → 400 bps"]);
+    const body = buildDraftBody(withSat, editedSat({ enabled: true }), "  weekend pilot ");
+    expect(body).toEqual({ note: "weekend pilot", saturdayMode: { enabled: true, capacityFraction: 0.5, haircutBps: 300 } });
+    expect(hasChanges(body)).toBe(true);
+    expect(offChainOnly(body)).toBe(true);
+    expect(buildDraftBody(withSat, editedSat({}), "n").saturdayMode).toBeUndefined();
+  });
+
+  it("is ignored entirely while the API does not serve it", () => {
+    expect(localChanges(policy, editedSat({ enabled: true }))).toEqual([]);
+    expect(buildDraftBody(policy, editedSat({ enabled: true }), "n").saturdayMode).toBeUndefined();
+  });
+
+  it("a draft that also touches the desk is not off-chain-only", () => {
+    const e = editedSat({ enabled: true });
+    e.tickers[0] = { ...e.tickers[0]!, maxLtvWad: percentToWad(55) };
+    const body = buildDraftBody(withSat, e, "n");
+    expect(body.tickers).toHaveLength(1);
+    expect(offChainOnly(body)).toBe(false);
+  });
+
+  it("validates the fraction (≤ 0.5) and the haircut (whole bps ≤ 5000)", () => {
+    expect(validateDraft(withSat, editedSat({ capacityFraction: 0.6 }))).toContain("Saturday mode: capacity fraction must be above 0 and at most 0.5");
+    expect(validateDraft(withSat, editedSat({ capacityFraction: 0 }))).toContain("Saturday mode: capacity fraction must be above 0 and at most 0.5");
+    expect(validateDraft(withSat, editedSat({ haircutBps: 12.5 }))).toContain("Saturday mode: haircut must be a whole number of bps from 0 to 5000");
+    expect(validateDraft(withSat, editedSat({ capacityFraction: 0.25, haircutBps: 5000 }))).toEqual([]);
+    expect(parseFraction("0.5")).toBe(0.5);
+    expect(parseFraction(".25")).toBe(0.25);
+    expect(parseFraction("0.51")).toBeNull();
+    expect(parseFraction("0")).toBeNull();
+    expect(parseFraction("1")).toBeNull();
+    expect(parseFraction("0.12345")).toBeNull();
+    expect(parseBps("300")).toBe(300);
+    expect(parseBps("5001")).toBeNull();
+    expect(parseBps("3.5")).toBeNull();
+    expect(SATURDAY_DEFAULT).toEqual({ enabled: false, capacityFraction: 0.5, haircutBps: 300 });
+    expect(formatFieldValue("saturdayMode.capacityFraction", 0.25)).toBe("25% of capacity");
+  });
+});
+
+describe("reading a version out of the API's answers", () => {
+  const v = { id: "pv_1", status: "prepared", createdAt: 1, note: "n", changes: [{ scope: "ticker", field: "allowed", before: false, after: true }], calls: [], policyVersionBefore: 4 };
+  it("unwraps { policyVersion, version } (the live API) and accepts a bare version", () => {
+    expect(versionOf({ policyVersion: 4, chainId: 84532, version: v, selfCustody: "…" })).toEqual(v);
+    expect(versionOf(v)).toEqual(v);
+  });
+  it("fills missing arrays so a card can always render, and refuses an answer without a version", () => {
+    expect(versionOf({ version: { id: "pv_2", status: "applied" } }).calls).toEqual([]);
+    expect(() => versionOf({ policyVersion: 4 })).toThrow(/no policy version/);
+    expect(() => versionOf(null)).toThrow();
   });
 });

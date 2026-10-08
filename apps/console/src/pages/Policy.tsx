@@ -10,7 +10,7 @@ import { ErrorNote } from "../components/ErrorNote.jsx";
 import { Tag } from "../components/Tag.jsx";
 import { ConnectChoices } from "../components/Wallet.jsx";
 import { usePolicy, usePolicyVersions } from "../hooks.js";
-import { buildDraftBody, describeChange, formatUsdc, hasChanges, isZeroAddress, localChanges, parsePercent, parseUsdc, partnerDraftFrom, percentToWad, tickerDraftFrom, validateDraft, wadToPercent, type EditedPolicy } from "../policy.js";
+import { buildDraftBody, describeChange, formatUsdc, hasChanges, isZeroAddress, localChanges, offChainOnly, versionOf, parseBps, parseFraction, parsePercent, parseUsdc, partnerDraftFrom, percentToWad, SATURDAY_MAX_FRACTION, tickerDraftFrom, validateDraft, wadToPercent, type EditedPolicy } from "../policy.js";
 import { explorerTx, statusTone } from "../timeline.js";
 import type { PolicyResponse, PolicyVersion } from "../types.js";
 import { consoleChain } from "../wagmi.js";
@@ -31,15 +31,29 @@ interface PartnerText {
   active: boolean;
 }
 
-function textFrom(p: PolicyResponse): { tickers: TickerText[]; partner: PartnerText } {
+interface SaturdayText {
+  enabled: boolean;
+  fraction: string;
+  haircut: string;
+}
+
+interface PolicyText {
+  tickers: TickerText[];
+  partner: PartnerText;
+  /** Null while the API does not serve Saturday mode. */
+  saturday: SaturdayText | null;
+}
+
+function textFrom(p: PolicyResponse): PolicyText {
   return {
     tickers: p.tickers.map((t) => ({ collateral: t.collateral, allowed: t.allowed, maxLtv: String(wadToPercent(t.maxLtvWad)), minDraw: formatUsdc(t.minDraw).replace(/,/g, ""), maxDraw: formatUsdc(t.maxDraw).replace(/,/g, ""), exposureCap: formatUsdc(t.exposureCap).replace(/,/g, "") })),
     partner: { signer: p.partner.signer, eligibility: p.partner.eligibility, exposureCap: formatUsdc(p.partner.exposureCap).replace(/,/g, ""), active: p.partner.active },
+    saturday: p.saturdayMode ? { enabled: p.saturdayMode.enabled, fraction: String(p.saturdayMode.capacityFraction), haircut: String(p.saturdayMode.haircutBps) } : null,
   };
 }
 
 /** Text fields → the draft's base units; null plus a message when a field does not parse. */
-function editedFrom(p: PolicyResponse, text: { tickers: TickerText[]; partner: PartnerText }): { edited: EditedPolicy | null; errors: string[] } {
+function editedFrom(p: PolicyResponse, text: PolicyText): { edited: EditedPolicy | null; errors: string[] } {
   const errors: string[] = [];
   const tickers = text.tickers.map((t) => {
     const cur = p.tickers.find((x) => x.collateral.toLowerCase() === t.collateral.toLowerCase());
@@ -58,8 +72,16 @@ function editedFrom(p: PolicyResponse, text: { tickers: TickerText[]; partner: P
   const pcap = parseUsdc(text.partner.exposureCap);
   if (pcap === null) errors.push("partner exposure cap must be a USDC amount");
   const partner = { ...partnerDraftFrom(p.partner), signer: text.partner.signer.trim(), eligibility: text.partner.eligibility.trim(), exposureCap: pcap ?? p.partner.exposureCap, active: text.partner.active };
+  let saturdayMode: EditedPolicy["saturdayMode"];
+  if (p.saturdayMode && text.saturday) {
+    const fraction = parseFraction(text.saturday.fraction);
+    const haircut = parseBps(text.saturday.haircut);
+    if (fraction === null) errors.push(`Saturday mode: capacity fraction must be a number above 0 and at most ${SATURDAY_MAX_FRACTION}`);
+    if (haircut === null) errors.push("Saturday mode: haircut must be a whole number of bps from 0 to 5000");
+    saturdayMode = { enabled: text.saturday.enabled, capacityFraction: fraction ?? p.saturdayMode.capacityFraction, haircutBps: haircut ?? p.saturdayMode.haircutBps };
+  }
   if (errors.length > 0) return { edited: null, errors };
-  const edited: EditedPolicy = { tickers, partner };
+  const edited: EditedPolicy = { tickers, partner, ...(saturdayMode ? { saturdayMode } : {}) };
   return { edited, errors: validateDraft(p, edited) };
 }
 
@@ -69,7 +91,7 @@ export function Policy() {
   const qc = useQueryClient();
   const { isConnected, address } = useAccount();
   const apply = useApplyFlow();
-  const [text, setText] = useState<{ tickers: TickerText[]; partner: PartnerText } | null>(null);
+  const [text, setText] = useState<PolicyText | null>(null);
   const [note, setNote] = useState("");
   const [draft, setDraft] = useState<PolicyVersion | null>(null);
   const [preparing, setPreparing] = useState(false);
@@ -91,8 +113,10 @@ export function Policy() {
     setPreparing(true);
     setError(null);
     try {
-      const r = await apiPost<PolicyVersion>("/v1/policy/versions", body);
-      setDraft(r.data);
+      const r = await apiPost<unknown>("/v1/policy/versions", body);
+      setDraft(versionOf(r.data));
+      // A routing-only version comes back applied: the live policy (Saturday mode) changed already.
+      void qc.invalidateQueries({ queryKey: ["policy"] });
       void qc.invalidateQueries({ queryKey: ["policy-versions"] });
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -110,8 +134,9 @@ export function Policy() {
       return;
     }
     try {
-      const r = await apiPost<PolicyVersion>(`/v1/policy/versions/${v.id}/applied`, { txHash: hashes[hashes.length - 1] });
-      setDraft(r.data.id === draft?.id ? r.data : draft);
+      const r = await apiPost<unknown>(`/v1/policy/versions/${v.id}/applied`, { txHash: hashes[hashes.length - 1] });
+      const applied = versionOf(r.data);
+      setDraft(applied.id === draft?.id ? applied : draft);
       setText(null);
       void qc.invalidateQueries({ queryKey: ["policy"] });
       void qc.invalidateQueries({ queryKey: ["policy-versions"] });
@@ -122,6 +147,25 @@ export function Policy() {
     }
   };
 
+  /** An off-chain-only version (Saturday mode) has no desk call to sign: the partner records it as applied. */
+  const recordApplied = async (v: PolicyVersion): Promise<void> => {
+    setApplying(v.id);
+    setError(null);
+    try {
+      const r = await apiPost<unknown>(`/v1/policy/versions/${v.id}/applied`, {});
+      const applied = versionOf(r.data);
+      setDraft(applied.id === draft?.id ? applied : draft);
+      setText(null);
+      void qc.invalidateQueries({ queryKey: ["policy"] });
+      void qc.invalidateQueries({ queryKey: ["policy-versions"] });
+    } catch (err) {
+      setError(`Recording ${v.id} as applied failed: ${err instanceof Error ? err.message : String(err)}`);
+    } finally {
+      setApplying(null);
+    }
+  };
+
+  const setSaturday = (patch: Partial<SaturdayText>): void => setText((t) => (t && t.saturday ? { ...t, saturday: { ...t.saturday, ...patch } } : t));
   const setTicker = (i: number, patch: Partial<TickerText>): void => setText((t) => (t ? { ...t, tickers: t.tickers.map((x, j) => (j === i ? { ...x, ...patch } : x)) } : t));
   const setPartner = (patch: Partial<PartnerText>): void => setText((t) => (t ? { ...t, partner: { ...t.partner, ...patch } } : t));
 
@@ -219,6 +263,36 @@ export function Policy() {
           </div>
 
           <div className="panel">
+            <h3>Saturday mode (routing policy)</h3>
+            <p>
+              Off by default. On venues that keep pricing at the held feed while Wall Street is closed (Aave V4), the credit router may route weekend draws at a fraction of normal capacity, priced at the lower of the held feed and the DEX TWAP less a haircut. Boundline's own session-safe Morpho markets never draw while the feed is held, whatever this says. Off-chain policy: versioned here, applied by the router, no desk call to sign.
+            </p>
+            {text.saturday ? (
+              <div className="grid">
+                <label className="field check">
+                  <input type="checkbox" checked={text.saturday.enabled} onChange={(e) => setSaturday({ enabled: e.target.checked })} /> <span>Allow weekend draws on around-the-clock venues</span>
+                </label>
+                <span />
+                <label className="field">
+                  <span>Share of normal capacity (at most {SATURDAY_MAX_FRACTION})</span>
+                  <span className="input">
+                    <input className="text" value={text.saturday.fraction} onChange={(e) => setSaturday({ fraction: e.target.value })} inputMode="decimal" aria-label="Saturday capacity fraction" />
+                  </span>
+                </label>
+                <label className="field">
+                  <span>Haircut on min(held feed, TWAP)</span>
+                  <span className="input">
+                    <input className="text" value={text.saturday.haircut} onChange={(e) => setSaturday({ haircut: e.target.value })} inputMode="numeric" aria-label="Saturday haircut bps" />
+                    <span className="unit">bps</span>
+                  </span>
+                </label>
+              </div>
+            ) : (
+              <p className="mute">The partner API does not serve Saturday mode yet; this panel turns on as soon as <code>GET /v1/policy</code> carries it.</p>
+            )}
+          </div>
+
+          <div className="panel">
             <h3>Draft</h3>
             {parsed.errors.length > 0 ? (
               <ul className="errors">
@@ -230,6 +304,7 @@ export function Policy() {
               </ul>
             ) : null}
             {changes.length === 0 ? <p className="mute">No changes yet; edit a field above.</p> : null}
+            {body && offChainOnly(body) ? <p className="mute">Routing policy only: the version needs no signature on the desk, it is recorded as applied.</p> : null}
             {changes.length > 0 ? (
               <ul className="changes">
                 {changes.map((c, i) => (
@@ -254,7 +329,7 @@ export function Policy() {
             {error ? <p className="notice">{error}</p> : null}
           </div>
 
-          {draft ? <VersionCard v={draft} symbolOf={symbolOf} chainId={consoleChain.id} canSign={isConnected && isAdmin} connected={isConnected} applying={applying === draft.id} onSign={() => void signAndApply(draft)} stage={applying === draft.id ? apply.stage : null} /> : null}
+          {draft ? <VersionCard v={draft} symbolOf={symbolOf} chainId={consoleChain.id} canSign={isConnected && isAdmin} connected={isConnected} applying={applying === draft.id} onSign={() => void signAndApply(draft)} onRecord={() => void recordApplied(draft)} stage={applying === draft.id ? apply.stage : null} /> : null}
           {!isConnected ? (
             <div className="panel">
               <h3>Partner admin wallet</h3>
@@ -271,13 +346,13 @@ export function Policy() {
       {versions.error ? <ErrorNote error={versions.error} what="Policy versions" /> : null}
       {versions.data && versions.data.length === 0 ? <p className="mute">No prepared versions yet.</p> : null}
       {versions.data?.map((v) => (
-        <VersionCard key={v.id} v={v} symbolOf={symbolOf} chainId={consoleChain.id} canSign={isConnected && isAdmin && v.status === "prepared"} connected={isConnected} applying={applying === v.id} onSign={() => void signAndApply(v)} stage={applying === v.id ? apply.stage : null} compact />
+        <VersionCard key={v.id} v={v} symbolOf={symbolOf} chainId={consoleChain.id} canSign={isConnected && isAdmin && v.status === "prepared"} connected={isConnected} applying={applying === v.id} onSign={() => void signAndApply(v)} onRecord={() => void recordApplied(v)} stage={applying === v.id ? apply.stage : null} compact />
       ))}
     </>
   );
 }
 
-function VersionCard({ v, symbolOf, chainId, canSign, connected, applying, onSign, stage, compact = false }: { v: PolicyVersion; symbolOf: (c: string) => string; chainId: number; canSign: boolean; connected: boolean; applying: boolean; onSign: () => void; stage: ReturnType<typeof useApplyFlow>["stage"] | null; compact?: boolean }) {
+function VersionCard({ v, symbolOf, chainId, canSign, connected, applying, onSign, onRecord, stage, compact = false }: { v: PolicyVersion; symbolOf: (c: string) => string; chainId: number; canSign: boolean; connected: boolean; applying: boolean; onSign: () => void; onRecord: () => void; stage: ReturnType<typeof useApplyFlow>["stage"] | null; compact?: boolean }) {
   const [open, setOpen] = useState(!compact);
   return (
     <div className="panel version">
@@ -333,7 +408,15 @@ function VersionCard({ v, symbolOf, chainId, canSign, connected, applying, onSig
               </a>
             </p>
           ) : null}
-          {v.status === "prepared" ? (
+          {v.status === "prepared" && v.calls.length === 0 ? (
+            <div className="row">
+              <button className="btn primary" disabled={applying} onClick={onRecord}>
+                {applying ? "Recording…" : "Record as applied"}
+              </button>
+              <span className="mute">No desk call: an off-chain routing change.</span>
+            </div>
+          ) : null}
+          {v.status === "prepared" && v.calls.length > 0 ? (
             <div className="row">
               <button className="btn primary" disabled={!canSign || applying} onClick={onSign} title={!connected ? "connect the partner admin wallet" : !canSign ? "the connected wallet is not the partner admin" : undefined}>
                 {applying ? "Signing…" : "Sign and apply"}
@@ -349,7 +432,7 @@ function VersionCard({ v, symbolOf, chainId, canSign, connected, applying, onSig
           ) : null}
         </>
       ) : null}
-      {isZeroAddress(v.calls[0]?.to) ? <p className="notice warn">This version's calls have no target; the API could not prepare them.</p> : null}
+      {v.calls.length > 0 && isZeroAddress(v.calls[0]?.to) ? <p className="notice warn">This version's calls have no target; the API could not prepare them.</p> : null}
     </div>
   );
 }

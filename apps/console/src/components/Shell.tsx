@@ -41,6 +41,8 @@ export function Shell({ children }: { children: ReactNode }) {
       <nav className="primary" aria-label="Pages">
         <Link to="/">Obligations</Link>
         <Link to="/policy">Policy</Link>
+        <Link to="/events">Events</Link>
+        <Link to="/webhooks">Webhooks</Link>
         <Link to="/drills">Drills</Link>
         <Link to="/reconciliation">Reconciliation</Link>
         <Link to="/evidence">Evidence</Link>

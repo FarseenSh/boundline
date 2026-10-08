@@ -76,6 +76,17 @@ export async function apiPost<T>(path: string, body: unknown, idempotencyKey: st
   return parse<T>(res, path);
 }
 
+/** DELETE through the proxy (removing a webhook); a 204 answers with `data: null`. */
+export async function apiDelete(path: string): Promise<ApiResult<null>> {
+  if (ENV.mock) {
+    const r = mockRequest("DELETE", path);
+    if (r.status >= 400) throw new ApiRequestError(r.status, r.body as ApiError, path);
+    return { data: null, correlationId: "mock", policyVersion: null, replay: false };
+  }
+  const res = await fetch(`${ENV.apiBase}${path}`, { method: "DELETE", headers: headers(), cache: "no-store" });
+  return parse<null>(res, path);
+}
+
 /** The whole bundle as a file, through the same proxy (a plain link could not carry a pasted key). */
 export async function downloadJson(path: string, filename: string): Promise<void> {
   let text: string;

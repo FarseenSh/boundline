@@ -1,6 +1,6 @@
 // Pure policy maths and the draft builder. The API speaks in base units and 1e18 ratios; the editor speaks in
 // percent and USDC. Every conversion is exact bigint arithmetic, and the draft carries only what changed.
-import type { PartnerConfig, PartnerDraft, PolicyChange, PolicyDraftBody, PolicyResponse, TickerDraft, TickerPolicy } from "./types.js";
+import type { PartnerConfig, PartnerDraft, PolicyChange, PolicyDraftBody, PolicyResponse, PolicyVersion, SaturdayModePolicy, TickerDraft, TickerPolicy } from "./types.js";
 
 export const WAD = 10n ** 18n;
 export const USDC_DECIMALS = 6;
@@ -62,8 +62,16 @@ export function partnerDraftFrom(p: PartnerConfig): PartnerDraft {
 
 const TICKER_FIELDS = ["allowed", "maxLtvWad", "minDraw", "maxDraw", "exposureCap"] as const;
 const PARTNER_FIELDS = ["signer", "eligibility", "exposureCap", "active"] as const;
+const SATURDAY_FIELDS = ["enabled", "capacityFraction", "haircutBps"] as const;
 
-function same(a: string | boolean, b: string | boolean): boolean {
+/** The API's default when a partner never set it: off, half capacity, 300 bps. */
+export const SATURDAY_DEFAULT: SaturdayModePolicy = Object.freeze({ enabled: false, capacityFraction: 0.5, haircutBps: 300 });
+/** Saturday mode never lends more than half the normal capacity (the plan's rule, M11). */
+export const SATURDAY_MAX_FRACTION = 0.5;
+export const SATURDAY_MAX_HAIRCUT_BPS = 5000;
+
+function same(a: string | boolean | number, b: string | boolean | number): boolean {
+  if (typeof a === "number" || typeof b === "number") return Number(a) === Number(b);
   if (typeof a === "boolean" || typeof b === "boolean") return a === b;
   if (/^\d+$/.test(a) && /^\d+$/.test(b)) return BigInt(a) === BigInt(b);
   return a.toLowerCase() === b.toLowerCase();
@@ -80,6 +88,12 @@ function partnerChanged(current: PartnerConfig, draft: PartnerDraft): boolean {
 export interface EditedPolicy {
   tickers: TickerDraft[];
   partner: PartnerDraft;
+  /** Only when the API serves Saturday mode (the current policy carries it). */
+  saturdayMode?: SaturdayModePolicy;
+}
+
+function saturdayChanged(current: SaturdayModePolicy, edited: SaturdayModePolicy): boolean {
+  return SATURDAY_FIELDS.some((f) => !same(current[f], edited[f]));
 }
 
 /** Field-level diff of the editor's state against the policy read from the desk, before anything is sent. */
@@ -95,6 +109,11 @@ export function localChanges(current: PolicyResponse, edited: EditedPolicy): Pol
       if (!same(cur[f], d[f])) out.push({ scope: "ticker", collateral: d.collateral, field: f, before: cur[f], after: d[f] });
     }
   }
+  if (current.saturdayMode && edited.saturdayMode) {
+    for (const f of SATURDAY_FIELDS) {
+      if (!same(current.saturdayMode[f], edited.saturdayMode[f])) out.push({ scope: "routing", field: `saturdayMode.${f}`, before: current.saturdayMode[f], after: edited.saturdayMode[f] });
+    }
+  }
   return out;
 }
 
@@ -107,11 +126,33 @@ export function buildDraftBody(current: PolicyResponse, edited: EditedPolicy, no
   });
   if (tickers.length > 0) body.tickers = tickers;
   if (partnerChanged(current.partner, edited.partner)) body.partner = edited.partner;
+  if (current.saturdayMode && edited.saturdayMode && saturdayChanged(current.saturdayMode, edited.saturdayMode)) body.saturdayMode = { ...edited.saturdayMode };
   return body;
 }
 
 export function hasChanges(body: PolicyDraftBody): boolean {
-  return Boolean(body.tickers?.length) || body.partner !== undefined;
+  return Boolean(body.tickers?.length) || body.partner !== undefined || body.saturdayMode !== undefined;
+}
+
+/** True when a draft changes only the off-chain routing policy: nothing for the admin to sign on the desk. */
+export function offChainOnly(body: PolicyDraftBody): boolean {
+  return body.saturdayMode !== undefined && !body.tickers?.length && body.partner === undefined;
+}
+
+/** "0.5" → 0.5; null unless 0 < x ≤ 0.5 with at most four decimals. */
+export function parseFraction(text: string): number | null {
+  const t = text.trim();
+  if (!/^(?:0(?:\.\d{1,4})?|\.\d{1,4})$/.test(t)) return null;
+  const x = Number(t);
+  return x > 0 && x <= SATURDAY_MAX_FRACTION ? x : null;
+}
+
+/** "300" → 300; null unless a whole number of bps from 0 to 5000. */
+export function parseBps(text: string): number | null {
+  const t = text.trim();
+  if (!/^\d{1,4}$/.test(t)) return null;
+  const x = Number(t);
+  return x <= SATURDAY_MAX_HAIRCUT_BPS ? x : null;
 }
 
 /** What the desk would refuse, caught before the draft is prepared. */
@@ -127,6 +168,11 @@ export function validateDraft(current: PolicyResponse, edited: EditedPolicy): st
     const max = BigInt(d.maxDraw);
     if (max !== 0n && min > max) errors.push(`${name}: min draw ${formatUsdc(min)} is above max draw ${formatUsdc(max)}`);
   }
+  if (edited.saturdayMode) {
+    const { capacityFraction: f, haircutBps: h } = edited.saturdayMode;
+    if (!(f > 0 && f <= SATURDAY_MAX_FRACTION)) errors.push(`Saturday mode: capacity fraction must be above 0 and at most ${SATURDAY_MAX_FRACTION}`);
+    if (!Number.isInteger(h) || h < 0 || h > SATURDAY_MAX_HAIRCUT_BPS) errors.push(`Saturday mode: haircut must be a whole number of bps from 0 to ${SATURDAY_MAX_HAIRCUT_BPS}`);
+  }
   if (!/^0x[0-9a-fA-F]{40}$/.test(edited.partner.signer)) errors.push("partner signer must be an address (zero address for open access)");
   if (!/^0x[0-9a-fA-F]{40}$/.test(edited.partner.eligibility)) errors.push("eligibility hook must be an address (zero address for none)");
   return errors;
@@ -141,10 +187,16 @@ const FIELD_WORDS: Record<string, string> = {
   signer: "signer",
   eligibility: "eligibility hook",
   active: "active",
+  "saturdayMode.enabled": "Saturday mode",
+  "saturdayMode.capacityFraction": "Saturday capacity",
+  "saturdayMode.haircutBps": "Saturday haircut",
 };
 
 export function formatFieldValue(field: string, value: string | boolean | number | null): string {
   if (value === null || value === undefined) return "—";
+  if (field === "saturdayMode.enabled") return value === true || value === "true" ? "on" : "off";
+  if (field === "saturdayMode.capacityFraction") return `${Math.round(Number(value) * 10_000) / 100}% of capacity`;
+  if (field === "saturdayMode.haircutBps") return `${Number(value)} bps`;
   if (typeof value === "boolean") return value ? "yes" : "no";
   if (typeof value === "number") return String(value);
   if (field === "maxLtvWad" || field === "marketLltvWad") return `${wadToPercent(value)}%`;
@@ -155,7 +207,18 @@ export function formatFieldValue(field: string, value: string | boolean | number
 
 /** "AAPLt max LTV 58% → 55%". */
 export function describeChange(change: PolicyChange, symbolOf: (collateral: string) => string = (c) => c): string {
-  const subject = change.scope === "ticker" && change.collateral ? symbolOf(change.collateral) : "partner";
+  const subject = change.scope === "ticker" && change.collateral ? symbolOf(change.collateral) : change.scope === "routing" ? "routing" : "partner";
   const field = FIELD_WORDS[change.field] ?? change.field;
   return `${subject} ${field} ${formatFieldValue(change.field, change.before)} → ${formatFieldValue(change.field, change.after)}`;
+}
+
+/**
+ * The version in a write's answer. The API answers `POST /v1/policy/versions` and `…/applied` as
+ * `{ policyVersion, version, … }` (and a routing-only version comes back already applied); a bare version is accepted too.
+ */
+export function versionOf(body: unknown): PolicyVersion {
+  const b = body as { version?: unknown; id?: unknown } | null;
+  const v = (b && typeof b === "object" && b.version && typeof b.version === "object" ? b.version : b) as Partial<PolicyVersion> | null;
+  if (!v || typeof v.id !== "string") throw new Error("the API's answer carries no policy version");
+  return { ...v, changes: Array.isArray(v.changes) ? v.changes : [], calls: Array.isArray(v.calls) ? v.calls : [] } as PolicyVersion;
 }

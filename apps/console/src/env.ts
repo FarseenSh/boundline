@@ -13,4 +13,6 @@ export const ENV = {
   mock: str("VITE_CONSOLE_MOCK") === "1",
   observatoryUrl: str("VITE_OBSERVATORY_URL") ?? "https://boundline-observatory.papermind-ai.workers.dev",
   appUrl: str("VITE_APP_URL") ?? "https://boundline-app.papermind-ai.workers.dev",
+  /** The partner API's public origin: webhook URLs must be reachable from it, and the echo receiver lives on it. */
+  apiPublicUrl: str("VITE_API_PUBLIC_URL") ?? "https://boundline-api.papermind-ai.workers.dev",
 } as const;
