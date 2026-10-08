@@ -1,0 +1,153 @@
+{
+  "drill": "registry-pause",
+  "runs": [
+    {
+      "ranAt": 1791444124,
+      "chainId": 84532,
+      "label": "Thu 8 Oct 2026, OVERNIGHT session: the OracleRegistry's paused flag for TSLAt is set on the Sepolia MirrorOracleRegistry (the mirror of Coinbase's registry, keeper-owned; the mirror held for the drill); the gate answers FEED_PAUSED, draws and the venue oracle stop, collateral can still be added; unpaused after",
+      "txs": [
+        {
+          "hash": "0x7b9fc996d3c579a68d6e7eb0b98a851f8c46f4f93c9172d09cef60a2f75b53cb",
+          "block": 47837921,
+          "label": "MirrorOracleRegistry.setPaused(TSLAt, true) (the mirror key owns the registry)",
+          "gasUsed": 70233
+        },
+        {
+          "hash": "0x7da85805e68391db5d8023e9ac20aeeb9cf2335f63179b33e172b7763d98ef49",
+          "block": 47837927,
+          "label": "TSLAt.approve(desk, 1 raw) by the borrower",
+          "gasUsed": 45546
+        },
+        {
+          "hash": "0x008e04cabfdff3986e61fdddb72df278302d4b7ac7abbba03002f75d5e21f5c2",
+          "block": 47837929,
+          "label": "desk.addCollateral(3, 1 raw TSLAt) while the registry is paused: supplyCollateral never reads the oracle",
+          "gasUsed": 114531
+        },
+        {
+          "hash": "0x828bb18987d1458268064c81d20c491042d18a2dc040c97a74c2712479e30d2e",
+          "block": 47837931,
+          "label": "MirrorOracleRegistry.setPaused(TSLAt, false)",
+          "gasUsed": 30788
+        }
+      ],
+      "observations": [
+        {
+          "what": "keeper /v1/config hold (all three symbols, KV)",
+          "value": {
+            "hold": {
+              "feed": [
+                "AAPLt",
+                "NVDAt",
+                "TSLAt"
+              ],
+              "registry": [
+                "AAPLt",
+                "NVDAt",
+                "TSLAt"
+              ]
+            },
+            "holdSource": "kv"
+          },
+          "block": 47837834
+        },
+        {
+          "what": "mirror key nonce stable (latest = pending) across the settle window",
+          "value": {
+            "nonce": 79,
+            "settleSeconds": 70
+          },
+          "block": 47837902
+        },
+        {
+          "what": "registry TSLAt before",
+          "value": [
+            "1000000000000000000",
+            "false"
+          ],
+          "block": 47837918
+        },
+        {
+          "what": "SessionGate.check(TSLAt) before",
+          "value": {
+            "state": "OPEN",
+            "registryPaused": "false"
+          },
+          "block": 47837918
+        },
+        {
+          "what": "SessionGate.check(TSLAt) while paused",
+          "value": {
+            "state": "FEED_PAUSED",
+            "session": "OVERNIGHT",
+            "registryPaused": "true",
+            "answer": "37567500000"
+          },
+          "block": 47837921
+        },
+        {
+          "what": "desk.quote(3, 1 USDC) while paused",
+          "value": "FEED_PAUSED",
+          "block": 47837922
+        },
+        {
+          "what": "desk.obligationStatus(3) while paused",
+          "value": "HOLD_ISSUER",
+          "block": 47837923
+        },
+        {
+          "what": "SessionGuard(TSLAt).price() while paused (Morpho borrow, withdrawCollateral and liquidate read it)",
+          "value": [
+            false,
+            "FeedPaused(0xb200000000000000000000Af3FB2181a8772F804)"
+          ],
+          "block": 47837923
+        },
+        {
+          "what": "eth_call desk.withdrawCollateral(3, 1) from the borrower while paused",
+          "value": [
+            false,
+            "Refused(7 = FEED_PAUSED)"
+          ],
+          "block": 47837924
+        },
+        {
+          "what": "partner API GET /v1/lines/3 while paused",
+          "value": {
+            "obligationStatus": "HOLD_ISSUER"
+          },
+          "block": 47837924
+        },
+        {
+          "what": "line 3 collateral after the add",
+          "value": "500000001",
+          "block": 47837929
+        },
+        {
+          "what": "SessionGate.check(TSLAt) after",
+          "value": {
+            "state": "OPEN",
+            "registryPaused": "false"
+          },
+          "block": 47837931
+        },
+        {
+          "what": "desk.quote(3, 1 USDC) after",
+          "value": "NONE",
+          "block": 47837932
+        },
+        {
+          "what": "desk.obligationStatus(3) after",
+          "value": "OPEN",
+          "block": 47837932
+        }
+      ],
+      "outcome": "gate OPEN -> FEED_PAUSED -> OPEN; draw quote FEED_PAUSED while paused; obligation HOLD_ISSUER (the desk maps a registry pause to the issuer hold); SessionGuard.price() reverted FeedPaused(0xb200000000000000000000Af3FB2181a8772F804); withdrawCollateral reverted Refused(7 = FEED_PAUSED); addCollateral of 1 raw TSLAt landed (collateral 500000001 raw); after unpause OPEN and NONE",
+      "evidence": [
+        "scripts/sepolia/drills.py (registry-pause)",
+        "deployments/base-sepolia.json#drills"
+      ],
+      "notes": "On mainnet the flag is Coinbase's OracleRegistry.getOracleParams(token).paused; on Sepolia the keeper mirrors it onto MirrorOracleRegistry every minute, so the drill held the mirror (KV) and set the flag directly. The desk records a registry pause as HOLD_ISSUER (CreditDeskLib.obligationStatus). Line 3 carries no debt (the TSLAt market is unseeded), so the repay leg is shown in the keeper-hold and issuer-transfer-pause runs."
+    }
+  ]
+}

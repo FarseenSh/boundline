@@ -1,0 +1,171 @@
+{
+  "drill": "stale-feed",
+  "runs": [
+    {
+      "ranAt": 1791444154,
+      "chainId": 84532,
+      "label": "Thu 8 Oct 2026, OVERNIGHT session: the TSLAt test feed is rewritten to a round last updated 27 h ago (older than heartbeat 24 h + tolerance 2 h) while the session is open; the gate answers FEED_STALE and the desk refuses; releasing the mirror restores the live mainnet round and the gate reopens",
+      "txs": [
+        {
+          "hash": "0x84064c22e3ba4b33456c4a04721c66070a88a2c19fd67811072a5ccaecad8429",
+          "block": 47837936,
+          "label": "TestPriceFeed(TSLAt).setRoundData(same round and answer, updatedAt 1791346956 = 27 h before block time)",
+          "gasUsed": 43142
+        },
+        {
+          "hash": "0xdb4316894fe7deba8df583d9ef8b4a4f30e0c0a40450156abfd2b859555e6b97",
+          "block": 47837996,
+          "label": "keeper Worker mirror tick (mirror key 0x28A50Eb7C2Db2B04638D3b226c724A1Cfe999894, nonce 84): setRoundData with the live mainnet TSLAc round, restoring the feed after the KV hold was released",
+          "gasUsed": 43142
+        }
+      ],
+      "observations": [
+        {
+          "what": "keeper /v1/config after release",
+          "value": {
+            "hold": {
+              "feed": [],
+              "registry": []
+            },
+            "holdSource": "none"
+          },
+          "block": 47837940
+        },
+        {
+          "what": "mirror key nonce stable (latest = pending) across the settle window",
+          "value": {
+            "nonce": 79,
+            "settleSeconds": 70
+          },
+          "block": 47837902
+        },
+        {
+          "what": "keeper /v1/config hold (all three symbols, KV)",
+          "value": {
+            "hold": {
+              "feed": [
+                "AAPLt",
+                "NVDAt",
+                "TSLAt"
+              ],
+              "registry": [
+                "AAPLt",
+                "NVDAt",
+                "TSLAt"
+              ]
+            },
+            "holdSource": "kv"
+          },
+          "block": 47837834
+        },
+        {
+          "what": "SessionGate.feedOf(TSLAt): heartbeat, tolerance",
+          "value": {
+            "heartbeat": "86400",
+            "tolerance": "7200"
+          },
+          "block": 47837933
+        },
+        {
+          "what": "TSLAt feed round before (mirrored from mainnet TSLAc)",
+          "value": [
+            "36893488147419103952",
+            "37567500000",
+            "1791443028",
+            "1791443043",
+            "36893488147419103952"
+          ],
+          "block": 47837933
+        },
+        {
+          "what": "SessionGate.check(TSLAt) stale",
+          "value": {
+            "state": "FEED_STALE",
+            "session": "OVERNIGHT",
+            "updatedAt": "1791346956"
+          },
+          "block": 47837936
+        },
+        {
+          "what": "desk.quote(3, 0) stale",
+          "value": "FEED_STALE",
+          "block": 47837936
+        },
+        {
+          "what": "desk.obligationStatus(3) stale",
+          "value": "HOLD_FEED",
+          "block": 47837937
+        },
+        {
+          "what": "SessionGuard(TSLAt).price() stale",
+          "value": [
+            false,
+            "FeedStale(0xb200000000000000000000Af3FB2181a8772F804, 1791346956, 93600)"
+          ],
+          "block": 47837937
+        },
+        {
+          "what": "eth_call desk.draw(3, 1 USDC) from the borrower stale",
+          "value": [
+            false,
+            "Refused(9 = FEED_STALE)"
+          ],
+          "block": 47837938
+        },
+        {
+          "what": "partner API GET /v1/lines/3 stale",
+          "value": {
+            "obligationStatus": "HOLD_FEED"
+          },
+          "block": 47837939
+        },
+        {
+          "what": "TSLAt feed round after the mirror restored it",
+          "value": [
+            "36893488147419103952",
+            "37567500000",
+            "1791443028",
+            "1791443043",
+            "36893488147419103952"
+          ],
+          "block": 47838001
+        },
+        {
+          "what": "mainnet TSLAc round at that time",
+          "value": [
+            "36893488147419103952",
+            "37567500000",
+            "1791443028",
+            "1791443043",
+            "36893488147419103952"
+          ],
+          "block": 47838001
+        },
+        {
+          "what": "SessionGate.check(TSLAt) after",
+          "value": {
+            "state": "OPEN",
+            "session": "OVERNIGHT"
+          },
+          "block": 47838001
+        },
+        {
+          "what": "desk.quote(3, 0) after",
+          "value": "NONE",
+          "block": 47838002
+        },
+        {
+          "what": "desk.obligationStatus(3) after",
+          "value": "OPEN",
+          "block": 47838002
+        }
+      ],
+      "outcome": "gate OPEN -> FEED_STALE in the OVERNIGHT session -> OPEN; desk quote FEED_STALE; obligation HOLD_FEED; SessionGuard.price() reverted FeedStale(0xb200000000000000000000Af3FB2181a8772F804, 1791346956, 93600); draw reverted Refused(9 = FEED_STALE); the mirror restored round 36893488147419103952 (updatedAt 1791443043)",
+      "evidence": [
+        "scripts/sepolia/drills.py (stale-feed)",
+        "deployments/base-sepolia.json#drills"
+      ],
+      "notes": "Staleness is judged against the gate's per-feed heartbeat and tolerance, in session only: on a weekend the calendar's MARKET_CLOSED takes precedence. The keeper's mirror copies mainnet's round verbatim, so on Sepolia the drill held it (KV) for the window and let the next tick restore the live value."
+    }
+  ]
+}

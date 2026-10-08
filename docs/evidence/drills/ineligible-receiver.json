@@ -1,0 +1,148 @@
+{
+  "drill": "ineligible-receiver",
+  "runs": [
+    {
+      "ranAt": 1791443573,
+      "chainId": 84532,
+      "label": "Thu 8 Oct 2026, OVERNIGHT session: Cobalt's composite receiver policy on the TSLAt test stock (INTERSECT(issuer blocklist, holders allowlist)) refuses an address that is not admitted, at the token and, for a line owner, at the desk's own preflight before Morpho is called; admission makes the same transfer pass",
+      "txs": [
+        {
+          "hash": "0x527cd4eba3dde16a0424464d816bf12a12db52e480476cb7925f6f163096c896",
+          "block": 47837646,
+          "label": "PolicyRegistry.updateAllowlist(TSLAt holders allowlist, false, [borrower]): the issuer withdraws the line owner's admission",
+          "gasUsed": 28952
+        },
+        {
+          "hash": "0x80cb916f105aa7a3f5596c778ee1aeb1880bf48b0ec1f6ddf63a9a55bdf00b3e",
+          "block": 47837651,
+          "label": "PolicyRegistry.updateAllowlist(TSLAt holders allowlist, true, [borrower]): re-admitted",
+          "gasUsed": 50864
+        },
+        {
+          "hash": "0xddc3e7a4ba325e678b521da8c2be22c232c0d42bb5b226aa3dcb71d4d7bac505",
+          "block": 47837654,
+          "label": "PolicyRegistry.updateAllowlist(TSLAt holders allowlist, true, [fresh]): admission",
+          "gasUsed": 50864
+        },
+        {
+          "hash": "0x52c94c4eba60d4bc1a2f259b40a819208f376737ce53faec5e6196675cf6b478",
+          "block": 47837657,
+          "label": "PolicyRegistry.updateAllowlist(TSLAt holders allowlist, false, [fresh]): removed again, the book is as before",
+          "gasUsed": 28952
+        }
+      ],
+      "observations": [
+        {
+          "what": "TSLAt TRANSFER_RECEIVER_POLICY (composite) and its children",
+          "value": {
+            "composite": "216172782113783973",
+            "children": [
+              "161",
+              "72057594037928096"
+            ],
+            "allowlist": "72057594037928096"
+          },
+          "block": 47837642
+        },
+        {
+          "what": "fresh address (keccak('boundline/drill/ineligible-receiver/2026-10-08'), no key)",
+          "value": "0x7d974A20f8Ad6B90F8eEd964F6393275f6E155B3",
+          "block": 47837643
+        },
+        {
+          "what": "PolicyRegistry.isAuthorized(composite, fresh) before",
+          "value": "false",
+          "block": 47837643
+        },
+        {
+          "what": "eth_call TSLAt.transfer(fresh, 1) from the borrower before",
+          "value": [
+            false,
+            "PolicyForbids(TRANSFER_RECEIVER_POLICY, 216172782113783973)"
+          ],
+          "block": 47837644
+        },
+        {
+          "what": "eth_call desk.withdrawCollateral(3, 1) from the borrower before (admitted)",
+          "value": [
+            true,
+            [
+              "0x"
+            ]
+          ],
+          "block": 47837644
+        },
+        {
+          "what": "PolicyRegistry.isAuthorized(composite, borrower) while removed",
+          "value": "false",
+          "block": 47837646
+        },
+        {
+          "what": "eth_call desk.withdrawCollateral(3, 1) from the borrower while removed (the desk's preflight)",
+          "value": [
+            false,
+            "PolicyForbids(TRANSFER_RECEIVER_POLICY, 0xB789aD318945B37566E2549F65526Cc269a482Fc)"
+          ],
+          "block": 47837647
+        },
+        {
+          "what": "eth_call Morpho.withdrawCollateral(TSLAt market, 1, borrower, borrower) from the borrower while removed (what a desk without the preflight would hit)",
+          "value": [
+            false,
+            "Error(\"transfer reverted\")"
+          ],
+          "block": 47837649
+        },
+        {
+          "what": "PolicyRegistry.isAuthorized(composite, borrower) after re-admission",
+          "value": "true",
+          "block": 47837651
+        },
+        {
+          "what": "eth_call desk.withdrawCollateral(3, 1) from the borrower after re-admission",
+          "value": [
+            true,
+            [
+              "0x"
+            ]
+          ],
+          "block": 47837652
+        },
+        {
+          "what": "PolicyRegistry.isAuthorized(composite, fresh) admitted",
+          "value": "true",
+          "block": 47837654
+        },
+        {
+          "what": "eth_call TSLAt.transfer(fresh, 1) from the borrower admitted",
+          "value": [
+            true,
+            [
+              "true"
+            ]
+          ],
+          "block": 47837655
+        },
+        {
+          "what": "PolicyRegistry.isAuthorized(composite, fresh) after removal",
+          "value": "false",
+          "block": 47837657
+        },
+        {
+          "what": "eth_call TSLAt.transfer(fresh, 1) from the borrower after removal",
+          "value": [
+            false,
+            "PolicyForbids(TRANSFER_RECEIVER_POLICY, 216172782113783973)"
+          ],
+          "block": 47837657
+        }
+      ],
+      "outcome": "fresh address refused at the token (PolicyForbids(TRANSFER_RECEIVER_POLICY, 216172782113783973)), admitted -> the same transfer passes (eth_call returns true), removed -> refused again; line owner removed -> the desk refuses withdrawCollateral itself with PolicyForbids(TRANSFER_RECEIVER_POLICY, 0xB789aD318945B37566E2549F65526Cc269a482Fc) before Morpho is called (Morpho alone: Error(\"transfer reverted\")); re-admitted -> passes again",
+      "evidence": [
+        "scripts/sepolia/drills.py (ineligible-receiver)",
+        "deployments/base-sepolia.json#drills"
+      ],
+      "notes": "The partner boundline-app has no IEligibility hook, so the desk's NOT_ELIGIBLE reason is not exercised here: the refusal comes from the issuer's Cobalt policy, checked by the desk's B20 preflight (isAuthorized on both legs) and by the token. The fresh address has no key and never held TSLAt; only eth_call simulations touched it."
+    }
+  ]
+}

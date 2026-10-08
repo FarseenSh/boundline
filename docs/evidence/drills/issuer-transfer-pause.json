@@ -1,0 +1,161 @@
+{
+  "drill": "issuer-transfer-pause",
+  "runs": [
+    {
+      "ranAt": 1791443421,
+      "chainId": 84532,
+      "label": "Thu 8 Oct 2026, OVERNIGHT session: the issuer pauses TRANSFER on the TSLAt test stock (a real B20 asset on Base Sepolia); the gate answers TRANSFER_PAUSED, the desk refuses line 3 and the obligation holds; unpaused after",
+      "txs": [
+        {
+          "hash": "0x73a518fa185fa8217aefd78f99ab51b677e8ae98c14024fa7f184d33f0c17bc7",
+          "block": 47837570,
+          "label": "TSLAt.pause([TRANSFER]) by the issuer (PAUSE_ROLE: the deployer)",
+          "gasUsed": 47689
+        },
+        {
+          "hash": "0xc7916463af29881d003c8039023ea08208544d413a8774ad1e4f761a703d1cc0",
+          "block": 47837576,
+          "label": "TSLAt.unpause([TRANSFER]) by the issuer (UNPAUSE_ROLE: the deployer)",
+          "gasUsed": 25789
+        }
+      ],
+      "observations": [
+        {
+          "what": "SessionGate.check(TSLAt) before",
+          "value": {
+            "state": "OPEN",
+            "session": "OVERNIGHT",
+            "transferPaused": "false"
+          },
+          "block": 47837567
+        },
+        {
+          "what": "desk.quote(3, 0) before",
+          "value": {
+            "reason": "NONE",
+            "available": "939187500"
+          },
+          "block": 47837567
+        },
+        {
+          "what": "desk.obligationStatus(3) before",
+          "value": "OPEN",
+          "block": 47837568
+        },
+        {
+          "what": "eth_call TSLAt.transfer(deployer, 1) from the borrower before",
+          "value": [
+            true,
+            [
+              "true"
+            ]
+          ],
+          "block": 47837568
+        },
+        {
+          "what": "TSLAt.isPaused(TRANSFER)",
+          "value": "true",
+          "block": 47837570
+        },
+        {
+          "what": "SessionGate.check(TSLAt) while paused",
+          "value": {
+            "state": "TRANSFER_PAUSED",
+            "session": "OVERNIGHT",
+            "transferPaused": "true"
+          },
+          "block": 47837571
+        },
+        {
+          "what": "desk.quote(3, 0) while paused",
+          "value": {
+            "reason": "TRANSFER_PAUSED",
+            "price8": "0",
+            "available": "0"
+          },
+          "block": 47837571
+        },
+        {
+          "what": "desk.quote(3, 1 USDC) while paused",
+          "value": "TRANSFER_PAUSED",
+          "block": 47837572
+        },
+        {
+          "what": "desk.obligationStatus(3) while paused",
+          "value": "HOLD_TRANSFER",
+          "block": 47837572
+        },
+        {
+          "what": "eth_call desk.addCollateral(3, 1) from the borrower while paused",
+          "value": [
+            false,
+            "ContractPaused(0)"
+          ],
+          "block": 47837573
+        },
+        {
+          "what": "eth_call desk.withdrawCollateral(3, 1) from the borrower while paused",
+          "value": [
+            false,
+            "Refused(8 = TRANSFER_PAUSED)"
+          ],
+          "block": 47837573
+        },
+        {
+          "what": "eth_call TSLAt.transfer(deployer, 1) from the borrower while paused",
+          "value": [
+            false,
+            "ContractPaused(0)"
+          ],
+          "block": 47837574
+        },
+        {
+          "what": "partner API GET /v1/lines/3 while paused",
+          "value": {
+            "obligationStatus": "HOLD_TRANSFER"
+          },
+          "block": 47837574
+        },
+        {
+          "what": "TSLAt.isPaused(TRANSFER) after",
+          "value": "false",
+          "block": 47837576
+        },
+        {
+          "what": "SessionGate.check(TSLAt) after",
+          "value": {
+            "state": "OPEN",
+            "session": "OVERNIGHT"
+          },
+          "block": 47837577
+        },
+        {
+          "what": "desk.quote(3, 0) after",
+          "value": {
+            "reason": "NONE",
+            "available": "939187500"
+          },
+          "block": 47837577
+        },
+        {
+          "what": "desk.obligationStatus(3) after",
+          "value": "OPEN",
+          "block": 47837578
+        },
+        {
+          "what": "partner API GET /v1/lines/3 after",
+          "value": {
+            "obligationStatus": "OPEN"
+          },
+          "block": 47837579
+        }
+      ],
+      "outcome": "gate OPEN -> TRANSFER_PAUSED -> OPEN; desk quote on line 3 NONE -> TRANSFER_PAUSED -> NONE; obligation OPEN -> HOLD_TRANSFER -> OPEN; while paused addCollateral reverted ContractPaused(0), withdrawCollateral reverted Refused(8 = TRANSFER_PAUSED), a plain transfer reverted ContractPaused(0)",
+      "evidence": [
+        "scripts/sepolia/drills.py (issuer-transfer-pause)",
+        "deployments/base-sepolia.json#drills"
+      ],
+      "notes": "The pause is the issuer's own B20 control (IB20.pause with PausableFeature.TRANSFER); nothing in Boundline can lift it. The gate's precedence puts MARKET_CLOSED and FEED_PAUSED ahead of TRANSFER_PAUSED, so the drill ran in an open session on a feed that was live."
+    }
+  ]
+}

@@ -6,14 +6,135 @@
       "chainId": 84532,
       "label": "Tue 6 Oct 2026, PRE session: an in-band position on the AAPLt/USDC market, protected mode opted in, pre-liquidated automatically by the keeper at the ShadowGuard price",
       "txs": [
-        { "hash": "0xe51ea2e03fe6fa85031b08461acb1ac99b6c10230257fd37deda09106f849c3d", "block": 47760562, "label": "supplyCollateral 0.01 AAPLt (the drill borrower, directly on Morpho)" },
-        { "hash": "0x5f43b3494914256bc3327c879f81682e3d22dc927a6f4e31bc01caf601039dd8", "label": "borrow 2 USDC: LTV 60.1%, inside the band 58% to 62.5%" },
-        { "hash": "0x9d5815a4c96eb71cec048ca715c7c974591f2600fef0759e14152178f2c5df4a", "label": "Morpho.setAuthorization(preLiquidation, true): the user authorises Morpho's audited contract, never Boundline's" },
-        { "hash": "0x982c7327efa9f0460b92501a4322ec5dc730e5faaca3ce1d87dc80f708dfb695", "block": 47760683, "label": "keeper Worker: Protector.protect armed as a validity transaction (predicate: AAPLt feed slot 5 = held round, bound 30 blocks); Morpho Repay + WithdrawCollateral, 52,273 raw AAPLt sold on the pool, 0.171377 USDC repaid, PreLiquidate and Protected emitted; 486,363 gas" }
+        {
+          "hash": "0xe51ea2e03fe6fa85031b08461acb1ac99b6c10230257fd37deda09106f849c3d",
+          "block": 47760562,
+          "label": "supplyCollateral 0.01 AAPLt (the drill borrower, directly on Morpho)"
+        },
+        {
+          "hash": "0x5f43b3494914256bc3327c879f81682e3d22dc927a6f4e31bc01caf601039dd8",
+          "label": "borrow 2 USDC: LTV 60.1%, inside the band 58% to 62.5%"
+        },
+        {
+          "hash": "0x9d5815a4c96eb71cec048ca715c7c974591f2600fef0759e14152178f2c5df4a",
+          "label": "Morpho.setAuthorization(preLiquidation, true): the user authorises Morpho's audited contract, never Boundline's"
+        },
+        {
+          "hash": "0x982c7327efa9f0460b92501a4322ec5dc730e5faaca3ce1d87dc80f708dfb695",
+          "block": 47760683,
+          "label": "keeper Worker: Protector.protect armed as a validity transaction (predicate: AAPLt feed slot 5 = held round, bound 30 blocks); Morpho Repay + WithdrawCollateral, 52,273 raw AAPLt sold on the pool, 0.171377 USDC repaid, PreLiquidate and Protected emitted; 486,363 gas"
+        }
       ],
       "outcome": "shadow LTV 0.6012 -> 0.5800 (exactly preLltv, the band edge the contract enforces); position after: 947,727 raw AAPLt, 1.828624 USDC debt, standing BELOW_BAND; the Protector kept 757 raw AAPLt as the incentive; sized on chain by Protector.sizing",
-      "evidence": ["deployments/base-sepolia.json#protection.drill", "docs/evidence/validity-transactions-sepolia.md", "apps/keeper/src/protect-job.ts"],
+      "evidence": [
+        "deployments/base-sepolia.json#protection.drill",
+        "docs/evidence/validity-transactions-sepolia.md",
+        "apps/keeper/src/protect-job.ts"
+      ],
       "notes": "the first two keeper ticks failed with 'replacement transaction underpriced' because the protection signer shared a key with a waiting validity transaction; each signing job now has its own key"
+    },
+    {
+      "ranAt": 1791294994,
+      "chainId": 84532,
+      "label": "Tue 6 Oct 2026, REGULAR session (09:56 ET): the same opted-in position drifted back into the band as AAPLt fell from 332.67 to 330.92; the keeper pre-liquidated it again automatically, a second partial to the band edge (found 8 Oct in the Protector's logs, not recorded on the day)",
+      "txs": [
+        {
+          "hash": "0x6d45ddc95b314de50f3a3375b2d764302e07a920869fd2000fa768fdc84a40d9",
+          "block": 47763353,
+          "label": "keeper Worker (signer 0x40668755c993a551db05e844ff9150a0c00a0373, nonce 64): Protector.protect armed as a validity transaction (predicate: AAPLt feed slot 5 = 1791294899, the round the decision was made on); Morpho Repay 23302 raw USDC + WithdrawCollateral 7116 raw AAPLt, 7005 raw AAPLt sold on the pool, PreLiquidate and Protected emitted; 438,408 gas"
+        }
+      ],
+      "outcome": "partial pre-liquidation: shadow LTV 58.3074% -> 57.9999% (IN_BAND -> BELOW_BAND); seized 7,116 raw AAPLt, repaid 0.023302 USDC, sold 7,005 raw, kept 111 raw as the incentive; venue price 330.91685 and shadow price 330.91685 USD; position after: 940,611 raw AAPLt, 1.805328 USDC debt; decision #2 0x1a78c5499b814273cebb88529ef8095e83d3b568ff1360d30cdd2a17d849d444; gate OPEN (REGULAR)",
+      "evidence": [
+        "deployments/base-sepolia.json#protection",
+        "apps/keeper/src/protect-job.ts",
+        "scripts/sepolia/record_protect.py"
+      ],
+      "sizingBefore": {
+        "standing": "IN_BAND",
+        "collateral": "947727",
+        "borrowShares": "1828622759901",
+        "debtAssets": "1828629",
+        "shadowPrice36": "3309168500000000000000000000000000000",
+        "venuePrice36": "3309168500000000000000000000000000000",
+        "venueOracleLive": "true",
+        "shadowLtvWad": "583073782566606339",
+        "venueLtvWad": "583073782566606339",
+        "preLifWad": "1010683062792579186",
+        "preLcfWad": "1000000000000000000",
+        "targetLtvWad": "580000000000000000",
+        "maxSeizedAssets": "7116",
+        "maxRepaidShares": "23300925067",
+        "maxRepaidAssets": "23302",
+        "fullCloseAllowed": "true",
+        "fullCloseSeizedAssets": "558497",
+        "fullCloseRepaidAssets": "1828629"
+      },
+      "sizingAfter": {
+        "standing": "BELOW_BAND",
+        "collateral": "940611",
+        "borrowShares": "1805321834834",
+        "debtAssets": "1805328",
+        "shadowPrice36": "3309168500000000000000000000000000000",
+        "venuePrice36": "3309168500000000000000000000000000000",
+        "venueOracleLive": "true",
+        "shadowLtvWad": "579998971933792537",
+        "venueLtvWad": "579998971933792537",
+        "preLifWad": "0",
+        "preLcfWad": "0",
+        "targetLtvWad": "580000000000000000",
+        "maxSeizedAssets": "0",
+        "maxRepaidShares": "0",
+        "maxRepaidAssets": "0",
+        "fullCloseAllowed": "false",
+        "fullCloseSeizedAssets": "0",
+        "fullCloseRepaidAssets": "0"
+      },
+      "events": {
+        "morphoRepay": {
+          "assets": 23302,
+          "shares": 23300925067
+        },
+        "morphoWithdrawCollateral": {
+          "assets": 7116
+        },
+        "preLiquidate": {
+          "repaidAssets": 23302,
+          "repaidShares": 23300925067,
+          "seizedAssets": 7116
+        },
+        "protected": {
+          "decision": 2,
+          "borrower": "0x2f0d9b1f16cd702259c6cc259e8d5e5455282a4e",
+          "seizedAssets": 7116,
+          "repaidAssets": 23302,
+          "collateralSold": 7005,
+          "venuePrice36": "3309168500000000000000000000000000000",
+          "shadowPrice36": "3309168500000000000000000000000000000",
+          "decisionHash": "0x1a78c5499b814273cebb88529ef8095e83d3b568ff1360d30cdd2a17d849d444"
+        }
+      },
+      "predicate": {
+        "feed": "0xa652b75CA90084FA16D4F18Fd96B5dd7069ee52a",
+        "slot": 5,
+        "valueBefore": 1791294899,
+        "valueAtInclusion": 1791294899,
+        "held": true
+      },
+      "gate": {
+        "state": "OPEN",
+        "session": "REGULAR",
+        "answer": "33091685000",
+        "updatedAt": "1791294899"
+      },
+      "signer": {
+        "address": "0x40668755c993a551db05e844ff9150a0c00a0373",
+        "nonce": 64,
+        "gasLimit": 900000,
+        "gasUsed": 438408,
+        "maxPriorityFeePerGas": 1000000
+      },
+      "notes": "found on 8 Oct 2026 in the Protector's logs (Basescan logs API), not recorded on the day; the keeper's validity transaction carried the round predicate (AAPLt feed slot 5 = 1791294899, unchanged at inclusion); a partial was allowed because the venue oracle was live (REGULAR session)"
     }
   ]
 }

@@ -1,0 +1,176 @@
+{
+  "drill": "scheduled-multiplier",
+  "runs": [
+    {
+      "ranAt": 1791443693,
+      "chainId": 84532,
+      "label": "Thu 8 Oct 2026, OVERNIGHT session: the issuer announces a scheduled UI multiplier change on the NVDAt test stock (ERC-8056 on a real B20 asset, through IB20Asset.announce, Cobalt) from 1.0 to 0.5 three days out; inside the seven-day horizon the desk haircuts line 2's collateral value by next/current ahead of effectiveAt; the issuer then cancels it and the haircut clears",
+      "txs": [
+        {
+          "hash": "0x80afc949ad38398e91c0aaebee5d7d6a6d92fb127f0ed72793eac5204f5795d2",
+          "block": 47837707,
+          "label": "NVDAt.announce([updateUIMultiplier(0.5e18, 1791702896)], 'boundline-drill/nvdat/scheduled-multiplier/2026-10-08', ...) by the issuer (OPERATOR_ROLE: the deployer)",
+          "gasUsed": 83549
+        },
+        {
+          "hash": "0x9c5e4934373c22d737ec5716b856cdf352b987cebb47872a0638d0d80f50f0c7",
+          "block": 47837714,
+          "label": "NVDAt.announce([cancelUIMultiplierUpdate()], '.../cancel', ...): the issuer cancels the scheduled change",
+          "gasUsed": 58813
+        }
+      ],
+      "observations": [
+        {
+          "what": "NVDAt multipliers before",
+          "value": {
+            "uiMultiplier": "1000000000000000000",
+            "newUIMultiplier": "1000000000000000000",
+            "effectiveAt": "0"
+          },
+          "block": 47837703
+        },
+        {
+          "what": "desk.quote(2, 0) before",
+          "value": {
+            "reasonName": "NONE",
+            "price8": "23695740021",
+            "collateralRaw": "500000000",
+            "collateralValue": "1184787001",
+            "maxDebt": "592393500",
+            "available": "592393500",
+            "corporateActionHaircut": "false"
+          },
+          "block": 47837704
+        },
+        {
+          "what": "SessionGate.check(NVDAt) before (registry multiplier, mirrored from mainnet NVDAc)",
+          "value": {
+            "state": "OPEN",
+            "multiplier": "1000537939576369481"
+          },
+          "block": 47837704
+        },
+        {
+          "what": "events emitted by the announcement",
+          "value": [
+            {
+              "address": "0xb200000000000000000000aed76eae58870e2ae6",
+              "topic0": "0xccebf8218a62875909564adef86a6f4df81503cb617221e793357d62f8e813f7",
+              "topics": 2,
+              "dataWords": 14,
+              "event": "Announcement(address indexed caller, string id, string description, string uri)"
+            },
+            {
+              "address": "0xb200000000000000000000aed76eae58870e2ae6",
+              "topic0": "0x2205df4534432b2f60654a3fdb48737ffdaf3e9edb1a498bd985bc026b15b055",
+              "topics": 1,
+              "dataWords": 3,
+              "event": "UIMultiplierUpdated(uint256 oldMultiplier, uint256 newMultiplier, uint256 effectiveAtTimestamp)"
+            },
+            {
+              "address": "0xb200000000000000000000aed76eae58870e2ae6",
+              "topic0": "0x96d64dafe2c790596430196b982ad1da3221cb3b0f4e6e2df77f2e4f71a90037",
+              "topics": 1,
+              "dataWords": 4,
+              "event": "EndAnnouncement(string id)"
+            }
+          ],
+          "block": 47837707
+        },
+        {
+          "what": "NVDAt multipliers scheduled",
+          "value": {
+            "uiMultiplier": "1000000000000000000",
+            "newUIMultiplier": "500000000000000000",
+            "effectiveAt": "1791702896"
+          },
+          "block": 47837707
+        },
+        {
+          "what": "desk.quote(2, 0) with the scheduled change",
+          "value": {
+            "reasonName": "NONE",
+            "price8": "23695740021",
+            "collateralRaw": "500000000",
+            "collateralValue": "592393500",
+            "maxDebt": "296196750",
+            "available": "296196750",
+            "corporateActionHaircut": "true"
+          },
+          "block": 47837709
+        },
+        {
+          "what": "desk.quote(2, 1 USDC) with the scheduled change",
+          "value": "NONE",
+          "block": 47837710
+        },
+        {
+          "what": "desk.obligationStatus(2) with the scheduled change",
+          "value": "OPEN",
+          "block": 47837711
+        },
+        {
+          "what": "partner API GET /v1/lines/2 with the scheduled change",
+          "value": {
+            "obligationStatus": "OPEN"
+          },
+          "block": 47837712
+        },
+        {
+          "what": "events emitted by the cancellation",
+          "value": [
+            {
+              "address": "0xb200000000000000000000aed76eae58870e2ae6",
+              "topic0": "0xccebf8218a62875909564adef86a6f4df81503cb617221e793357d62f8e813f7",
+              "topics": 2,
+              "dataWords": 14,
+              "event": "Announcement(address indexed caller, string id, string description, string uri)"
+            },
+            {
+              "address": "0xb200000000000000000000aed76eae58870e2ae6",
+              "topic0": "0x883856335ba5f60c18b9817c4505d3c7d3f6223dcf39516b30c508c46a5e1cad",
+              "topics": 1,
+              "dataWords": 2,
+              "event": "UIMultiplierUpdateCancelled(uint256 cancelledMultiplier, uint256 cancelledEffectiveAt)"
+            },
+            {
+              "address": "0xb200000000000000000000aed76eae58870e2ae6",
+              "topic0": "0x96d64dafe2c790596430196b982ad1da3221cb3b0f4e6e2df77f2e4f71a90037",
+              "topics": 1,
+              "dataWords": 4,
+              "event": "EndAnnouncement(string id)"
+            }
+          ],
+          "block": 47837714
+        },
+        {
+          "what": "NVDAt multipliers after cancel",
+          "value": {
+            "uiMultiplier": "1000000000000000000",
+            "newUIMultiplier": "1000000000000000000",
+            "effectiveAt": "0"
+          },
+          "block": 47837714
+        },
+        {
+          "what": "desk.quote(2, 0) after cancel",
+          "value": {
+            "reasonName": "NONE",
+            "price8": "23695740021",
+            "collateralValue": "1184787001",
+            "maxDebt": "592393500",
+            "available": "592393500",
+            "corporateActionHaircut": "false"
+          },
+          "block": 47837715
+        }
+      ],
+      "outcome": "scheduled 1.0 -> 0.5 at effectiveAt 1791702896: corporateActionHaircut false -> true -> false; line 2 collateral value 1184.787001 -> 592.393500 -> 1184.787001 USDC and capacity 592.393500 -> 296.196750 -> 592.393500 USDC at the same price 236.95740021; the gate stayed OPEN and the obligation OPEN (a haircut cuts capacity, it is not a hold)",
+      "evidence": [
+        "scripts/sepolia/drills.py (scheduled-multiplier)",
+        "deployments/base-sepolia.json#drills"
+      ],
+      "notes": "The desk haircuts only a LOWER scheduled multiplier (next < current) inside CORPORATE_ACTION_HORIZON (7 days), scaling collateral value by next/current until effectiveAt; valuation itself is raw balance x feed. The drill exercises that guard; it is not a claim about how a particular real corporate action moves the Coinbase feed. The change was scheduled and cancelled through announce, so each step also carries an Announcement event with its id."
+    }
+  ]
+}

@@ -1,0 +1,148 @@
+{
+  "drill": "keeper-hold",
+  "runs": [
+    {
+      "ranAt": 1791444093,
+      "chainId": 84532,
+      "label": "Thu 8 Oct 2026, OVERNIGHT session: the desk's keeper holds line 1 (the borrower's AAPLt line); draws are refused with LINE_HELD, the obligation shows HOLD_KEEPER, a repay still lands; the keeper releases the line",
+      "txs": [
+        {
+          "hash": "0x7c11ac686dff9ad21b4dbe647dc3d8abb76b808e87af8ccaecd2905d3bb39ef1",
+          "block": 47837906,
+          "label": "desk.hold(1, 'DRILL_KEEPER_HOLD') by the desk keeper (the mirror key)",
+          "gasUsed": 61224
+        },
+        {
+          "hash": "0xe62fd47c1ddd6236f39fba0ad18f78d33817b50115b1ce37acffd5f177041e23",
+          "block": 47837911,
+          "label": "USDC.approve(desk, 0.01) by the borrower",
+          "gasUsed": 55425
+        },
+        {
+          "hash": "0x1ad33de32096ff96df24df5184a74d006db9764bedcb2c8d30d81c4f308642f3",
+          "block": 47837913,
+          "label": "desk.repay(1, 0.01 USDC) while the line is HELD: repay never consults the hold or the oracle",
+          "gasUsed": 175486
+        },
+        {
+          "hash": "0xe62a3aa18d291535f222fb834a917659032cbe7a7ffecdff694831ee5437b569",
+          "block": 47837916,
+          "label": "desk.release(1) by the desk keeper",
+          "gasUsed": 38750
+        }
+      ],
+      "observations": [
+        {
+          "what": "keeper /v1/config hold (all three symbols, KV)",
+          "value": {
+            "hold": {
+              "feed": [
+                "AAPLt",
+                "NVDAt",
+                "TSLAt"
+              ],
+              "registry": [
+                "AAPLt",
+                "NVDAt",
+                "TSLAt"
+              ]
+            },
+            "holdSource": "kv"
+          },
+          "block": 47837834
+        },
+        {
+          "what": "mirror key nonce stable (latest = pending) across the settle window",
+          "value": {
+            "nonce": 79,
+            "settleSeconds": 70
+          },
+          "block": 47837902
+        },
+        {
+          "what": "desk.keeper()",
+          "value": "0x28A50Eb7C2Db2B04638D3b226c724A1Cfe999894",
+          "block": 47837902
+        },
+        {
+          "what": "line 1 before",
+          "value": {
+            "status": "OPEN",
+            "holdReason": "0x0000000000000000000000000000000000000000000000000000000000000000",
+            "quote": "NONE",
+            "obligation": "OPEN",
+            "debt": "3220175"
+          },
+          "block": 47837904
+        },
+        {
+          "what": "line 1 held",
+          "value": {
+            "status": "HELD",
+            "holdReason": "0x4452494c4c5f4b45455045525f484f4c44000000000000000000000000000000",
+            "obligation": "HOLD_KEEPER"
+          },
+          "block": 47837906
+        },
+        {
+          "what": "desk.quote(1, 0) held",
+          "value": "LINE_HELD",
+          "block": 47837907
+        },
+        {
+          "what": "desk.quote(1, 1 USDC) held",
+          "value": "LINE_HELD",
+          "block": 47837908
+        },
+        {
+          "what": "eth_call desk.draw(1, 1 USDC) from the borrower while held",
+          "value": [
+            false,
+            "Refused(3 = LINE_HELD)"
+          ],
+          "block": 47837908
+        },
+        {
+          "what": "partner API GET /v1/lines/1 while held",
+          "value": {
+            "obligationStatus": "HOLD_KEEPER"
+          },
+          "block": 47837909
+        },
+        {
+          "what": "line 1 debt across the repay while held",
+          "value": {
+            "before": 3220175,
+            "after": 3210175,
+            "repaid": 10000
+          },
+          "block": 47837913
+        },
+        {
+          "what": "line 1 after release",
+          "value": {
+            "status": "OPEN",
+            "holdReason": "0x0000000000000000000000000000000000000000000000000000000000000000",
+            "quote": "NONE",
+            "obligation": "OPEN",
+            "debt": "3210175"
+          },
+          "block": 47837916
+        },
+        {
+          "what": "partner API GET /v1/lines/1 after release",
+          "value": {
+            "obligationStatus": "OPEN"
+          },
+          "block": 47837917
+        }
+      ],
+      "outcome": "line 1 OPEN -> HELD (obligation HOLD_KEEPER) -> OPEN; quote while held LINE_HELD; a 1 USDC draw reverted Refused(3 = LINE_HELD); a 0.01 USDC repay landed while held (debt 3.220175 -> 3.210175 USDC)",
+      "evidence": [
+        "scripts/sepolia/drills.py (keeper-hold)",
+        "deployments/base-sepolia.json#drills"
+      ],
+      "notes": "The keeper hold is the operations-side stop: it freezes new credit on one line without touching the venue position. Every mirror-key transaction ran inside a KV hold of all three symbols (keeper Worker idle on that key)."
+    }
+  ]
+}
