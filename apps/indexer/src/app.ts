@@ -1,4 +1,5 @@
 import { Hono } from "hono";
+import { PatternRouter } from "hono/router/pattern-router";
 import type { Address } from "viem";
 import { rollingRoot } from "./daily.js";
 import type { EventRow } from "./decode.js";
@@ -166,7 +167,10 @@ export function feedGaps(roundsNewestFirst: readonly FeedRound[], minSeconds = F
 export function createApp(deps: AppDeps): Hono<{ Bindings: Env }> {
   const now = deps.now ?? (() => Math.floor(Date.now() / 1000));
   const sourcesOf = deps.sources ?? (() => []);
-  const app = new Hono<{ Bindings: Env }>();
+  // PatternRouter, not Hono's default SmartRouter: the default compiles a regular expression over every route on the
+  // first request of a cold isolate (24-26 ms CPU measured in apps/api, 8 Oct 2026); PatternRouter's first match costs
+  // 0.2-0.3 ms, which the Free plan's 10 ms CPU per invocation can afford.
+  const app = new Hono<{ Bindings: Env }>({ router: new PatternRouter() });
 
   const deskOf = (env: Env): Address | null => {
     const s = sourcesOf(env).find((x) => x.id === SOURCE_IDS.creditDesk);

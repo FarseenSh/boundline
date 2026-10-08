@@ -1,5 +1,6 @@
 import { B20_TOKENS } from "@boundline/chain";
 import { Hono } from "hono";
+import { PatternRouter } from "hono/router/pattern-router";
 import type { Address } from "viem";
 import { readAaveReserves } from "./aave.js";
 import { AAVE_CHAIN_ID, AAVE_SPOKE, KV_AAVE_META, cachedAaveMeta, parseIndexerBorrowers, type AaveMeta } from "./aave-positions.js";
@@ -209,7 +210,10 @@ export function createApp(overrides: Partial<AppDeps> = {}) {
     return hit ?? computeSeize(env);
   }
 
-  const app = new Hono<{ Bindings: Env }>();
+  // PatternRouter, not Hono's default SmartRouter: the default compiles a regular expression over every route on the
+  // first request of a cold isolate (24-26 ms CPU measured in apps/api, 8 Oct 2026); PatternRouter's first match costs
+  // 0.2-0.3 ms, which the Free plan's 10 ms CPU per invocation can afford.
+  const app = new Hono<{ Bindings: Env }>({ router: new PatternRouter() });
 
   app.get("/", async (c) => {
     const s = await latest(c.env);
