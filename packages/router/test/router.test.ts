@@ -108,6 +108,22 @@ describe("route", () => {
     expect(route(req({ saturdayMode: sat }), [aave({ gate: "MARKET_CLOSED", twapPrice8: null })]).rejected[0]?.reason).toBe("NO_PRICE");
   });
 
+  it("Saturday mode takes a partner's smaller capacity fraction, never more than half", () => {
+    const sat = { enabled: true, haircutBps: 300, capacityFractionBps: 2_500 };
+    const plan = route(req({ saturdayMode: sat, amount: 2_000_000_000n }), [aave({ gate: "MARKET_CLOSED" })]);
+    const price = haircut(P336 - 50_000_000n, 300);
+    const value = collateralValue(1_000_000_000n, STOCK, price, USDC);
+    expect(plan.chosen?.capacity).toBe(((value * POLICY.maxLtvWad) / WAD) * 2_500n / 10_000n);
+    expect(plan.chosen?.notes).toContain("SATURDAY_REDUCED_CAPACITY");
+    // the default (no fraction given) is exactly half, the same number as before the option existed
+    const half = route(req({ saturdayMode: { enabled: true, haircutBps: 300, capacityFractionBps: 5_000 }, amount: 2_000_000_000n }), [aave({ gate: "MARKET_CLOSED" })]);
+    expect(half.chosen?.capacity).toBe((value * POLICY.maxLtvWad) / WAD / 2n);
+    expect(() => route(req({ saturdayMode: { enabled: true, haircutBps: 300, capacityFractionBps: 5_001 } }), [aave({ gate: "MARKET_CLOSED" })])).toThrow(/capacityFractionBps/);
+    expect(() => route(req({ saturdayMode: { enabled: true, haircutBps: 300, capacityFractionBps: 0 } }), [aave({ gate: "MARKET_CLOSED" })])).toThrow(/capacityFractionBps/);
+    // an open session ignores the fraction entirely
+    expect(route(req({ saturdayMode: sat }), [aave()]).chosen?.session).toBe("open");
+  });
+
   it("caps at liquidity, max draw and the partner's headroom, and says which bound bit", () => {
     const liq = route(req({ amount: 100_000_000n }), [morpho()]);
     expect(liq.chosen?.amount).toBe(7_000_000n);

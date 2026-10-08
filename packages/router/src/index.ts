@@ -61,7 +61,12 @@ export interface SaturdayMode {
   enabled: boolean;
   /** Haircut on min(held feed, TWAP), in bps, from the weekend-gap distribution. */
   haircutBps: number;
+  /** Share of the normal capacity a Saturday draw may use, in bps; at most 5,000 (half), the default. */
+  capacityFractionBps?: number;
 }
+
+/** The most a partner policy may allow on a Saturday: half the normal capacity. */
+export const SATURDAY_MAX_FRACTION_BPS = 5_000;
 
 export interface RouteRequest {
   user: string;
@@ -174,25 +179,28 @@ function sizeLeg(req: RouteRequest, c: VenueCandidate): { leg: RouteLeg } | { re
   let price8: bigint;
   let priceSource: PriceSource = "feed";
   let session: RouteLeg["session"] = "open";
-  let capacityDivisor = 1n;
+  let capacityFractionBps = BPS;
   if (c.gate === "OPEN") {
     if (c.feedPrice8 === null || c.feedPrice8 <= 0n) return reject("NO_PRICE");
     price8 = c.feedPrice8;
   } else if (c.gate === "MARKET_CLOSED" && c.pricesAroundTheClock && req.saturdayMode?.enabled) {
-    // Saturday mode: half capacity at the lower of the held feed and the TWAP, less the haircut. Never on SessionGuard markets.
+    // Saturday mode: at most half capacity at the lower of the held feed and the TWAP, less the haircut. Never on SessionGuard markets.
     if (c.feedPrice8 === null || c.feedPrice8 <= 0n || c.twapPrice8 === null || c.twapPrice8 <= 0n) return reject("NO_PRICE", "saturday mode needs both the held feed and the TWAP");
+    const fraction = req.saturdayMode.capacityFractionBps ?? SATURDAY_MAX_FRACTION_BPS;
+    if (!Number.isInteger(fraction) || fraction <= 0 || fraction > SATURDAY_MAX_FRACTION_BPS) throw new Error("saturday capacityFractionBps must be an integer in (0, 5000]");
     price8 = haircut(min(c.feedPrice8, c.twapPrice8), req.saturdayMode.haircutBps);
     priceSource = "twap-haircut";
     session = "saturday";
-    capacityDivisor = 2n;
-    notes.push("SATURDAY_HALF_CAPACITY");
+    capacityFractionBps = BigInt(fraction);
+    notes.push(fraction === SATURDAY_MAX_FRACTION_BPS ? "SATURDAY_HALF_CAPACITY" : "SATURDAY_REDUCED_CAPACITY");
   } else {
     return reject(GATE_REJECT[c.gate as Exclude<GateState, "OPEN">]);
   }
   const maxLtvWad = min(req.policy.maxLtvWad, c.lltvWad);
   if (maxLtvWad <= 0n) return reject("INSUFFICIENT_CAPACITY", "ltv 0");
   const value = collateralValue(req.collateralAmount, req.collateralDecimals, price8, c.loanDecimals);
-  let capacity = (value * maxLtvWad) / WAD / capacityDivisor;
+  let capacity = (value * maxLtvWad) / WAD;
+  if (capacityFractionBps !== BPS) capacity = (capacity * capacityFractionBps) / BPS;
   if (req.policy.maxDraw > 0n) capacity = min(capacity, req.policy.maxDraw);
   if (capacity > req.policy.exposureHeadroom) {
     capacity = req.policy.exposureHeadroom;

@@ -2,7 +2,7 @@
   "name": "@boundline/router",
   "version": "0.1.0",
   "private": true,
-  "description": "Credit router: choose venue and market by rate, effective LTV, liquidity, protection and session state; deterministic, signed route plans. Pure, dependency-free.",
+  "description": "Credit router: choose venue and market by rate, effective LTV, liquidity, protection and session state; deterministic, signed route plans. The core is pure and dependency-free; ./candidates and ./raw build venue candidates from live reads through an injected fetch.",
   "license": "MIT",
   "type": "module",
   "main": "./dist/index.js",
@@ -11,6 +11,14 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
+    },
+    "./candidates": {
+      "types": "./dist/candidates.d.ts",
+      "import": "./dist/candidates.js"
+    },
+    "./raw": {
+      "types": "./dist/raw.d.ts",
+      "import": "./dist/raw.js"
     }
   },
   "files": [
