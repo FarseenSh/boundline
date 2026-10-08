@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useAccount } from "wagmi";
 import { boundline, cfg, primaryMarket, primaryStock } from "../boundline.js";
 import { HealthBar } from "../components/HealthBar.jsx";
+import { RouteCard } from "../components/RouteCard.jsx";
 import { TxTimeline } from "../components/TxTimeline.jsx";
 import { ConnectChoices } from "../components/Wallet.jsx";
 import { ENV } from "../env.js";
@@ -230,6 +231,8 @@ export function Borrow() {
             {apiQuote.data.policyVersion !== null ? ` · policy v${apiQuote.data.policyVersion}` : ""}
           </p>
         ) : null}
+
+        <RouteCard draw={debouncedDraw} collateralRaw={(q?.collateralRaw ?? 0n) + (shares ?? 0n)} lineId={id} borrower={address} feedLive={info.feedLive} />
 
         {problems.length && (drawText || sharesText) ? (
           <div className="notice warn">

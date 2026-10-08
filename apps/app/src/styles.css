@@ -189,3 +189,19 @@ footer.bottom button { background: none; border: 0; padding: 0; color: var(--mut
 .wallet { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 .wallet .addr { font-variant-numeric: tabular-nums; color: var(--ink-2); }
 .connectors { display: flex; gap: 8px; flex-wrap: wrap; margin: 12px 0; }
+
+/* The route card (borrow page): the router's chosen leg, the ranked alternatives, the rejections with reasons. */
+.route { border-top: 1px solid var(--line); margin-top: 14px; padding-top: 12px; }
+.route h3 { margin: 0 0 6px; font-size: 15px; font-weight: 600; }
+.route-leg { background: var(--panel-2); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; margin: 8px 0; }
+.route-leg.chosen { border-color: var(--live); }
+.route details { margin: 6px 0; }
+.route summary { cursor: pointer; color: var(--ink-2); font-size: 14px; }
+.rejections { list-style: none; margin: 8px 0; padding: 0; font-size: 14px; }
+.rejections li { padding: 4px 0; border-bottom: 1px solid var(--line); }
+.rejections li:last-child { border-bottom: 0; }
+.small { font-size: 13px; }
+
+/* Two fields side by side that stack on a phone (the protection reserve's deposit and withdraw). */
+.wrap-row { display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-start; }
+.wrap-row > .field { flex: 1 1 240px; }

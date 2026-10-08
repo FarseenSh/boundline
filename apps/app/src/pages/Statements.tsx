@@ -2,7 +2,7 @@ import { explorer, formatEt, formatLocal, formatShares, formatUsd, price8ToNumbe
 import { useAccount } from "wagmi";
 import { cfg } from "../boundline.js";
 import { ConnectChoices } from "../components/Wallet.jsx";
-import { useDecisions, useLineId, usePayouts, useRoots } from "../hooks.js";
+import { useDecisions, useLineId, usePayouts, useRoots, useUserLines, useVaultEvents, type VaultEventRow } from "../hooks.js";
 
 const SHARE_ACTIONS = new Set(["ADD_COLLATERAL", "WITHDRAW_COLLATERAL"]);
 const ACTION_WORDS: Record<string, string> = {
@@ -16,11 +16,31 @@ const ACTION_WORDS: Record<string, string> = {
   RELEASE: "Hold released",
 };
 
+/** One vault event in words: what the protection ladder did for the line. */
+function vaultWords(e: VaultEventRow): { what: string; amount: string } {
+  const a = e.args;
+  const usd = (k: string): string => formatUsd(BigInt(a[k] ?? "0"));
+  switch (e.name) {
+    case "Protected":
+      return { what: `Protective repay: ${usd("fromUser")} from your reserve, ${usd("fromPartner")} from the partner, ${usd("fromAdvance")} advanced; debt ${usd("debtBefore")} → ${usd("debtAfter")}`, amount: usd("repaid") };
+    case "AdvanceSettled":
+      return { what: `Advance settled by ${shortAddress(a.payer ?? "")}: ${usd("principal")} principal + ${usd("fee")} fee; ${usd("outstandingAfter")} still owed`, amount: formatUsd(BigInt(a.principal ?? "0") + BigInt(a.fee ?? "0")) };
+    case "CollateralRecovered":
+      return { what: `Collateral recovered in an open session at $${price8ToNumber(BigInt(a.price8 ?? "0")).toFixed(2)}`, amount: `${formatShares(BigInt(a.amount ?? "0"))} sh` };
+    case "CollateralReturned":
+      return { what: "Recovered collateral returned to you", amount: `${formatShares(BigInt(a.amount ?? "0"))} sh` };
+    default:
+      return { what: e.name, amount: "—" };
+  }
+}
+
 export function Statements() {
   const { address, isConnected } = useAccount();
   const lineId = useLineId(address);
   const id = lineId.data && lineId.data > 0n ? lineId.data : undefined;
   const decisions = useDecisions(id);
+  const lines = useUserLines(address);
+  const vaultEvents = useVaultEvents(lines.data?.map((l) => l.lineId));
   const roots = useRoots();
   const payouts = usePayouts(address);
   const localSymbol = (token: string): { symbol: string; decimals: number } => {
@@ -79,6 +99,60 @@ export function Statements() {
           ) : null}
         </div>
       )}
+
+      {cfg.deskProtectionVault && isConnected && address && lines.data && lines.data.length > 0 ? (
+        <>
+          <h2>Protection vault</h2>
+          <div className="panel wrap">
+            <p>What the protection ladder did for your lines: repays the keeper made at any hour from your reserve, the partner's reserve or a Boundline Reserve advance, and how each advance was settled.</p>
+            {vaultEvents.isLoading ? <p className="mute">Reading the indexer…</p> : null}
+            {vaultEvents.error ? <p className="coral">The indexer did not answer: {vaultEvents.error.message}</p> : null}
+            {vaultEvents.data && !vaultEvents.data.indexed ? <p className="mute">The indexer does not carry the vault's events yet; your reserve and any advance owed are read live from the vault on the Protect page.</p> : null}
+            {vaultEvents.data && vaultEvents.data.indexed && vaultEvents.data.rows.length === 0 ? <p className="mute">The vault has not acted on your lines.</p> : null}
+            {vaultEvents.data && vaultEvents.data.rows.length > 0 ? (
+              <table className="ledger">
+                <thead>
+                  <tr>
+                    <th>When (ET)</th>
+                    <th>Line</th>
+                    <th>What</th>
+                    <th className="num">Amount</th>
+                    <th>Tx</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {vaultEvents.data.rows.map((e) => {
+                    const w = vaultWords(e);
+                    return (
+                      <tr key={`${e.txHash}:${e.logIndex}`}>
+                        <td>{formatEt(e.blockTime, { seconds: true })}</td>
+                        <td>#{e.lineId}</td>
+                        <td>
+                          {w.what}
+                          {e.args.decisionHash ? (
+                            <>
+                              {" "}
+                              <code className="mute" title={e.args.decisionHash}>
+                                {shortHash(e.args.decisionHash)}
+                              </code>
+                            </>
+                          ) : null}
+                        </td>
+                        <td className="num">{w.amount}</td>
+                        <td>
+                          <a href={explorer.tx(cfg, e.txHash)}>
+                            <code>{shortHash(e.txHash)}</code>
+                          </a>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            ) : null}
+          </div>
+        </>
+      ) : null}
 
       {cfg.payout.router && isConnected && address ? (
         <>

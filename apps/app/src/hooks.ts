@@ -1,5 +1,5 @@
 // Data hooks over the SDK and the proxy. React Query keeps the reads fresh; the clock ticks on its own.
-import { actionName, sessionInfo, type Health, type Line, type PayoutQuote, type PayoutRecord, type Quote, type SessionInfo } from "@boundline/sdk";
+import { actionName, sessionInfo, type ApiEnvelope, type Health, type Line, type PayoutQuote, type PayoutRecord, type Quote, type RouteRequestBody, type RouteResponse, type SessionInfo, type VaultAdvance, type VaultFunding, type VaultTerms } from "@boundline/sdk";
 import { useQuery, type UseQueryResult } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import type { Address, Hex } from "viem";
@@ -199,6 +199,116 @@ export function useRoots() {
       return (await res.json()) as { roots: RootRow[]; today: { day: string; eventCount: number; rootSoFar: string } };
     },
     staleTime: 60_000,
+  });
+}
+
+/** One of the user's lines under this partner: the desk allows one open line per market, so at most one per row of cfg.markets. */
+export interface UserLine {
+  lineId: bigint;
+  marketId: Hex;
+  symbol: string;
+  collateral: Address;
+}
+
+export function useUserLines(address: Address | undefined): UseQueryResult<UserLine[]> {
+  return useQuery({
+    queryKey: ["userLines", cfg.chainId, address],
+    enabled: Boolean(address && cfg.desk),
+    queryFn: async (): Promise<UserLine[]> => {
+      const ids = await Promise.all(cfg.markets.map(async (m) => ({ m, id: await boundline.reader.lineOf(address!, m.id) })));
+      return ids.filter((x) => x.id > 0n).map(({ m, id }) => ({ lineId: id, marketId: m.id, symbol: m.symbol, collateral: m.collateral }));
+    },
+    staleTime: 30_000,
+  });
+}
+
+export function useVaultTerms(): UseQueryResult<VaultTerms> {
+  return useQuery({
+    queryKey: ["vaultTerms", cfg.chainId],
+    enabled: boundline.vault !== null,
+    queryFn: () => boundline.vault!.terms(),
+    staleTime: 60_000,
+  });
+}
+
+export function useVaultBalance(address: Address | undefined): UseQueryResult<bigint> {
+  return useQuery({
+    queryKey: ["vaultBalance", cfg.chainId, address],
+    enabled: Boolean(address && boundline.vault),
+    queryFn: () => boundline.vault!.userBalance(address!),
+    refetchInterval: 30_000,
+  });
+}
+
+export interface VaultLineView {
+  line: UserLine;
+  advance: VaultAdvance;
+  /** The line's debt on Morpho with interest, as the vault reads it. */
+  debt: bigint;
+  /** How a protective repay of the whole debt would be funded right now; null when there is no debt. */
+  preview: VaultFunding | null;
+}
+
+/** Per line: the advance account, the debt, and the vault's own funding preview for repaying all of it now. */
+export function useVaultLines(lines: UserLine[] | undefined): UseQueryResult<VaultLineView[]> {
+  return useQuery({
+    queryKey: ["vaultLines", cfg.chainId, lines?.map((l) => l.lineId.toString()).join(",")],
+    enabled: Boolean(boundline.vault && lines && lines.length > 0),
+    queryFn: () =>
+      Promise.all(
+        lines!.map(async (line): Promise<VaultLineView> => {
+          const [advance, debt] = await Promise.all([boundline.vault!.advanceOf(line.lineId), boundline.vault!.debtOf(line.lineId)]);
+          const preview = debt > 0n ? await boundline.vault!.previewProtect(line.lineId, debt) : null;
+          return { line, advance, debt, preview };
+        }),
+      ),
+    refetchInterval: 30_000,
+  });
+}
+
+/** The credit router's plan through the proxy; null body = no request (nothing to route). */
+export function useRoute(body: RouteRequestBody | null): UseQueryResult<ApiEnvelope<RouteResponse>> {
+  return useQuery({
+    queryKey: ["route", cfg.chainId, body ? JSON.stringify(body) : null],
+    enabled: Boolean(body && boundline.api),
+    queryFn: () => boundline.api!.route(body!),
+    staleTime: 30_000,
+    retry: false,
+  });
+}
+
+export interface VaultEventRow {
+  name: string;
+  lineId: string;
+  txHash: Hex;
+  blockNumber: number;
+  blockTime: number;
+  logIndex: number;
+  args: Record<string, string>;
+}
+
+/** The protection vault's events for the user's lines from the indexer, newest first; `indexed` says whether any source covers the vault. */
+export function useVaultEvents(lineIds: readonly bigint[] | undefined): UseQueryResult<{ indexed: boolean; rows: VaultEventRow[] }> {
+  const vault = cfg.deskProtectionVault;
+  return useQuery({
+    queryKey: ["vaultEvents", cfg.chainId, vault, lineIds?.map(String).join(",")],
+    enabled: Boolean(vault && lineIds && lineIds.length > 0),
+    queryFn: async () => {
+      const [eventsRes, sourcesRes] = await Promise.all([
+        fetch(`${ENV.apiBase}/indexer/v1/events?chainId=${cfg.chainId}&address=${vault}&limit=200`),
+        fetch(`${ENV.apiBase}/indexer/v1/sources`),
+      ]);
+      if (!eventsRes.ok) throw new Error(`indexer answered ${eventsRes.status}`);
+      const events = ((await eventsRes.json()) as { events?: IndexedEvent[] }).events ?? [];
+      const sources = sourcesRes.ok ? (((await sourcesRes.json()) as { sources?: { addressList?: string[] }[] }).sources ?? []) : [];
+      const indexed = sources.some((s) => (s.addressList ?? []).some((a) => a.toLowerCase() === vault!.toLowerCase()));
+      const wanted = new Set(lineIds!.map(String));
+      const rows = events
+        .filter((e) => e.name !== "Decision" && wanted.has(String(e.args.lineId ?? "")))
+        .map((e) => ({ name: e.name, lineId: String(e.args.lineId), txHash: e.txHash, blockNumber: e.blockNumber, blockTime: e.blockTime, logIndex: e.logIndex, args: e.args }));
+      return { indexed, rows };
+    },
+    refetchInterval: 60_000,
   });
 }
 

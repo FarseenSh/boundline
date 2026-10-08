@@ -2,6 +2,7 @@ import { explorer, formatEt } from "@boundline/sdk";
 import type { Address } from "viem";
 import { useAccount } from "wagmi";
 import { boundline, cfg } from "../boundline.js";
+import { ProtectionReserve } from "../components/ProtectionReserve.jsx";
 import { ConnectChoices } from "../components/Wallet.jsx";
 import { ENV } from "../env.js";
 import { useAuthorized, useSessionInfo } from "../hooks.js";
@@ -72,6 +73,7 @@ export function Protect() {
           )}
           {flow.steps.length > 0 ? <TxTimeline steps={flow.steps} /> : null}
           {flow.error ? <div className="notice">{flow.error}</div> : null}
+          <ProtectionReserve address={address} />
         </>
       )}
 
