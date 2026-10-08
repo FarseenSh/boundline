@@ -2,10 +2,11 @@
 // testable with a fake.
 //
 // Budget: the Workers Free plan allows 10 ms of CPU per invocation. This adapter therefore avoids viem's generic
-// ABI machinery (see src/raw.ts for the measurements) and keeps only viem's transport (RPC fallback) and its
-// local-account signer. The signer's one-time cost (noble-curves' base-point tables, about 18 ms) is paid at
-// module evaluation, which has its own startup budget, and the account and clients are memoised per isolate.
-import { createBaseClient, splitRpcUrls, CHAIN_IDS, type BaseClient } from "@boundline/chain";
+// ABI machinery (see src/raw.ts for the measurements) and, since 8 Oct 2026, viem's transport too: reads go through
+// the raw client in src/rpc.ts, one JSON-RPC batch per side. Only viem's local-account signer remains; its one-time
+// cost (noble-curves' base-point tables, about 18 ms) is paid at module evaluation, which has its own startup budget,
+// and the account is memoised per isolate.
+import { splitRpcUrls, CHAIN_IDS } from "@boundline/chain";
 import type { Address, Hex } from "viem";
 import { privateKeyToAccount, type PrivateKeyAccount } from "viem/accounts";
 import { GAS_LIMIT, MIN_MAX_FEE_WEI, PRIORITY_FEE_WEI, MAINNET_REGISTRY, SEPOLIA_REGISTRY, type MirrorPair } from "./config.js";
@@ -24,6 +25,7 @@ import {
   hexToBigInt,
   type Call3,
 } from "./raw.js";
+import { rpcFor, type RpcClient } from "./rpc.js";
 
 export type ReadResult<T> = { ok: true; value: T } | { ok: false; error: string };
 
@@ -83,17 +85,6 @@ void warmAccount
 
 // ---------------------------------------------------------------------------------------------- memo
 
-const clients = new Map<string, BaseClient>();
-function clientFor(chainId: typeof CHAIN_IDS.base | typeof CHAIN_IDS.baseSepolia, rpcUrl: string): BaseClient {
-  const key = `${chainId}|${rpcUrl}`;
-  let c = clients.get(key);
-  if (!c) {
-    c = createBaseClient({ chainId, rpcUrl });
-    clients.set(key, c);
-  }
-  return c;
-}
-
 let cachedAccount: { key: Hex; account: PrivateKeyAccount } | null = null;
 function accountFor(key: Hex): PrivateKeyAccount {
   if (cachedAccount && cachedAccount.key === key) return cachedAccount.account;
@@ -122,12 +113,8 @@ function describe(err: unknown): string {
 
 type Rpc = (method: string, params: unknown[]) => Promise<unknown>;
 
-function rpcOf(client: BaseClient): Rpc {
-  return (method, params) => client.request({ method, params } as never) as Promise<unknown>;
-}
-
 async function readSide(
-  rpc: Rpc,
+  client: RpcClient,
   chainId: number,
   pairs: readonly MirrorPair[],
   feedOf: (p: MirrorPair) => Address,
@@ -139,11 +126,15 @@ async function readSide(
     calls.push({ target: feedOf(p), allowFailure: true, callData: encodeLatestRoundData() });
     calls.push({ target: registry, allowFailure: true, callData: encodeGetOracleParams(tokenOf(p)) });
   }
-  const [blockHex, raw] = await Promise.all([
-    rpc("eth_blockNumber", []) as Promise<Hex>,
-    rpc("eth_call", [{ to: MULTICALL3, data: encodeAggregate3(calls) }, "latest"]) as Promise<Hex>,
+  // One HTTP request: the head and the multicall as a JSON-RPC batch.
+  const [blockO, callO] = await client.batch([
+    { method: "eth_blockNumber", params: [] },
+    { method: "eth_call", params: [{ to: MULTICALL3, data: encodeAggregate3(calls) }, "latest"] },
   ]);
-  const results = decodeAggregate3(raw);
+  if (!blockO?.ok) throw new Error(`eth_blockNumber: ${blockO?.ok === false ? blockO.error : "missing"}`);
+  if (!callO?.ok) throw new Error(`eth_call: ${callO?.ok === false ? callO.error : "missing"}`);
+  const blockHex = blockO.result as Hex;
+  const results = decodeAggregate3(callO.result as Hex);
   const rounds = new Map<string, ReadResult<Round>>();
   const reg = new Map<string, ReadResult<RegistryParams>>();
   pairs.forEach((p, i) => {
@@ -169,11 +160,11 @@ async function readSide(
 
 // ---------------------------------------------------------------------------------------------- the adapter
 
-/** The real thing: viem transports on both chains (RPC fallback lists), raw calls, a local signer on Sepolia when a key is given. */
-export function createViemMirrorChain(opts: ViemChainOptions): MirrorChain {
-  const mainnet = rpcOf(clientFor(CHAIN_IDS.base, opts.mainnetRpc));
-  const sepoliaUrls = splitRpcUrls(opts.sepoliaRpc);
-  const sepolia = rpcOf(clientFor(CHAIN_IDS.baseSepolia, sepoliaUrls.join(",")));
+/** The real thing: raw JSON-RPC clients on both chains (RPC fallback lists), raw calls, a local signer on Sepolia when a key is given. */
+export function createViemMirrorChain(opts: ViemChainOptions, clients?: { mainnet: RpcClient; sepolia: RpcClient }): MirrorChain {
+  const mainnetClient = clients?.mainnet ?? rpcFor(splitRpcUrls(opts.mainnetRpc).join(","));
+  const sepoliaClient = clients?.sepolia ?? rpcFor(splitRpcUrls(opts.sepoliaRpc).join(","));
+  const sepolia: Rpc = (method, params) => sepoliaClient.call(method, params);
   const account = opts.keeperKey ? accountFor(opts.keeperKey) : null;
   const keeper = account?.address ?? null;
 
@@ -202,15 +193,16 @@ export function createViemMirrorChain(opts: ViemChainOptions): MirrorChain {
 
   return {
     keeper,
-    readMainnet: (pairs) => readSide(mainnet, CHAIN_IDS.base, pairs, (p) => p.mainnetFeed, (p) => p.mainnetToken, MAINNET_REGISTRY),
-    readSepolia: (pairs) => readSide(sepolia, CHAIN_IDS.baseSepolia, pairs, (p) => p.sepoliaFeed, (p) => p.sepoliaToken, SEPOLIA_REGISTRY),
+    readMainnet: (pairs) => readSide(mainnetClient, CHAIN_IDS.base, pairs, (p) => p.mainnetFeed, (p) => p.mainnetToken, MAINNET_REGISTRY),
+    readSepolia: (pairs) => readSide(sepoliaClient, CHAIN_IDS.baseSepolia, pairs, (p) => p.sepoliaFeed, (p) => p.sepoliaToken, SEPOLIA_REGISTRY),
     async nonces() {
       if (!keeper) throw new Error("no keeper");
-      const [latest, pending] = await Promise.all([
-        sepolia("eth_getTransactionCount", [keeper, "latest"]) as Promise<Hex>,
-        sepolia("eth_getTransactionCount", [keeper, "pending"]) as Promise<Hex>,
+      const [latestO, pendingO] = await sepoliaClient.batch([
+        { method: "eth_getTransactionCount", params: [keeper, "latest"] },
+        { method: "eth_getTransactionCount", params: [keeper, "pending"] },
       ]);
-      return { latest: hexToBigInt(latest), pending: hexToBigInt(pending) };
+      if (!latestO?.ok || !pendingO?.ok) throw new Error(`nonces: ${latestO?.ok === false ? latestO.error : ""} ${pendingO?.ok === false ? pendingO.error : ""}`.trim());
+      return { latest: hexToBigInt(latestO.result as Hex), pending: hexToBigInt(pendingO.result as Hex) };
     },
     async balance() {
       if (!keeper) return 0n;

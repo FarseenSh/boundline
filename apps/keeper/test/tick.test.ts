@@ -156,10 +156,10 @@ describe("runTick", () => {
     s.sepolia.registry.set("NVDAt", ok({ multiplier: ONE * 2n, paused: false }));
     const held = planAll(PAIRS2, s.mainnet, s.sepolia, fakeChain(s), { feed: new Set(), registry: new Set(["NVDAt"]) });
     expect(held.txs.map((t) => `${t.symbol}/${t.kind}`)).toEqual(["NVDAt/feed"]);
-    expect(held.symbols[1]?.registry).toEqual({ plan: "skip", reason: "held (MIRROR_HOLD_REGISTRY)" });
+    expect(held.symbols[1]?.registry).toEqual({ plan: "skip", reason: "held (registry hold)" });
     const both = planAll(PAIRS2, s.mainnet, s.sepolia, fakeChain(s), { feed: new Set(["NVDAt"]), registry: new Set(["NVDAt"]) });
     expect(both.txs).toEqual([]);
-    expect(both.symbols[1]?.feed).toEqual({ plan: "skip", reason: "held (MIRROR_HOLD_FEED)" });
+    expect(both.symbols[1]?.feed).toEqual({ plan: "skip", reason: "held (feed hold)" });
     expect(both.symbols[0]?.feed.plan).toBe("skip");
   });
 

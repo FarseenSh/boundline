@@ -3,6 +3,7 @@ import type { Address } from "viem";
 import type { MirrorChain, ReadResult, SideReads } from "./chain.js";
 import { CHAINS, MAINNET_REGISTRY, SEPOLIA_REGISTRY, type MirrorPair } from "./config.js";
 import { lagSeconds, planFeedMirror, planRegistryMirror, type RegistryParams, type Round } from "./plan.js";
+import { NO_HOLD, type MirrorHold } from "./tick.js";
 
 export interface RoundView {
   roundId: string;
@@ -69,6 +70,7 @@ export function buildStatus(
   sepolia: SideReads,
   keeper: { address: Address; balanceWei: bigint } | null,
   now: number,
+  hold: MirrorHold = NO_HOLD,
 ): KeeperStatus {
   let feedsInSync = 0;
   let registriesInSync = 0;
@@ -86,6 +88,7 @@ export function buildStatus(
     if (mr?.ok) {
       const plan = planFeedMirror(mr.value, sr?.ok ? sr.value : null);
       feedPlan = plan.action === "skip" ? plan.reason : `setRoundData (${plan.reason})`;
+      if (hold.feed.has(p.symbol)) feedPlan = `held (feed hold); unheld: ${feedPlan}`;
       feedInSync = plan.action === "skip" && plan.reason === "in-sync";
       lag = lagSeconds(mr.value, sr?.ok ? sr.value : null);
       if (feedInSync) feedsInSync += 1;
@@ -95,6 +98,7 @@ export function buildStatus(
     if (mg?.ok) {
       const plan = planRegistryMirror(mg.value, sg?.ok ? sg.value : null);
       regPlan = plan.action === "skip" ? plan.reason : `setOracleParams (${plan.reason})`;
+      if (hold.registry.has(p.symbol)) regPlan = `held (registry hold); unheld: ${regPlan}`;
       regInSync = plan.action === "skip";
       if (regInSync) registriesInSync += 1;
     }
@@ -130,7 +134,7 @@ export function buildStatus(
 }
 
 /** Reads both chains and the keeper balance, then builds the status. */
-export async function collectStatus(chain: MirrorChain, pairs: readonly MirrorPair[], now: number): Promise<KeeperStatus> {
+export async function collectStatus(chain: MirrorChain, pairs: readonly MirrorPair[], now: number, hold: MirrorHold = NO_HOLD): Promise<KeeperStatus> {
   const [mainnet, sepolia, balanceWei] = await Promise.all([chain.readMainnet(pairs), chain.readSepolia(pairs), chain.keeper ? chain.balance() : Promise.resolve(0n)]);
-  return buildStatus(pairs, mainnet, sepolia, chain.keeper ? { address: chain.keeper, balanceWei } : null, now);
+  return buildStatus(pairs, mainnet, sepolia, chain.keeper ? { address: chain.keeper, balanceWei } : null, now, hold);
 }

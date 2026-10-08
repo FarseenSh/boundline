@@ -2,7 +2,7 @@
   "name": "@boundline/keeper",
   "version": "0.1.0",
   "private": true,
-  "description": "The Boundline keeper: a Cloudflare Worker that mirrors mainnet Chainlink stock feeds and OracleRegistry state onto the Base Sepolia simulators every minute, and later runs shadow-health protection.",
+  "description": "The Boundline keeper: a Cloudflare Worker that mirrors mainnet Chainlink stock feeds and OracleRegistry state onto the Base Sepolia simulators every minute, arms the Protector's shadow pre-liquidation and the DeskProtectionVault's any-hour repay as validity transactions (each simulated first), and sends grace and protect events to the partner API.",
   "license": "MIT",
   "type": "module",
   "scripts": {

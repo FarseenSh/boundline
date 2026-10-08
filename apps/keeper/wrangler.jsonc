@@ -22,7 +22,24 @@
     "BASE_SEPOLIA_SEQUENCER_URL": "https://sepolia-sequencer.base.org",
     // Symbols whose Sepolia feed / registry params the mirror leaves alone during a drill (comma lists; blank = none).
     "MIRROR_HOLD_FEED": "",
-    "MIRROR_HOLD_REGISTRY": ""
+    "MIRROR_HOLD_REGISTRY": "",
+    // Vault job (src/vault-job.ts, 8 Oct 2026): the DeskProtectionVault repays a desk line at any hour, down its ladder,
+    // when the line's shadow LTV reaches grace; targets are lineId:graceLtvBps:targetLtvBps:shadowOracle:feed:slot. Line 1
+    // (the borrower's AAPLt line, shaped by Lane K1 for the 9–11 Oct weekend: 0.02 AAPLt, 3.22 USDC, 0.4 USDC user
+    // reserve) at grace 52% and target 45%, priced by the AAPLt ShadowGuard, predicate on the AAPLt feed's updatedAt.
+    // Signs with PROTECT_KEY, shared with the protection job (one signature per tick, the Protector first); it only
+    // signs once the vault's keeper() is that signer.
+    "DESK_PROTECTION_VAULT": "0x87f600279F021ca859b9903DE884d3A7A169f38c",
+    "CREDIT_DESK": "0x39aBaDc0aAa12D1F7e259b89536Aa1848997399a",
+    "VAULT_TARGETS": "1:5200:4500:0x7a53b459be6e5e9a12324cc3417bb027daf73f65:0xa652b75CA90084FA16D4F18Fd96B5dd7069ee52a:5"
   },
+  // Runtime state (8 Oct 2026): key `hold` is the drill hold switch, merged with the two vars above, so a drill holds a
+  // symbol without a redeploy: `wrangler kv key put --remote --namespace-id a648931723db46ca90aef102b0fe83bb hold
+  // '{"feed":["TSLAt"],"registry":["TSLAt"]}'` (README, "Drills by hand"). The vault job keeps its grace state here too.
+  "kv_namespaces": [{ "binding": "KEEPER_STATE", "id": "a648931723db46ca90aef102b0fe83bb" }],
+  // Keeper → partner API events (8 Oct 2026): an RPC binding to the API's `Events` entrypoint (`ingest(evt)`), which turns
+  // grace, grace.cleared and protect into signed webhook deliveries. No shared secret: an entrypoint is reachable only
+  // through bindings. /v1/events/probe proves the binding with an event the API refuses by design.
+  "services": [{ "binding": "API_EVENTS", "service": "boundline-api", "entrypoint": "Events" }],
   "observability": { "enabled": true }
 }

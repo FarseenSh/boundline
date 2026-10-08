@@ -56,7 +56,7 @@ export interface TickOptions {
   /** Transactions signed and sent in this tick; see MAX_TX_PER_TICK. */
   maxTxPerTick?: number;
   now?: () => number;
-  /** Symbols to leave alone (vars MIRROR_HOLD_FEED / MIRROR_HOLD_REGISTRY). */
+  /** Symbols to leave alone (the MIRROR_HOLD_* vars united with the KV hold switch, env.ts readHold). */
   hold?: MirrorHold;
 }
 
@@ -77,7 +77,7 @@ export function planAll(pairs: readonly MirrorPair[], mainnet: SideReads, sepoli
     const report: SymbolReport = { symbol: p.symbol, feed: { plan: "error", reason: "unread" }, registry: { plan: "error", reason: "unread" } };
 
     if (hold.feed.has(p.symbol)) {
-      report.feed = { plan: "skip", reason: "held (MIRROR_HOLD_FEED)" };
+      report.feed = { plan: "skip", reason: "held (feed hold)" };
     } else if (!mr || !mr.ok) {
       report.feed = { plan: "error", reason: `mainnet read failed: ${mr?.ok === false ? mr.error : "missing"}` };
     } else {
@@ -90,7 +90,7 @@ export function planAll(pairs: readonly MirrorPair[], mainnet: SideReads, sepoli
     }
 
     if (hold.registry.has(p.symbol)) {
-      report.registry = { plan: "skip", reason: "held (MIRROR_HOLD_REGISTRY)" };
+      report.registry = { plan: "skip", reason: "held (registry hold)" };
     } else if (!mg || !mg.ok) {
       report.registry = { plan: "error", reason: `mainnet read failed: ${mg?.ok === false ? mg.error : "missing"}` };
     } else {

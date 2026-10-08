@@ -84,6 +84,8 @@ export function encodeProtect(preLiq: Address, borrower: Address, seizedAssets: 
 
 export type ProtectionDecision =
   | { action: "none"; reason: "no-position" | "no-shadow-price" | "below-band" | "above-lltv" | "nothing-feasible" }
+  /** Set by the job, never by decideProtection: the action was simulated and reverts, or is backing off after one. */
+  | { action: "none"; reason: "would-revert" | "backoff" | "simulation-unavailable"; error: string; untilHead?: number }
   | { action: "partial"; seizedAssets: bigint; repaidShares: 0n; expectedRepaid: bigint }
   | { action: "close"; seizedAssets: 0n; repaidShares: bigint; expectedRepaid: bigint };
 
@@ -93,7 +95,7 @@ export type ProtectionDecision =
  * (several small actions beat one large one), the close-out only when no partial can (a SessionGuard market
  * while closed), nothing otherwise.
  */
-export function decideProtection(s: Sizing): ProtectionDecision {
+export function decideProtection(s: Sizing): Exclude<ProtectionDecision, { reason: "would-revert" | "backoff" | "simulation-unavailable" }> {
   switch (s.standing) {
     case "NO_POSITION":
       return { action: "none", reason: "no-position" };
@@ -138,6 +140,59 @@ export function predicatesFor(feed: Address, slot: bigint, heldSlotValue: Hex, h
 /** The sequencer answers this while the previous submission of the same transaction is still alive. */
 export function isAlreadyKnown(message: string): boolean {
   return /already known/i.test(message);
+}
+
+/**
+ * Pre-flight backoff (8 Oct 2026, Lane K1's finding): Protector.sizing does not see the sale pool's USDC, so an
+ * in-band close-out the pool cannot pay would be signed, included and reverted every minute, burning the signer's ETH.
+ * Every action is now simulated from the signer before it is signed; after a revert the target is left alone for this
+ * many blocks (about five ticks) unless its fingerprint (the inputs that decide the action) changes.
+ */
+export const BACKOFF_BLOCKS = 150;
+
+export interface BackoffEntry {
+  untilHead: number;
+  fingerprint: string;
+  error: string;
+  at: number;
+}
+
+/** What decides a Protector action, without the fields interest moves every block (so a backoff can hold). */
+export function protectFingerprint(s: Sizing, action: string): string {
+  return `${action}:${s.standing}:${s.borrowShares}:${s.collateral}:${s.shadowPrice36}:${s.fullCloseAllowed}`;
+}
+
+/** Another transaction with the same nonce is still alive and pays at least as much. */
+export function isUnderpriced(message: string): boolean {
+  return /underpriced/i.test(message);
+}
+
+/**
+ * Fees for an armed action, rising with every re-arm (measured 8 Oct 2026, docs/evidence/validity-rearm-2026-10-08.md):
+ * a validity transaction re-submitted with the SAME bytes after its bound expired was accepted by the sequencer but
+ * never included, while a re-signed one (a new hash, same nonce) landed within two blocks. So every re-arm is a new
+ * signature: the tip AND the fee cap grow 25% per 30-block window since the episode was first armed (both must grow at
+ * least 10% for a replacement while an older submission is still alive). `episodeHead` is the head at the episode's
+ * first arming (KV state), null for a first arming; `extra` steps further for a second attempt inside one tick.
+ */
+export const REARM_GROWTH_STEPS_MAX = 24;
+// The same numbers as config.ts (MIN_MAX_FEE_WEI, PRIORITY_FEE_WEI), kept here so this module stays pure.
+const MIN_MAX_FEE = 20_000_000n;
+const BASE_TIP = 1_000_000n;
+/** Fee caps start on 0.01 gwei steps, so a gas-price wobble does not change a first arming's bytes. */
+const FEE_QUANTUM = 10_000_000n;
+export function rearmFees(gasPrice: bigint, episodeHead: bigint | null, head: bigint, extra = 0): { maxFeePerGas: bigint; maxPriorityFeePerGas: bigint; step: number } {
+  const floor = gasPrice * 3n > MIN_MAX_FEE ? gasPrice * 3n : MIN_MAX_FEE;
+  const quantised = ((floor + FEE_QUANTUM - 1n) / FEE_QUANTUM) * FEE_QUANTUM;
+  let step = episodeHead === null || head < episodeHead ? 0 : Number((head - episodeHead) / VALIDITY_WINDOW_BLOCKS) + 1;
+  step = Math.min(step + extra, REARM_GROWTH_STEPS_MAX);
+  let tip = BASE_TIP;
+  let cap = quantised + BASE_TIP;
+  for (let i = 0; i < step; i += 1) {
+    tip = (tip * 5n) / 4n + 1n;
+    cap = (cap * 5n) / 4n + 1n;
+  }
+  return { maxFeePerGas: cap, maxPriorityFeePerGas: tip, step };
 }
 
 export interface ProtectTarget {
