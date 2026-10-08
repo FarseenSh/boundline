@@ -435,3 +435,48 @@ Live on Sepolia 7 Oct 2026: router `0x1a6D…6354`, EURCt `0xE9E7…A82A`, pool 
 the in-session verdict on a mainnet fork is `FEED_PAUSED` because the live OracleRegistry reaches a Base precompile and
 the gate fails closed; base-forge returns `OPEN`.
 
+
+## Base mainnet in one run: `DeployMainnet.s.sol` and `deploy-mainnet.sh` (8 Oct 2026)
+
+The whole mainnet footprint (oracle stack with all ten feeds, AAPLc and NVDAc guards and shadow guards, the
+session-safe AAPLc market, CreditDesk, Protector with pre-liquidations on Morpho's official factory for the Steakhouse
+AAPLc and NVDAc markets and the session-safe market, AaveDesk and ProtectionVault, the Reserve funding both vaults,
+the payout router, the DividendHarvester) in dependency order, then 33 post-deploy checks. Runbook with the commands,
+keys, verification and opt-ins: `docs/runbooks/mainnet-deploy.md`.
+
+```sh
+export BASE_RPC_URL=<keyed Base mainnet RPC> KEEPER=0x…
+script/deploy-mainnet.sh plan        # simulate against mainnet, nothing sent
+script/deploy-mainnet.sh rehearse    # deploy on a local base-anvil fork, price it at today's fees (DeployMainnet.cost.py)
+MAINNET_DEPLOYER_KEY=… ETHERSCAN_API_KEY=… script/deploy-mainnet.sh broadcast   # writes deployments/base-mainnet.json
+script/deploy-mainnet.sh check       # the 33 checks against the state file
+```
+
+Rehearsed 8 Oct on forks at blocks 52,327,262 and 52,327,370: 50 transactions, 50,982,984 gas, 33 of 33 checks, a
+re-run broadcast nothing; at that day's fees 0.00031116 ETH ($0.80). Every address can be passed back in (the state
+file does it on a re-run) and every wiring call reads the chain first, so the run is idempotent; `--resume` replays a
+broadcast forge left unfinished. Facts: the official PreLiquidationFactory deploys a different build of PreLiquidation
+than our vendored copy (runtime 6,212 vs 6,158 bytes), so its addresses are taken from the state file, not predicted;
+a fork rehearsal with chain id 8453 must not write `broadcast/` (the driver redirects `FOUNDRY_BROADCAST`); the
+Etherscan v2 contract module serves chain 8453 on the free key, the logs module does not.
+
+## The self-repaying leg: `DeployHarvest.s.sol` (8 Oct 2026)
+
+`DividendHarvester` sweeps each cash dividend (a registry multiplier step) into the loan in an open session: Morpho
+flash loan, repay through the desk or Morpho, withdraw `raw × (m1 − m0) / m1`, exact-output sale on the collateral's
+pool with a floor under the gate's price, unsold collateral back to the position; steps above `maxStepBps` (5%),
+falls, HEADROOM mode and positions without debt are re-based without selling. Design note in the contract header.
+
+```sh
+GATE=0x92f59437d4ef5CDcEAe2CcDE89B03A7B4B1Ae427 DESK=0x39aBaDc0aAa12D1F7e259b89536Aa1848997399a KEEPER=<keeper> \
+ROUTE_TOKENS=0xB2000000000000000000000E063E65377cA34141 ROUTE_POOLS=0x5069f3753961efcaea8c7f6ec49a182e2c40081b \
+  forge script script/DeployHarvest.s.sol --tc DeployHarvest --rpc-url base_sepolia --sender <deployer>   # dry run
+```
+
+Dry-run on Base Sepolia 8 Oct (sender the deployer): 6,171,272 gas estimated, about 0.000068 ETH at 0.011 gwei; it
+prints the follow-up (admit the harvester to AAPLt's Cobalt receiver allowlist with `wire-protection-sepolia.sh`,
+then the borrower's one-batch opt-in `Morpho.setAuthorization(harvester, true)` + `enroll(marketId, lineId, 1)`). A
+live demo needs a dividend: hold AAPLt's registry in the keeper's mirror and raise its multiplier on the
+`MirrorOracleRegistry` (e.g. 1.004e18), harvest in session, then release the hold (the next harvest re-bases).
+Tests: `test/harvest/DividendHarvester.t.sol` (17, including a fuzz of the invariants) and
+`test/harvest/HarvestFork.t.sol` (base-forge, NVDAc's real 1 Oct cash dividend on a real Steakhouse borrower).
