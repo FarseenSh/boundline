@@ -15,6 +15,7 @@
   "dependencies": {
     "@boundline/calendar": "workspace:*",
     "@boundline/chain": "workspace:*",
+    "@boundline/router": "workspace:*",
     "hono": "4.13.12",
     "viem": "2.57.2"
   },
