@@ -76,7 +76,7 @@ describe("POST /v1/policy/versions", () => {
       expect(r.json.error).toMatch(re);
     };
     await bad({ tickers: [] }, /note is required/);
-    await bad({ note: "x" }, /tickers and\/or partner/);
+    await bad({ note: "x" }, /tickers, partner and\/or saturdayMode/);
     await bad({ note: "x", tickers: [{ collateral: AAPLT, allowed: true, maxLtvWad: "1000000000000000000" }] }, /maxLtvWad/);
     await bad({ note: "x", tickers: [{ collateral: USER, allowed: true, maxLtvWad: "1" }] }, /not a market/);
     await bad({ note: "x", tickers: [{ collateral: AAPLT, allowed: true, maxLtvWad: "1", minDraw: "5", maxDraw: "4" }] }, /minDraw/);
@@ -139,6 +139,7 @@ describe("policy helpers", () => {
     policyVersion: 3,
     partner: { admin: ADMIN, signer: "0x0000000000000000000000000000000000000000", eligibility: "0x0000000000000000000000000000000000000000", active: true, exposureCap: "0", exposure: "0" },
     tickers: [{ symbol: "AAPLt", collateral: AAPLT, marketId: MARKET_ID, allowed: true, maxLtvWad: "500000000000000000", minDraw: "1000000", maxDraw: "100000000", exposureCap: "500000000", exposure: "0", marketLltvWad: "625000000000000000" }],
+    saturdayMode: { enabled: false, capacityFraction: 0.5, haircutBps: 300 },
   };
 
   it("parses the MARKETS var as a JSON string", () => {

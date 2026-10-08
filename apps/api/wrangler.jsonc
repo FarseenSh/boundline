@@ -5,8 +5,16 @@
   "compatibility_date": "2026-09-01",
   "compatibility_flags": ["nodejs_compat"],
   "observability": { "enabled": true },
-  // Service binding to the indexer: Worker-to-Worker fetches over workers.dev are refused (error 1042).
-  "services": [{ "binding": "INDEXER", "service": "boundline-indexer" }],
+  // Every minute: poll the indexer for the desk's and the protection contracts' events (webhooks) and retry due
+  // deliveries. Scheduled invocations are killed at 10 ms of CPU on the Free plan, so a tick is bounded: at most ten new
+  // events per source and five retries, the cursor saved as it goes (src/webhooks.ts, pollSource).
+  "triggers": { "crons": ["* * * * *"] },
+  // Service bindings: Worker-to-Worker fetches over workers.dev are refused (error 1042). The indexer serves events,
+  // timelines and roots; the Observatory serves the Base mainnet tokens and Morpho markets POST /v1/route reads on 8453.
+  "services": [
+    { "binding": "INDEXER", "service": "boundline-indexer" },
+    { "binding": "OBSERVATORY", "service": "boundline-observatory" }
+  ],
   // Create with `pnpm exec wrangler d1 create boundline-api`, paste the id here, then
   // `pnpm exec wrangler d1 migrations apply boundline-api --remote`.
   "d1_databases": [
@@ -35,6 +43,13 @@
     "X402_PAY_TO": "0x2f0d9B1f16CD702259C6cC259e8D5E5455282a4E",
     "X402_FACILITATOR": "https://x402.org/facilitator",
     "X402_NETWORK": "base-sepolia",
-    "X402_PRICE_USDC": "0.01"
+    "X402_PRICE_USDC": "0.01",
+    // POST /v1/route on Base mainnet: IRM rates over public RPCs in fallback order (mainnet.base.org rate-limits
+    // Cloudflare egress, so it is last). The DeskProtectionVault makes every desk line protected ("vault") at any hour.
+    "BASE_RPC_URL": "https://base-rpc.publicnode.com,https://base.drpc.org,https://mainnet.base.org",
+    "DESK_PROTECTION_VAULT": "0x87f600279F021ca859b9903DE884d3A7A169f38c",
+    // Deliveries to this host go to the app itself (a Worker fetching its own workers.dev URL gets error 1042).
+    "PUBLIC_HOST": "boundline-api.papermind-ai.workers.dev"
+    // Secret (not set: pending the human's approval of a new key): ROUTE_SIGNER_KEY signs route plans.
   }
 }

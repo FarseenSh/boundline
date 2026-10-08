@@ -29,7 +29,15 @@ which also accept an x402 payment instead of a key. POSTs with a key need `Idemp
 | `POST /v1/policy/versions` | `{note, tickers?: [{collateral, allowed, maxLtvWad, minDraw, maxDraw, exposureCap}], partner?: {signer, eligibility, exposureCap, active}}` → a prepared version: field-level `changes` against the on-chain policy and the `setTickerPolicy` / `setPartnerConfig` `calls` the partner admin signs, in order; 400 when nothing changes |
 | `GET /v1/policy/versions`, `GET /v1/policy/versions/:id` | the partner's prepared and applied versions, newest first |
 | `POST /v1/policy/versions/:id/applied` | `{txHash}` → marks the version applied once the desk's `policyVersion` has advanced past the version's `policyVersionBefore` (else 409 with the current version); the partner's policy version in D1 follows the desk |
-| `GET /v1/drills`, `GET /v1/drills/:id` | the drills registry: eleven drills (weekend gap, stale feed, registry pause, issuer transfer pause, scheduled multiplier, ineligible receiver, venue halt, partial repayment, bad-debt probe, protection, validity transactions) with numbered steps and the recorded runs (transaction hashes, outcome, evidence paths) bundled from `docs/evidence/drills/*.json` |
+| `GET /v1/drills`, `GET /v1/drills/:id` | the drills registry: twelve drills (weekend gap, stale feed, registry pause, issuer transfer pause, scheduled multiplier, ineligible receiver, venue halt, keeper hold, partial repayment, bad-debt probe, protection, validity transactions) with numbered steps and the recorded runs (transaction hashes, outcome, evidence paths) bundled from `docs/evidence/drills/*.json` |
+| `POST /v1/route` **(metered)** | `{chainId: 84532 \| 8453, borrower?, collateral: [{symbol, amount}], amountUsdc?, preferProtection?, saturdayMode?, lineId?, partnerId?, maxLtvBps?}` → a deterministic route plan from `@boundline/router` (chosen leg, alternatives, every rejection with its reason), its `planHash` (keccak256 of the canonical plan), the EIP-712 "Boundline Router" v1 `typedData` and `digest`, and `signature`/`signer` when the secret `ROUTE_SIGNER_KEY` exists (else `note: "route signer not configured"`). Base Sepolia reads the desk's market for the symbol, the SessionGate verdict and the partner's on-chain ticker policy in one Multicall3 call plus the IRM rate; Base mainnet reads the Observatory's B20 Morpho markets and the IRM rates. Without `amountUsdc` it plans the capacity. With `lineId` (partner key) the plan is stored on the line |
+| `GET /v1/lines/:id/route` | the newest plan stored on a line of this partner (404 when none) |
+| `GET /v1/whoami` | the partner a key belongs to (the agent checks keys with it) |
+| `POST /v1/webhooks` | `{url (https), events: ["grace","grace.cleared","protect","hold","release","recovery","settle"] or ["*"], description?}` → 201 with the signing `secret`, shown once; at most ten per partner |
+| `GET /v1/webhooks`, `DELETE /v1/webhooks/:id` (or `POST …/:id/delete`), `POST /v1/webhooks/:id/test`, `GET /v1/webhooks/:id/deliveries` | list (with the last delivery), soft delete, send a signed `ping`, delivery history (status, attempts, last code, next attempt, payload hash) |
+| `GET /v1/events` | the partner's event log: keeper events and the on-chain events the cron picked up from the indexer |
+| `POST /v1/webhooks/poll` | one bounded webhook tick on demand (both indexer sources, then up to two due deliveries); idempotent |
+| `POST /v1/webhooks/echo/:token`, `GET /v1/webhooks/echo/:token` | no key: a built-in demo receiver that keeps the last 20 deliveries for a token with the result of verifying their signature against the webhook's secret |
 | `GET /v1/reconciliation` | the indexer's latest Morpho reconciliation and the hash-chained daily roots |
 | `GET /v1/evidence/export[?format=download]` | one JSON bundle: policy, obligations, decision timelines (first 10 lines, 100 events each), reconciliation and roots, drills, under `hash = keccak256(utf8(JSON.stringify(bundle without hash and correlationId, keys sorted recursively)))` so anyone can recompute it; `format=download` adds a `content-disposition` |
 
@@ -101,6 +109,63 @@ curl -s "$API/v1/evidence/export?format=download" -H "Authorization: Bearer $KEY
 into bytes32 (`"boundline-app"` becomes `0x626f756e646c696e652d617070…00`). Amounts are USDC base
 units as decimal strings; the API answers with both base units and a six-decimal `usdc` string.
 
+## Webhooks
+
+A delivery is a `POST` of `{id, type, createdAt, at, chainId, partnerId, source, lineId?, borrower?, data, txHash?,
+decisionHash?}` with `Boundline-Event`, `Boundline-Delivery` and `Boundline-Signature: t=<unix>,v1=<hex>` where
+`v1 = HMAC-SHA256(secret, t + "." + raw body)` (Web Crypto). A receiver recomputes it, compares in constant time and
+refuses timestamps more than 300 s away. Failed deliveries are retried by the cron after 1, 2, 4, 8 and 16 minutes, six
+attempts at most. Two sources feed the log:
+
+- **the keeper**, through the `Events` RPC entrypoint (`export class Events extends WorkerEntrypoint`, method
+  `ingest(evt)`); the keeper binds `{ binding: "API_EVENTS", service: "boundline-api", entrypoint: "Events" }`. An RPC
+  entrypoint is reachable only through a binding, so there is no shared secret. Grace entry and exit, protective actions
+  armed; deduplicated by a hash of the event (a transaction hash makes the same action one event whatever its time);
+- **the indexer**, polled through the `INDEXER` binding: the desk's `HOLD`/`RELEASE` decisions (`source=credit-desk`) and
+  the protection contracts' executed events (`source=sepolia-protection`: the DeskProtectionVault's `Protected`,
+  `AdvanceSettled`, `CollateralRecovered` and the Protector's `Protected`). A tick is small by construction, because a
+  scheduled invocation on the Free plan is killed at 10 ms of CPU and a killed tick must never repeat the same work
+  forever: a source's first poll only primes its cursor at the newest event (history is not replayed to partners), one
+  source is polled per tick (alternating by minute), at most four new events are taken oldest first with the cursor saved
+  every two, and their deliveries go out on the retry pass (at most two a tick). Anything older than a day is logged,
+  never delivered. Measured: the worst cold tick 9.3 ms in Node with real SQL, 1.5–2.2 ms warm (`scripts/bench-cpu.ts`).
+  Ticks come from this Worker's cron (`* * * * *`) and, because new cron triggers on this account have been slow or
+  silent before, from the keeper calling `env.API_EVENTS.tick()` (the same entrypoint) once a minute; two ticks in a
+  minute only find duplicates. `POST /v1/webhooks/poll` runs one on demand.
+
+A receiver verifies a delivery in a few lines (the same check the echo receiver runs, `verifySignature` in
+`src/webhooks.ts`, tested against Python's `hmac`):
+
+```ts
+const header = req.headers.get("boundline-signature") ?? "";            // "t=1791444417,v1=35b6…8a69"
+const t = Number(/t=(\d+)/.exec(header)?.[1]);
+const v1 = /v1=([0-9a-f]{64})/.exec(header)?.[1] ?? "";
+const body = await req.text();                                            // the raw body, before any JSON.parse
+const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(secret), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+const mac = new Uint8Array(await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(`${t}.${body}`)));
+const expected = Array.from(mac, (b) => b.toString(16).padStart(2, "0")).join("");
+const ok = Math.abs(Date.now() / 1000 - t) <= 300 && expected === v1;   // compare in constant time in production
+```
+
+Live (8 Oct 2026): the `boundline-app` partner has the built-in receiver registered for every event
+(`wh_0078c9cd-6ae3-4bd8-ac91-37f5e4710da1`); `GET /v1/webhooks/echo/boundline-demo-53a54f87681c` shows what it received
+and whether each signature verified.
+
+An event is attributed to the partner the line belongs to (this API's records, else the desk's `line()`), or named in
+the event (the vault's `partnerId`), or through the borrower's lines. Deliveries to this API's own host (the echo
+receiver) are dispatched to the app itself, because a Worker fetching its own workers.dev URL gets Cloudflare error 1042.
+
+## Saturday mode
+
+A partner policy option (plan M11), default off: `POST /v1/policy/versions` with
+`{"note": "…", "saturdayMode": {"enabled": true, "capacityFraction": 0.25, "haircutBps": 300}}`. It is an off-chain
+routing policy (nothing to sign), so a version that holds only routing changes is applied as it is prepared; in a
+version with desk calls it applies when the version is marked applied. `GET /v1/policy` shows it with the version that
+set it. `POST /v1/route` applies it only on venues that keep pricing around the clock at the held feed (the mainnet
+Morpho B20 markets, Aave V4): weekend draws at most `capacityFraction` (≤ 0.5) of the normal capacity at
+min(held feed, DEX TWAP) less `haircutBps`. Boundline's own SessionGuard markets stay closed whatever it says. A request
+can opt out with `saturdayMode: false`, never opt in past the policy.
+
 ## Quote hash
 
 `quoteHash = keccak256(canonicalJson({chainId, desk, request, response, blockNumber}))` where
@@ -114,14 +179,21 @@ The evidence export's `hash` uses the same canonical form over the whole bundle.
 ```sh
 cd /Users/farseen/boundline/apps/api
 pnpm exec wrangler d1 create boundline-api            # paste the id into wrangler.jsonc
-pnpm exec wrangler d1 migrations apply boundline-api --remote   # 0001 partners/idempotency/quotes/lines, 0002 policy_versions
+pnpm exec wrangler d1 migrations apply boundline-api --remote   # 0001 partners/idempotency/quotes/lines, 0002 policy_versions, 0003 route plans, settings, webhooks
 pnpm exec wrangler deploy
 ```
 
 Vars in `wrangler.jsonc`: `CHAIN_ID` (84532), `BASE_SEPOLIA_RPC_URL` (comma list, first wins),
 `CREDIT_DESK`, `MORPHO`, `SESSION_GATE`, optional `INDEXER_URL`, `MARKETS` (JSON array of
 `{symbol, collateral, marketId, preLiquidation?, protector?, targetLtvWad?}` from
-`deployments/base-sepolia.json`), and the `X402_*` vars above. No secrets are needed.
+`deployments/base-sepolia.json`), the `X402_*` vars above, `BASE_RPC_URL` (mainnet list for route rates),
+`DESK_PROTECTION_VAULT`, `PUBLIC_HOST`. Bindings: `DB`, `INDEXER`, `OBSERVATORY`. Cron `* * * * *` (webhooks). One
+optional secret: `ROUTE_SIGNER_KEY` (signs route plans' typed data, never a transaction); without it plans are unsigned.
+
+CPU: the Workers Free plan allows 10 ms per invocation. The app uses Hono's `PatternRouter` (the default SmartRouter
+compiles a regular expression for every route on the first request: 24–26 ms measured); `scripts/bench-cpu.ts` measures
+the route, a webhook delivery and the cron (8 Oct 2026: route 8.1 ms on the first request, 2–3 ms after; a delivery
+1–3 ms; the cron's poll under 1 ms).
 
 ## Partner keys
 
@@ -149,7 +221,7 @@ hot route.
 
 ```sh
 pnpm --filter @boundline/api typecheck
-pnpm --filter @boundline/api test      # 85 tests: auth, idempotency, rounding, fail-closed quotes, typed data, correlation ids, obligations, decisions, x402 (both generations, verify/settle, refusals never settled), shadow positions, policy versions, drills, reconciliation, evidence export, raw encoding, the D1 store over a D1-shaped fake
+pnpm --filter @boundline/api test      # 114 tests: auth, idempotency, rounding, fail-closed quotes, typed data, correlation ids, obligations, decisions, x402 (both generations, verify/settle, refusals never settled), shadow positions, policy versions, Saturday mode, route plans (Sepolia and mainnet, the hand-rolled EIP-712 digest against viem, signature recovery), webhooks (HMAC against Python's hmac, echo, retries and backoff, the indexer poll), drills, reconciliation, evidence export, raw encoding, the D1 stores over a D1-shaped fake and over node:sqlite with the real migrations
 ```
 
 Handlers take a `Store`, a `DeskReader` and a `Facilitator` interface, so the tests run without a
@@ -158,6 +230,5 @@ recording facilitator.
 
 ## Out of scope here
 
-Partner signing of `LineAuthorization` (the partner signs the returned digest with its own key) and
-webhooks. Obligations and decision history come from the indexer through the `INDEXER` service
+Partner signing of `LineAuthorization` (the partner signs the returned digest with its own key). Obligations and decision history come from the indexer through the `INDEXER` service
 binding (`INDEXER_URL` names the host); without it the API still answers from its own cache.

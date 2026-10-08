@@ -58,10 +58,102 @@ export interface PolicyView {
   policyVersion: number;
   partner: { admin: Address; signer: Address; eligibility: Address; active: boolean; exposureCap: string; exposure: string };
   tickers: TickerPolicyView[];
+  /** The off-chain routing policy (this API's D1, set by policy versions): no desk call applies it. */
+  saturdayMode: SaturdayModePolicy;
+}
+
+// ---------------------------------------------------------------- Saturday mode (off-chain routing policy)
+
+/**
+ * Saturday mode (plan M11): on venues that keep pricing around the clock at the held feed, weekend draws up to
+ * `capacityFraction` (at most half) of the normal capacity at min(held feed, DEX TWAP) less `haircutBps`. Default off.
+ * Boundline's own SessionGuard markets stay closed to draws whatever this says: their oracle refuses to price.
+ */
+export interface SaturdayModePolicy {
+  enabled: boolean;
+  /** Share of the normal capacity, in (0, 0.5], at basis-point granularity. */
+  capacityFraction: number;
+  haircutBps: number;
+}
+
+export const DEFAULT_SATURDAY_MODE: SaturdayModePolicy = { enabled: false, capacityFraction: 0.5, haircutBps: 300 };
+export const MAX_SATURDAY_FRACTION = 0.5;
+export const MAX_SATURDAY_HAIRCUT_BPS = 5_000;
+
+/** The stored JSON back to a policy; anything malformed falls back to the default (off). */
+export function parseSaturdayJson(json: string | null | undefined): SaturdayModePolicy {
+  if (!json) return { ...DEFAULT_SATURDAY_MODE };
+  try {
+    const r = JSON.parse(json) as Record<string, unknown>;
+    const out = { enabled: r.enabled === true, capacityFraction: Number(r.capacityFraction), haircutBps: Number(r.haircutBps) };
+    return validSaturday(out) ? out : { ...DEFAULT_SATURDAY_MODE };
+  } catch {
+    return { ...DEFAULT_SATURDAY_MODE };
+  }
+}
+
+function validSaturday(p: SaturdayModePolicy): boolean {
+  return (
+    typeof p.enabled === "boolean" &&
+    Number.isFinite(p.capacityFraction) &&
+    p.capacityFraction > 0 &&
+    p.capacityFraction <= MAX_SATURDAY_FRACTION &&
+    Number.isInteger(Math.round(p.capacityFraction * 10_000)) &&
+    Math.abs(p.capacityFraction * 10_000 - Math.round(p.capacityFraction * 10_000)) < 1e-9 &&
+    Number.isInteger(p.haircutBps) &&
+    p.haircutBps >= 0 &&
+    p.haircutBps <= MAX_SATURDAY_HAIRCUT_BPS
+  );
+}
+
+/** The fraction in basis points, as the router takes it. */
+export function saturdayFractionBps(p: SaturdayModePolicy): number {
+  return Math.round(p.capacityFraction * 10_000);
+}
+
+export interface SaturdayModeInput {
+  enabled: boolean;
+  capacityFraction?: number;
+  haircutBps?: number;
+}
+
+/** Validates `saturdayMode` in a version body; absent fields keep their current values at diff time. */
+export function parseSaturdayInput(raw: unknown): SaturdayModeInput | { error: string } {
+  if (!isRecord(raw)) return { error: "saturdayMode must be an object" };
+  if (typeof raw.enabled !== "boolean") return { error: "saturdayMode.enabled must be a boolean" };
+  const out: SaturdayModeInput = { enabled: raw.enabled };
+  if (raw.capacityFraction !== undefined) {
+    const f = raw.capacityFraction;
+    if (typeof f !== "number" || !Number.isFinite(f) || f <= 0 || f > MAX_SATURDAY_FRACTION || Math.abs(f * 10_000 - Math.round(f * 10_000)) > 1e-9) {
+      return { error: `saturdayMode.capacityFraction must be a number in (0, ${MAX_SATURDAY_FRACTION}] with at most four decimals` };
+    }
+    out.capacityFraction = f;
+  }
+  if (raw.haircutBps !== undefined) {
+    const h = raw.haircutBps;
+    if (typeof h !== "number" || !Number.isInteger(h) || h < 0 || h > MAX_SATURDAY_HAIRCUT_BPS) return { error: `saturdayMode.haircutBps must be an integer in [0, ${MAX_SATURDAY_HAIRCUT_BPS}]` };
+    out.haircutBps = h;
+  }
+  return out;
+}
+
+const SATURDAY_FIELDS = ["enabled", "capacityFraction", "haircutBps"] as const;
+
+/** Applies the routing changes of a version (their `after` values) over the current Saturday mode. */
+export function applyRoutingChanges(current: SaturdayModePolicy, changes: readonly unknown[]): SaturdayModePolicy {
+  const next: SaturdayModePolicy = { ...current };
+  for (const c of changes) {
+    if (!isRecord(c) || c.scope !== "routing" || typeof c.field !== "string") continue;
+    const field = c.field.replace(/^saturdayMode\./, "");
+    if (field === "enabled") next.enabled = c.after === true || c.after === "true";
+    else if (field === "capacityFraction") next.capacityFraction = Number(c.after);
+    else if (field === "haircutBps") next.haircutBps = Number(c.after);
+  }
+  return validSaturday(next) ? next : current;
 }
 
 /** The live policy: the partner record from the desk and one row per configured market. */
-export async function readPolicy(desk: DeskReader, partner: PartnerRecord, markets: readonly MarketConfig[]): Promise<PolicyView> {
+export async function readPolicy(desk: DeskReader, partner: PartnerRecord, markets: readonly MarketConfig[], saturdayMode: SaturdayModePolicy = DEFAULT_SATURDAY_MODE): Promise<PolicyView> {
   const p: DeskPartner = await desk.partner(partner.partnerId);
   const tickers = await Promise.all(
     markets.map(async (m) => {
@@ -75,6 +167,7 @@ export async function readPolicy(desk: DeskReader, partner: PartnerRecord, marke
     policyVersion: p.policyVersion,
     partner: { admin: p.admin, signer: p.signer, eligibility: p.eligibility, active: p.active, exposureCap: p.exposureCap.toString(), exposure: p.exposure.toString() },
     tickers,
+    saturdayMode: { ...saturdayMode },
   };
 }
 
@@ -115,10 +208,12 @@ export interface VersionInput {
   note: string;
   tickers: TickerInput[];
   partner: PartnerInput | null;
+  /** Off-chain routing policy: no call, applied with the version. */
+  saturdayMode: SaturdayModeInput | null;
 }
 
 export interface Change {
-  scope: "ticker" | "partner";
+  scope: "ticker" | "partner" | "routing";
   symbol?: string;
   collateral?: Address;
   field: string;
@@ -178,8 +273,14 @@ export function parseVersionInput(body: Record<string, unknown>, markets: readon
     if (typeof raw.active !== "boolean") return { error: "partner.active must be a boolean" };
     partner = { signer: getAddress(raw.signer), eligibility: getAddress(raw.eligibility), exposureCap, active: raw.active };
   }
-  if (tickers.length === 0 && !partner) return { error: "give tickers and/or partner to change" };
-  return { note, tickers, partner };
+  let saturdayMode: SaturdayModeInput | null = null;
+  if (body.saturdayMode !== undefined) {
+    const parsed = parseSaturdayInput(body.saturdayMode);
+    if ("error" in parsed) return { error: parsed.error };
+    saturdayMode = parsed;
+  }
+  if (tickers.length === 0 && !partner && !saturdayMode) return { error: "give tickers, partner and/or saturdayMode to change" };
+  return { note, tickers, partner, saturdayMode };
 }
 
 /** Field-level diff of the input against the live policy and the calls that apply it (one per changed ticker, one for the partner config). */
@@ -227,6 +328,20 @@ export function diffPolicy(desk: Address, current: PolicyView, input: VersionInp
         data: encodeFunctionData({ abi: creditDeskAbi, functionName: "setPartnerConfig", args: [current.partnerId, p.signer, p.eligibility, p.exposureCap, p.active] }),
         description: `setPartnerConfig: ${diffs.map(([f, b, a]) => `${f} ${String(b)} → ${String(a)}`).join(", ")}`,
       });
+    }
+  }
+  if (input.saturdayMode) {
+    // Off-chain: a routing change has no call; the API applies it with the version (at once when nothing else is in it).
+    const cur = current.saturdayMode;
+    const next: SaturdayModePolicy = {
+      enabled: input.saturdayMode.enabled,
+      capacityFraction: input.saturdayMode.capacityFraction ?? cur.capacityFraction,
+      haircutBps: input.saturdayMode.haircutBps ?? cur.haircutBps,
+    };
+    for (const field of SATURDAY_FIELDS) {
+      const before = field === "enabled" ? cur.enabled : String(cur[field]);
+      const after = field === "enabled" ? next.enabled : String(next[field]);
+      if (before !== after) changes.push({ scope: "routing", field: `saturdayMode.${field}`, before, after });
     }
   }
   return { changes, calls };

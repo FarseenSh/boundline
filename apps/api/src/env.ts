@@ -27,4 +27,14 @@ export interface Env {
   X402_PRICE_USDC?: string;
   /** Optional override of the EIP-3009 asset (defaults to USDC of the network). */
   X402_ASSET?: string;
+  /** Service binding to the Observatory: Base mainnet tokens and Morpho markets for `POST /v1/route` on chain 8453. */
+  OBSERVATORY?: Fetcher;
+  /** Comma-separated Base mainnet RPC list (IRM rates for mainnet routes). */
+  BASE_RPC_URL?: string;
+  /** The DeskProtectionVault: desk lines it can repay at any hour are routed with protection `vault`. */
+  DESK_PROTECTION_VAULT?: string;
+  /** The host this API answers on; webhook deliveries to it are dispatched to the app itself (error 1042 otherwise). */
+  PUBLIC_HOST?: string;
+  /** Secret: signs EIP-712 route plans (typed data only, never a transaction). Absent → plans are unsigned. */
+  ROUTE_SIGNER_KEY?: string;
 }

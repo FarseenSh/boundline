@@ -1,4 +1,5 @@
 import { Hono, type Context } from "hono";
+import { PatternRouter } from "hono/router/pattern-router";
 import type { ContentfulStatusCode } from "hono/utils/http-status";
 import { encodeFunctionData, getAddress, hexToString, isAddress, isHex, stringToHex, type Address, type Hex } from "viem";
 import { creditDeskAbi } from "./abi/creditDesk.js";
@@ -15,6 +16,28 @@ import { decodeSizing, encodeSizing, type Sizing } from "./raw.js";
 import { formatUsdc, parseBaseUnits, roundDownToCents, roundUpToCents } from "./rounding.js";
 import { lineAuthorizationDigest, lineAuthorizationTypedData, typedDataJson } from "./typed-data.js";
 import { x402Middleware, type Facilitator, type X402Config } from "./x402.js";
+import { CHAIN_MAINNET, CHAIN_SEPOLIA, effectiveSaturday, mainnetRoute, makePlan, parseRouteInput, sepoliaRoute, typedDataJson as routeTypedDataJson, type ResolvedRoute, type SepoliaRouteDeps } from "./route.js";
+import type { RouteSigner } from "./route-signer.js";
+import { applyRoutingChanges, DEFAULT_SATURDAY_MODE, parseSaturdayJson, type SaturdayModePolicy } from "./policy.js";
+import {
+  MAX_WEBHOOKS_PER_PARTNER,
+  POLL_SOURCES,
+  pollSource,
+  retryDue,
+  deliveryJson,
+  echoJson,
+  eventJson,
+  ingest,
+  newWebhookSecret,
+  parseWebhookBody,
+  receiveEcho,
+  validEchoToken,
+  webhookJson,
+  type IndexerGet,
+  type LineHead,
+  type WebhookRuntime,
+  type WebhookStore,
+} from "./webhooks.js";
 
 export interface AppDeps {
   store: Store;
@@ -31,6 +54,64 @@ export interface AppDeps {
   markets?: readonly MarketConfig[];
   /** x402 metering of the public routes for callers without a partner key; null or absent turns it off (401 as before). */
   x402?: { cfg: X402Config; facilitator: Facilitator } | null;
+  /** POST /v1/route: reads for Base Sepolia (desk, gate, Morpho) and Base mainnet (the Observatory); absent → 501. */
+  route?: { sepolia: SepoliaRouteDeps | null; mainnet: { observatory: (path: string) => Promise<unknown>; rpcs: readonly string[]; fetchImpl: typeof fetch } | null };
+  /** Signs route plans when the secret ROUTE_SIGNER_KEY exists; null → plans go out unsigned and say so. */
+  routeSigner?: RouteSigner | null;
+  /** Webhooks and the partner event log; absent → the webhook routes answer 501. */
+  webhookStore?: WebhookStore;
+  /** Hosts this API answers on: a delivery to one of them is dispatched to the app itself (a Worker fetching its own workers.dev URL gets Cloudflare error 1042). */
+  selfHosts?: readonly string[];
+  /** Outside webhook deliveries; defaults to the global fetch (an external service, never a binding). */
+  deliveryFetch?: typeof fetch;
+  /** The desk's line head for a line this API has not seen (webhook attribution, route plans for a line). */
+  readLine?: (lineId: bigint) => Promise<LineHead | null>;
+  /** Work after the response; the Worker passes ctx.waitUntil, tests collect the promises. */
+  defer?: (p: Promise<unknown>) => void;
+}
+
+/** Features `/health` advertises; the keeper binds the `Events` entrypoint only once "events-entrypoint" is listed. */
+export const FEATURES = ["route", "webhooks", "events-entrypoint", "saturday-mode"] as const;
+
+/** One GET against the indexer (service binding when bound); null when no indexer is configured. */
+export function makeIndexerGet(deps: Pick<AppDeps, "indexerUrl" | "fetchImpl">): IndexerGet {
+  const fetchImpl = deps.fetchImpl ?? fetch;
+  return async (path) => {
+    if (!deps.indexerUrl) return null;
+    const url = `${deps.indexerUrl.replace(/\/+$/, "")}${path}`;
+    try {
+      const res = await fetchImpl(url);
+      if (!res.ok) return { ok: false, status: res.status, detail: `indexer answered ${res.status}` };
+      return { ok: true, data: (await res.json()) as unknown };
+    } catch (err) {
+      return { ok: false, status: 0, detail: err instanceof Error ? err.message : String(err) };
+    }
+  };
+}
+
+/** The webhook engine over the app's deps; `appFetch` serves deliveries addressed to this API itself. */
+export function makeWebhookRuntime(deps: AppDeps, appFetch: (req: Request) => Promise<Response>, defer: (p: Promise<unknown>) => void): WebhookRuntime | null {
+  if (!deps.webhookStore) return null;
+  const selfHosts = new Set((deps.selfHosts ?? []).map((h) => h.toLowerCase()));
+  const outside = deps.deliveryFetch ?? ((input: RequestInfo | URL, init?: RequestInit) => fetch(input, init));
+  return {
+    store: deps.webhookStore,
+    lines: deps.store,
+    ...(deps.readLine ? { readLine: deps.readLine } : {}),
+    now: deps.now,
+    uuid: deps.uuid,
+    send: (url, init) => {
+      let host = "";
+      try {
+        host = new URL(url).host.toLowerCase();
+      } catch {
+        // an invalid URL fails in fetch below with a clear error
+      }
+      return selfHosts.has(host) ? appFetch(new Request(url, init)) : outside(url, init);
+    },
+    defer,
+    log: (line) => console.log(line),
+  };
 }
 
 type Vars = { correlationId: string; partner: PartnerRecord; metered: boolean };
@@ -51,6 +132,7 @@ const EXPORT_TIMELINE_EVENTS = 100;
 /** Routes metered by x402 when the caller has no partner key. */
 export function isMeteredRoute(method: string, path: string): boolean {
   if (method === "POST" && path === "/v1/quotes") return true;
+  if (method === "POST" && path === "/v1/route") return true;
   if (method === "GET" && /^\/v1\/positions\/0x[0-9a-fA-F]{40}\/shadow$/.test(path)) return true;
   return false;
 }
@@ -160,7 +242,10 @@ export function createApp(deps: AppDeps): Hono<{ Variables: Vars }> {
   const service = deps.serviceName ?? "boundline-api";
   const fetchImpl = deps.fetchImpl ?? fetch;
   const markets: readonly MarketConfig[] = deps.markets ?? [];
-  const app = new Hono<{ Variables: Vars }>();
+  // PatternRouter, not Hono's default SmartRouter: the default compiles one regular expression for every route on the
+  // first request, measured at 26 ms of CPU (scripts/bench-cpu.ts, 8 Oct 2026), which a cold isolate on the Workers Free
+  // plan (10 ms per invocation) cannot afford; PatternRouter's first match costs 0.2–0.3 ms and later ones are as fast.
+  const app = new Hono<{ Variables: Vars }>({ router: new PatternRouter() });
 
   const fail = (c: Ctx, status: number, error: string, extra: Record<string, unknown> = {}) =>
     c.json({ error, ...extra, correlationId: c.get("correlationId") }, status as ContentfulStatusCode);
@@ -177,10 +262,12 @@ export function createApp(deps: AppDeps): Hono<{ Variables: Vars }> {
     return c.json({ error: "internal error", detail: errorMessage(err), correlationId: c.get("correlationId") }, 500);
   });
 
-  app.get("/health", (c) => c.json({ ok: true, service }));
+  app.get("/health", (c) => c.json({ ok: true, service, features: FEATURES }));
 
   /** Partner keys authenticate; without one, a metered route runs the x402 flow and everything else is 401. */
   app.use("/v1/*", async (c, next) => {
+    // The built-in demo receiver is where webhook deliveries land: they carry a signature, not a partner key.
+    if (c.req.path.startsWith("/v1/webhooks/echo/")) return next();
     const header = c.req.header("authorization");
     if (!header) {
       if (deps.x402 && isMeteredRoute(c.req.method, c.req.path)) {
@@ -249,6 +336,23 @@ export function createApp(deps: AppDeps): Hono<{ Variables: Vars }> {
     const parsed = await readJsonBody(c);
     if (parsed.error || !parsed.body) return fail(c, 400, parsed.error ?? "bad body");
     return answer(c, await handler(parsed.body));
+  }
+
+  /** Partner POSTs where a replay key is useful but not required (route plans, webhook registration). */
+  function maybeIdempotent(c: Ctx, handler: (body: Record<string, unknown>) => Promise<Out>): Promise<Response> {
+    return c.req.header("idempotency-key")?.trim() ? idempotent(c, handler) : direct(c, handler);
+  }
+
+  /** ctx.waitUntil when the request has an execution context; the deps hook in tests. */
+  function deferFor(c: Ctx): (p: Promise<unknown>) => void {
+    if (deps.defer) return deps.defer;
+    return (p) => {
+      try {
+        c.executionCtx.waitUntil(p);
+      } catch {
+        void p;
+      }
+    };
   }
 
   // ------------------------------------------------------------------ lines
@@ -745,10 +849,25 @@ export function createApp(deps: AppDeps): Hono<{ Variables: Vars }> {
     };
   }
 
+  /** The partner's off-chain routing policy (Saturday mode) and the version that set it. */
+  async function saturdayOf(partnerId: Hex): Promise<{ policy: SaturdayModePolicy; versionId: string | null; updatedAt: number | null }> {
+    const row = await store.getPartnerSettings(partnerId);
+    return row ? { policy: parseSaturdayJson(row.saturdayJson), versionId: row.versionId, updatedAt: row.updatedAt } : { policy: { ...DEFAULT_SATURDAY_MODE }, versionId: null, updatedAt: null };
+  }
+
+  async function applyRouting(partnerId: Hex, changes: readonly unknown[], versionId: string): Promise<SaturdayModePolicy | null> {
+    if (!changes.some((x) => (x as { scope?: string })?.scope === "routing")) return null;
+    const current = (await saturdayOf(partnerId)).policy;
+    const next = applyRoutingChanges(current, changes);
+    await store.putPartnerSettings({ partnerId, saturdayJson: JSON.stringify(next), versionId, updatedAt: deps.now() });
+    return next;
+  }
+
   async function livePolicy(partner: PartnerRecord): Promise<{ ok: true; policy: PolicyView } | { ok: false; out: Out }> {
     if (!desk) return { ok: false, out: { status: 503, body: { error: "desk not deployed" } } };
     try {
-      return { ok: true, policy: await readPolicy(desk, partner, markets) };
+      const saturday = (await saturdayOf(partner.partnerId)).policy;
+      return { ok: true, policy: await readPolicy(desk, partner, markets, saturday) };
     } catch (err) {
       return { ok: false, out: { status: 502, body: { error: "desk read failed", detail: errorMessage(err) } } };
     }
@@ -758,8 +877,16 @@ export function createApp(deps: AppDeps): Hono<{ Variables: Vars }> {
     const partner = c.get("partner");
     const r = await livePolicy(partner);
     if (!r.ok) return answer(c, r.out);
+    const sat = await saturdayOf(partner.partnerId);
     c.header("X-Policy-Version", String(r.policy.policyVersion));
-    return c.json({ correlationId: c.get("correlationId"), chainId, desk: desk!.address, ...r.policy, readAt: deps.now() });
+    return c.json({
+      correlationId: c.get("correlationId"),
+      chainId,
+      desk: desk!.address,
+      ...r.policy,
+      saturdayModeSource: { scope: "off-chain routing policy (this API), applied by a policy version, no desk call", versionId: sat.versionId, updatedAt: sat.updatedAt },
+      readAt: deps.now(),
+    });
   });
 
   async function prepareVersion(partner: PartnerRecord, body: Record<string, unknown>): Promise<Out> {
@@ -770,20 +897,24 @@ export function createApp(deps: AppDeps): Hono<{ Variables: Vars }> {
     if (!r.ok) return r.out;
     const { changes, calls } = diffPolicy(desk.address, r.policy, input);
     if (changes.length === 0) return { status: 400, body: { error: "no changes against the current policy", policyVersion: r.policy.policyVersion } };
+    // A version with only off-chain (routing) changes has nothing to sign: it is applied as it is prepared.
+    const offchainOnly = calls.length === 0;
+    const now = deps.now();
     const record: PolicyVersionRecord = {
       id: deps.uuid(),
       partnerId: partner.partnerId,
-      status: "prepared",
+      status: offchainOnly ? "applied" : "prepared",
       note: input.note,
       changes,
       calls,
       policyVersionBefore: r.policy.policyVersion,
-      policyVersionAfter: null,
+      policyVersionAfter: offchainOnly ? r.policy.policyVersion : null,
       txHash: null,
-      createdAt: deps.now(),
-      appliedAt: null,
+      createdAt: now,
+      appliedAt: offchainOnly ? now : null,
     };
     await store.savePolicyVersion(record);
+    const saturdayMode = offchainOnly ? await applyRouting(partner.partnerId, changes, record.id) : null;
     return {
       status: 201,
       body: {
@@ -792,7 +923,9 @@ export function createApp(deps: AppDeps): Hono<{ Variables: Vars }> {
         desk: desk.address,
         version: policyVersionJson(record),
         admin: r.policy.partner.admin,
-        selfCustody: "the partner admin signs and sends these calls in order; the API never signs. Then POST /v1/policy/versions/{id}/applied with the transaction hash",
+        ...(offchainOnly
+          ? { appliedOffchain: true, saturdayMode, selfCustody: "off-chain routing policy only: nothing to sign, applied now (the desk's policy version is unchanged)" }
+          : { selfCustody: "the partner admin signs and sends these calls in order; the API never signs. Then POST /v1/policy/versions/{id}/applied with the transaction hash (routing changes in this version apply then)" }),
       },
     };
   }
@@ -832,8 +965,9 @@ export function createApp(deps: AppDeps): Hono<{ Variables: Vars }> {
     const now = deps.now();
     await store.markPolicyVersionApplied(partner.partnerId, id, current, body.txHash.toLowerCase(), now);
     await store.setPartnerPolicyVersion(partner.partnerId, current);
+    const saturdayMode = await applyRouting(partner.partnerId, v.changes, v.id);
     const updated = (await store.getPolicyVersion(partner.partnerId, id)) ?? { ...v, status: "applied" as const, policyVersionAfter: current, txHash: body.txHash.toLowerCase(), appliedAt: now };
-    return { status: 200, body: { policyVersion: current, version: policyVersionJson(updated) } };
+    return { status: 200, body: { policyVersion: current, version: policyVersionJson(updated), ...(saturdayMode ? { saturdayMode } : {}) } };
   }
 
   app.post("/v1/policy/versions/:id/applied", (c) => idempotent(c, (body) => markApplied(c.get("partner"), c.req.param("id"), body)));
@@ -893,7 +1027,7 @@ export function createApp(deps: AppDeps): Hono<{ Variables: Vars }> {
       obligations: { source, sourceNote, count: obligations.length, rows: obligations },
       decisions,
       reconciliation: rec.ok ? { reconcile: rec.reconcile, roots: rec.roots } : { error: rec.out.body.error ?? "unavailable" },
-      drills: listDrills(),
+      drills: listDrills({ full: true }),
     });
     const body = { ...bundle, correlationId: c.get("correlationId") };
     if (c.req.query("format") === "download") {
@@ -901,6 +1035,257 @@ export function createApp(deps: AppDeps): Hono<{ Variables: Vars }> {
     }
     c.header("cache-control", "no-store");
     return c.json(body);
+  });
+
+  // ------------------------------------------------------------------ route plans (plan M11)
+
+  app.get("/v1/whoami", (c) => {
+    const p = c.get("partner");
+    return c.json({ correlationId: c.get("correlationId"), partnerId: p.partnerId, name: p.name, policyVersion: p.policyVersion });
+  });
+
+  /** The partner a line belongs to: this API's records, else the desk; null when the desk does not know it. */
+  async function lineOwner(lineId: string): Promise<Hex | null> {
+    const known = await store.getLine(lineId);
+    if (known) return known.partnerId.toLowerCase() as Hex;
+    try {
+      const head = deps.readLine ? await deps.readLine(BigInt(lineId)) : desk ? await desk.line(BigInt(lineId)).then((l) => ({ partnerId: l.partnerId, user: l.user, marketId: l.marketId })) : null;
+      if (!head || /^0x0{64}$/.test(head.partnerId)) return null;
+      await store.rememberLine({ lineId, partnerId: head.partnerId.toLowerCase() as Hex, user: head.user, marketId: head.marketId, firstSeen: deps.now() });
+      return head.partnerId.toLowerCase() as Hex;
+    } catch {
+      return null;
+    }
+  }
+
+  async function routeFor(partner: PartnerRecord | null, body: Record<string, unknown>): Promise<Out> {
+    if (!deps.route) return { status: 501, body: { error: "not implemented", plan: "route reads are not configured on this Worker" } };
+    const input = parseRouteInput(body, toPartnerId);
+    if ("error" in input) return { status: 400, body: { error: input.error } };
+    if (partner && input.partnerId && input.partnerId !== partner.partnerId) return { status: 403, body: { error: "partnerId does not match the authenticated partner" } };
+    const notes: string[] = [];
+    let lineId: string | null = null;
+    if (input.lineId) {
+      if (!partner) notes.push("lineId ignored: a plan is stored on a line only for that line's partner (send the partner key)");
+      else {
+        if (input.chainId !== CHAIN_SEPOLIA) return { status: 400, body: { error: "a lineId names a desk line: route it on chainId 84532" } };
+        const owner = await lineOwner(input.lineId);
+        if (owner !== partner.partnerId) return { status: 404, body: { error: "unknown line", lineId: input.lineId } };
+        lineId = input.lineId;
+      }
+    }
+    let resolved: ResolvedRoute;
+    try {
+      if (input.chainId === CHAIN_SEPOLIA) {
+        if (!deps.route.sepolia) return { status: 501, body: { error: "not implemented", plan: "Base Sepolia route reads are not configured" } };
+        resolved = await sepoliaRoute(deps.route.sepolia, input, partner?.partnerId ?? input.partnerId);
+      } else {
+        if (!deps.route.mainnet) return { status: 501, body: { error: "not implemented", plan: "Base mainnet route reads (the Observatory binding) are not configured" } };
+        resolved = await mainnetRoute(deps.route.mainnet, input);
+      }
+    } catch (err) {
+      return { status: 502, body: { error: "route reads failed", detail: errorMessage(err) } };
+    }
+    const sat = partner ? (await saturdayOf(partner.partnerId)).policy : null;
+    const eff = effectiveSaturday(sat, input.saturdayMode);
+    const verifyingContract = input.chainId === CHAIN_SEPOLIA && desk ? desk.address : ZERO_ADDRESS;
+    const now = deps.now();
+    let planned: ReturnType<typeof makePlan>;
+    try {
+      planned = makePlan(input, resolved, eff.mode, input.chainId, verifyingContract, now);
+      // Capacity mode: plan again for exactly the capacity found, so the signed plan names a real amount.
+      if (input.amount === null && planned.plan.chosen) planned = makePlan({ ...input, amount: planned.plan.chosen.capacity }, resolved, eff.mode, input.chainId, verifyingContract, now);
+    } catch (err) {
+      return { status: 400, body: { error: errorMessage(err) } };
+    }
+    let signature: Hex | null = null;
+    let signer: string | null = null;
+    if (planned.typedData && deps.routeSigner) {
+      try {
+        ({ signature, signer } = await deps.routeSigner.sign(planned.typedData));
+      } catch (err) {
+        notes.push(`signing failed: ${errorMessage(err)}`);
+      }
+    }
+    const typedData = planned.typedData ? routeTypedDataJson(planned.typedData) : null;
+    await store.saveRoutePlan({
+      planHash: planned.planHash,
+      partnerId: partner?.partnerId ?? null,
+      lineId,
+      chainId: input.chainId,
+      planJson: planned.planJson,
+      typedDataJson: typedData ? canonicalJson(typedData) : null,
+      digest: planned.digest,
+      signature,
+      signer,
+      createdAt: now,
+    });
+    const policyVersion = resolved.deskPolicyVersion ?? partner?.policyVersion ?? null;
+    return {
+      status: 200,
+      body: {
+        chainId: input.chainId,
+        plan: JSON.parse(planned.planJson) as unknown,
+        planHash: planned.planHash,
+        planHashScheme: "keccak256(utf8(canonicalRoutePlan(plan)))",
+        digest: planned.digest,
+        typedData,
+        signature,
+        signer,
+        ...(signature ? {} : { note: planned.typedData ? "route signer not configured" : "no route: nothing to sign" }),
+        ...(policyVersion !== null ? { policyVersion } : {}),
+        policySource: resolved.policySource,
+        saturdayMode: { ...(sat ?? DEFAULT_SATURDAY_MODE), applied: eff.applied },
+        mode: input.amount === null ? "capacity" : "amount",
+        lineId,
+        stored: true,
+        blockNumber: resolved.blockNumber === null ? null : resolved.blockNumber.toString(),
+        candidates: resolved.candidates.length,
+        notes: [...notes, ...resolved.notes, ...(eff.note ? [eff.note] : [])],
+        authoritative: "the desk's quote at draw time decides; a route plan is advice with a hash",
+        metered: partner === null,
+      },
+    };
+  }
+
+  app.post("/v1/route", (c) => (c.get("metered") ? direct(c, (body) => routeFor(null, body)) : maybeIdempotent(c, (body) => routeFor(c.get("partner"), body))));
+
+  app.get("/v1/lines/:id/route", async (c) => {
+    const partner = c.get("partner");
+    const lineId = c.req.param("id");
+    if (!/^[1-9][0-9]{0,30}$/.test(lineId)) return fail(c, 400, "line id must be a positive integer");
+    const rec = await store.latestRoutePlanForLine(partner.partnerId, lineId);
+    if (!rec) return fail(c, 404, "no route plan stored for this line", { lineId, hint: "POST /v1/route with lineId" });
+    return c.json({
+      correlationId: c.get("correlationId"),
+      lineId,
+      chainId: rec.chainId,
+      planHash: rec.planHash,
+      plan: JSON.parse(rec.planJson) as unknown,
+      typedData: rec.typedDataJson ? (JSON.parse(rec.typedDataJson) as unknown) : null,
+      digest: rec.digest,
+      signature: rec.signature,
+      signer: rec.signer,
+      ...(rec.signature ? {} : { note: rec.typedDataJson ? "route signer not configured" : "no route: nothing to sign" }),
+      createdAt: rec.createdAt,
+    });
+  });
+
+  // ------------------------------------------------------------------ webhooks (plan M7)
+
+  const webhooksOf = (c: Ctx): WebhookRuntime | null => makeWebhookRuntime(deps, async (req) => app.fetch(req), deferFor(c));
+
+  // The demo receiver first: `echo` must never be read as a webhook id.
+  app.post("/v1/webhooks/echo/:token", async (c) => {
+    const rt = webhooksOf(c);
+    if (!rt) return fail(c, 501, "webhooks are not configured");
+    const token = c.req.param("token");
+    if (!validEchoToken(token)) return fail(c, 400, "token must be 8 to 64 characters of A-Z, a-z, 0-9, _ or -");
+    const rec = await receiveEcho(rt, token, await c.req.text(), c.req.raw.headers);
+    return c.json({ correlationId: c.get("correlationId"), received: rec.stored, signatureValid: rec.signatureValid, verification: rec.verification });
+  });
+
+  app.get("/v1/webhooks/echo/:token", async (c) => {
+    if (!deps.webhookStore) return fail(c, 501, "webhooks are not configured");
+    const token = c.req.param("token");
+    if (!validEchoToken(token)) return fail(c, 400, "token must be 8 to 64 characters of A-Z, a-z, 0-9, _ or -");
+    const rows = await deps.webhookStore.listEcho(token, 20);
+    c.header("cache-control", "no-store");
+    return c.json({ correlationId: c.get("correlationId"), token, count: rows.length, deliveries: rows.map(echoJson) });
+  });
+
+  async function createWebhook(partner: PartnerRecord, body: Record<string, unknown>): Promise<Out> {
+    if (!deps.webhookStore) return { status: 501, body: { error: "webhooks are not configured" } };
+    const parsed = parseWebhookBody(body);
+    if ("error" in parsed) return { status: 400, body: { error: parsed.error } };
+    // On this API's own host only the echo receiver may be addressed (deliveries there are dispatched internally).
+    const target = new URL(parsed.url);
+    if ((deps.selfHosts ?? []).some((h) => h.toLowerCase() === target.host.toLowerCase()) && !/^\/v1\/webhooks\/echo\/[A-Za-z0-9_-]{8,64}$/.test(target.pathname)) {
+      return { status: 400, body: { error: "on this API's own host a webhook may only address the echo receiver /v1/webhooks/echo/:token" } };
+    }
+    if ((await deps.webhookStore.countWebhooks(partner.partnerId)) >= MAX_WEBHOOKS_PER_PARTNER) {
+      return { status: 409, body: { error: `at most ${MAX_WEBHOOKS_PER_PARTNER} webhooks per partner; delete one first` } };
+    }
+    const rec = { id: `wh_${deps.uuid()}`, partnerId: partner.partnerId, url: parsed.url, events: parsed.events, description: parsed.description, secret: newWebhookSecret(), active: true, createdAt: deps.now() };
+    await deps.webhookStore.createWebhook(rec);
+    return {
+      status: 201,
+      body: {
+        ...webhookJson(rec, null),
+        secret: rec.secret,
+        signing: { header: "Boundline-Signature", scheme: "t=<unix>,v1=<hex HMAC-SHA256(secret, t + \".\" + raw body)>", toleranceSeconds: 300, note: "the secret is shown once" },
+      },
+    };
+  }
+
+  app.post("/v1/webhooks", (c) => maybeIdempotent(c, (body) => createWebhook(c.get("partner"), body)));
+
+  app.get("/v1/webhooks", async (c) => {
+    if (!deps.webhookStore) return fail(c, 501, "webhooks are not configured");
+    const ws = deps.webhookStore;
+    const hooks = await ws.listWebhooks(c.get("partner").partnerId);
+    const rows = await Promise.all(hooks.map(async (w) => webhookJson(w, await ws.lastDelivery(w.id))));
+    return c.json({ correlationId: c.get("correlationId"), count: rows.length, webhooks: rows });
+  });
+
+  async function deleteWebhook(c: Ctx): Promise<Response> {
+    if (!deps.webhookStore) return fail(c, 501, "webhooks are not configured");
+    const removed = await deps.webhookStore.deactivateWebhook(c.get("partner").partnerId, c.req.param("id") ?? "");
+    if (!removed) return fail(c, 404, "unknown webhook");
+    return c.body(null, 204);
+  }
+
+  app.delete("/v1/webhooks/:id", (c) => deleteWebhook(c));
+  // For proxies that only pass GET and POST (the app and console Workers).
+  app.post("/v1/webhooks/:id/delete", (c) => deleteWebhook(c));
+
+  app.post("/v1/webhooks/:id/test", async (c) => {
+    const rt = webhooksOf(c);
+    if (!rt) return fail(c, 501, "webhooks are not configured");
+    const partner = c.get("partner");
+    const w = await rt.store.getWebhook(c.req.param("id"));
+    if (!w || !w.active || w.partnerId !== partner.partnerId) return fail(c, 404, "unknown webhook");
+    const now = deps.now();
+    const r = await ingest(rt, {
+      type: "ping",
+      chainId,
+      at: now,
+      source: "api",
+      partnerId: partner.partnerId,
+      data: { message: "Boundline webhook test", webhookId: w.id },
+      dedupeKey: `ping:${w.id}:${deps.uuid()}`,
+      onlyWebhookId: w.id,
+    });
+    return c.json({ correlationId: c.get("correlationId"), deliveryId: r.deliveryIds[0] ?? null, eventId: r.id }, 202);
+  });
+
+  /** One bounded tick on demand (the cron's work: both indexer sources, then up to two due deliveries). Idempotent. */
+  app.post("/v1/webhooks/poll", async (c) => {
+    const rt = webhooksOf(c);
+    if (!rt) return fail(c, 501, "webhooks are not configured");
+    const get = makeIndexerGet(deps);
+    const polls = [];
+    for (const source of POLL_SOURCES) polls.push(await pollSource(rt, source, chainId, get));
+    const retries = await retryDue(rt, 2);
+    return c.json({ correlationId: c.get("correlationId"), polls, retries });
+  });
+
+  app.get("/v1/webhooks/:id/deliveries", async (c) => {
+    if (!deps.webhookStore) return fail(c, 501, "webhooks are not configured");
+    const w = await deps.webhookStore.getWebhook(c.req.param("id"));
+    if (!w || w.partnerId !== c.get("partner").partnerId) return fail(c, 404, "unknown webhook");
+    const limitRaw = Number(c.req.query("limit") ?? "50");
+    const limit = Number.isInteger(limitRaw) ? Math.min(Math.max(limitRaw, 1), 200) : 50;
+    const rows = await deps.webhookStore.listDeliveries(w.id, limit);
+    return c.json({ correlationId: c.get("correlationId"), webhookId: w.id, count: rows.length, deliveries: rows.map(deliveryJson) });
+  });
+
+  app.get("/v1/events", async (c) => {
+    if (!deps.webhookStore) return fail(c, 501, "webhooks are not configured");
+    const limitRaw = Number(c.req.query("limit") ?? "50");
+    const limit = Number.isInteger(limitRaw) ? Math.min(Math.max(limitRaw, 1), 200) : 50;
+    const rows = await deps.webhookStore.listEvents(c.get("partner").partnerId, limit);
+    return c.json({ correlationId: c.get("correlationId"), count: rows.length, events: rows.map(eventJson) });
   });
 
   return app;

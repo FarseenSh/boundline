@@ -11,20 +11,22 @@ describe("drills registry", () => {
     const { app } = await world();
     const { res, json } = await call(app, "GET", "/v1/drills");
     expect(res.status).toBe(200);
-    expect(json.count).toBe(11);
+    expect(json.count).toBe(12);
     expect(json.drills.map((d: { id: string }) => d.id)).toEqual([
       "weekend-gap", "stale-feed", "registry-pause", "issuer-transfer-pause", "scheduled-multiplier", "ineligible-receiver",
-      "venue-halt", "partial-repayment", "bad-debt-probe", "protection", "validity-transactions",
+      "venue-halt", "keeper-hold", "partial-repayment", "bad-debt-probe", "protection", "validity-transactions",
     ]);
     for (const d of json.drills as { steps: { n: number }[]; runs: unknown[] }[]) {
       expect(d.steps.map((s) => s.n)).toEqual(d.steps.map((_, i) => i + 1));
       expect(Array.isArray(d.runs)).toBe(true);
     }
     const protection = json.drills.find((d: { id: string }) => d.id === "protection");
-    expect(protection.runs).toHaveLength(1);
+    // 6 Oct had two automatic protections (0x982c7327…, then 0x6d45ddc9… found in the 8 Oct cross-check): at least the first is recorded.
+    expect(protection.runs.length).toBeGreaterThanOrEqual(1);
     expect(protection.runs[0].txs.map((t: { hash: string }) => t.hash)).toContain(KEEPER_ACTION);
     expect(protection.runs[0].chainId).toBe(84532);
-    expect(json.drills.find((d: { id: string }) => d.id === "stale-feed").runs).toEqual([]);
+    // 8 Oct: every drill has at least one recorded run (Sepolia drills and the two mainnet-fork drills)
+    for (const d of json.drills as { id: string; runs: unknown[] }[]) expect(d.runs.length, d.id).toBeGreaterThanOrEqual(1);
     expect(json.drills.find((d: { id: string }) => d.id === "validity-transactions").runs).toHaveLength(2);
     expect(json.drills.find((d: { id: string }) => d.id === "weekend-gap").runs.map((r: { chainId: number }) => r.chainId)).toEqual([84532, 8453]);
   });
@@ -86,6 +88,28 @@ describe("GET /v1/reconciliation", () => {
   });
 });
 
+describe("drill list view", () => {
+  it("summarises the fork runs' large fields in the list and keeps every run whole on /v1/drills/:id", async () => {
+    const { app } = await world();
+    const list = await call(app, "GET", "/v1/drills");
+    const probe = list.json.drills.find((d: { id: string }) => d.id === "bad-debt-probe").runs[0];
+    expect(probe.trimmedFields).toEqual({ fields: expect.arrayContaining(["ledger", "assertions", "values"]), full: "/v1/drills/bad-debt-probe" });
+    expect(probe.assertions).toMatchObject({ trimmed: true, count: expect.any(Number), passed: expect.any(Number) });
+    expect(probe.assertions.passed).toBe(probe.assertions.count);
+    expect(probe.ledger).toMatchObject({ trimmed: true, pass: true });
+    expect(probe.outcome).toMatch(/bad debt/);
+    expect(JSON.stringify(list.json).length).toBeLessThan(80_000);
+    const one = await call(app, "GET", "/v1/drills/bad-debt-probe");
+    expect(Array.isArray(one.json.drill.runs[0].assertions)).toBe(true);
+    expect(Array.isArray(one.json.drill.runs[0].values)).toBe(true);
+    expect(one.json.drill.runs[0].trimmedFields).toBeUndefined();
+    // small Sepolia runs pass through untouched
+    const hold = list.json.drills.find((d: { id: string }) => d.id === "keeper-hold").runs[0];
+    expect(hold.trimmedFields).toBeUndefined();
+    expect(Array.isArray(hold.observations)).toBe(true);
+  });
+});
+
 describe("GET /v1/evidence/export", () => {
   it("bundles policy, obligations, decisions, reconciliation and drills under a reproducible hash", async () => {
     const seen: string[] = [];
@@ -103,7 +127,7 @@ describe("GET /v1/evidence/export", () => {
     expect(json.decisions[0].timeline[0].event).toBe("LineOpened");
     expect(json.reconciliation.reconcile.status).toBe("PASS");
     expect(json.reconciliation.roots.roots).toHaveLength(1);
-    expect(json.drills).toHaveLength(11);
+    expect(json.drills).toHaveLength(12);
     expect(json.hash).toMatch(/^0x[0-9a-f]{64}$/);
     expect(json.hashScheme).toMatch(/keccak256/);
     // Anyone can recompute: the hash covers everything except itself and the correlation id.

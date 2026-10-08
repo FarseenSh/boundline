@@ -134,7 +134,7 @@ export function makeDesk(over: Partial<DeskReader> = {}): DeskReader {
 
 /** In-memory D1 that understands exactly the statements in SQL. */
 export function fakeD1(): Db & { tables: Record<string, Record<string, unknown>[]> } {
-  const tables: Record<string, Record<string, unknown>[]> = { partners: [], idempotency: [], quotes: [], lines: [], policy_versions: [] };
+  const tables: Record<string, Record<string, unknown>[]> = { partners: [], idempotency: [], quotes: [], lines: [], policy_versions: [], route_plans: [], partner_settings: [] };
   const t = (name: string) => tables[name] as Record<string, unknown>[];
   const byRecency = (x: Record<string, unknown>, y: Record<string, unknown>) =>
     Number(y.first_seen) - Number(x.first_seen) || Number(BigInt(y.line_id as string) - BigInt(x.line_id as string));
@@ -180,6 +180,24 @@ export function fakeD1(): Db & { tables: Record<string, Record<string, unknown>[
         for (const r of t("policy_versions")) {
           if (r.partner_id === a[0] && r.id === a[1]) Object.assign(r, { status: "applied", policy_version_after: a[2], tx_hash: a[3], applied_at: a[4] });
         }
+        return [];
+      case SQL.GET_LINE:
+        return t("lines").filter((r) => r.line_id === a[0]);
+      case SQL.SAVE_ROUTE_PLAN:
+        if (!t("route_plans").some((r) => r.plan_hash === a[0])) {
+          t("route_plans").push({ plan_hash: a[0], partner_id: a[1], line_id: a[2], chain_id: a[3], plan_json: a[4], typed_data_json: a[5], digest: a[6], signature: a[7], signer: a[8], created_at: a[9] });
+        }
+        return [];
+      case SQL.LATEST_ROUTE_PLAN_FOR_LINE:
+        return t("route_plans")
+          .filter((r) => r.partner_id === a[0] && r.line_id === a[1])
+          .sort((x, y) => Number(y.created_at) - Number(x.created_at) || (String(y.plan_hash) > String(x.plan_hash) ? 1 : -1))
+          .slice(0, 1);
+      case SQL.GET_PARTNER_SETTINGS:
+        return t("partner_settings").filter((r) => r.partner_id === a[0]);
+      case SQL.PUT_PARTNER_SETTINGS:
+        tables.partner_settings = t("partner_settings").filter((r) => r.partner_id !== a[0]);
+        t("partner_settings").push({ partner_id: a[0], saturday_json: a[1], version_id: a[2], updated_at: a[3] });
         return [];
       default:
         throw new Error(`fakeD1: unexpected SQL ${sql}`);

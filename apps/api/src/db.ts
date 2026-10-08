@@ -37,6 +37,28 @@ export interface LineRecord {
   firstSeen: number;
 }
 
+/** A route plan the API produced (POST /v1/route); JSON fields are stored as canonical text. */
+export interface RoutePlanRecord {
+  planHash: Hex;
+  partnerId: Hex | null;
+  lineId: string | null;
+  chainId: number;
+  planJson: string;
+  typedDataJson: string | null;
+  digest: Hex | null;
+  signature: Hex | null;
+  signer: string | null;
+  createdAt: number;
+}
+
+/** The partner's off-chain routing policy (Saturday mode), set by a policy version. */
+export interface PartnerSettingsRecord {
+  partnerId: Hex;
+  saturdayJson: string;
+  versionId: string | null;
+  updatedAt: number;
+}
+
 export type PolicyVersionStatus = "prepared" | "applied";
 
 export interface PolicyVersionRecord {
@@ -69,6 +91,13 @@ export interface Store {
   getPolicyVersion(partnerId: Hex, id: string): Promise<PolicyVersionRecord | null>;
   listPolicyVersions(partnerId: Hex, limit: number): Promise<PolicyVersionRecord[]>;
   markPolicyVersionApplied(partnerId: Hex, id: string, policyVersionAfter: number, txHash: string, appliedAt: number): Promise<void>;
+  /** One line this API has seen, by id. */
+  getLine(lineId: string): Promise<LineRecord | null>;
+  saveRoutePlan(record: RoutePlanRecord): Promise<void>;
+  /** The newest plan stored for a line of this partner. */
+  latestRoutePlanForLine(partnerId: Hex, lineId: string): Promise<RoutePlanRecord | null>;
+  getPartnerSettings(partnerId: Hex): Promise<PartnerSettingsRecord | null>;
+  putPartnerSettings(record: PartnerSettingsRecord): Promise<void>;
 }
 
 /** The slice of D1Database the store uses; a fake with the same shape serves the tests. */
@@ -106,6 +135,14 @@ export const SQL = {
     "SELECT id, partner_id, status, note, changes_json, calls_json, policy_version_before, policy_version_after, tx_hash, created_at, applied_at FROM policy_versions WHERE partner_id = ?1 ORDER BY created_at DESC, id DESC LIMIT ?2",
   MARK_POLICY_VERSION_APPLIED:
     "UPDATE policy_versions SET status = 'applied', policy_version_after = ?3, tx_hash = ?4, applied_at = ?5 WHERE partner_id = ?1 AND id = ?2",
+  GET_LINE: "SELECT line_id, partner_id, user, market_id, first_seen FROM lines WHERE line_id = ?1",
+  SAVE_ROUTE_PLAN:
+    "INSERT OR IGNORE INTO route_plans (plan_hash, partner_id, line_id, chain_id, plan_json, typed_data_json, digest, signature, signer, created_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
+  LATEST_ROUTE_PLAN_FOR_LINE:
+    "SELECT plan_hash, partner_id, line_id, chain_id, plan_json, typed_data_json, digest, signature, signer, created_at FROM route_plans WHERE partner_id = ?1 AND line_id = ?2 ORDER BY created_at DESC, plan_hash DESC LIMIT 1",
+  GET_PARTNER_SETTINGS: "SELECT partner_id, saturday_json, version_id, updated_at FROM partner_settings WHERE partner_id = ?1",
+  PUT_PARTNER_SETTINGS:
+    "INSERT OR REPLACE INTO partner_settings (partner_id, saturday_json, version_id, updated_at) VALUES (?1, ?2, ?3, ?4)",
 } as const;
 
 interface PartnerRow { partner_id: string; name: string; api_key_hash: string; policy_version: number; created_at: number }
@@ -123,6 +160,35 @@ interface PolicyVersionRow {
   tx_hash: string | null;
   created_at: number;
   applied_at: number | null;
+}
+
+interface RoutePlanRow {
+  plan_hash: string;
+  partner_id: string | null;
+  line_id: string | null;
+  chain_id: number;
+  plan_json: string;
+  typed_data_json: string | null;
+  digest: string | null;
+  signature: string | null;
+  signer: string | null;
+  created_at: number;
+}
+interface PartnerSettingsRow { partner_id: string; saturday_json: string; version_id: string | null; updated_at: number }
+
+function routePlanOf(row: RoutePlanRow): RoutePlanRecord {
+  return {
+    planHash: row.plan_hash as Hex,
+    partnerId: (row.partner_id ?? null) as Hex | null,
+    lineId: row.line_id === null || row.line_id === undefined ? null : String(row.line_id),
+    chainId: Number(row.chain_id),
+    planJson: row.plan_json,
+    typedDataJson: row.typed_data_json ?? null,
+    digest: (row.digest ?? null) as Hex | null,
+    signature: (row.signature ?? null) as Hex | null,
+    signer: row.signer ?? null,
+    createdAt: Number(row.created_at),
+  };
 }
 
 function lineOf(row: LineRow): LineRecord {
@@ -197,6 +263,27 @@ export function createD1Store(db: Db): Store {
     async markPolicyVersionApplied(partnerId, id, policyVersionAfter, txHash, appliedAt) {
       await db.prepare(SQL.MARK_POLICY_VERSION_APPLIED).bind(partnerId, id, policyVersionAfter, txHash, appliedAt).run();
     },
+    async getLine(lineId) {
+      const row = await db.prepare(SQL.GET_LINE).bind(lineId).first<LineRow>();
+      return row ? lineOf(row) : null;
+    },
+    async saveRoutePlan(r) {
+      await db
+        .prepare(SQL.SAVE_ROUTE_PLAN)
+        .bind(r.planHash, r.partnerId, r.lineId, r.chainId, r.planJson, r.typedDataJson, r.digest, r.signature, r.signer, r.createdAt)
+        .run();
+    },
+    async latestRoutePlanForLine(partnerId, lineId) {
+      const row = await db.prepare(SQL.LATEST_ROUTE_PLAN_FOR_LINE).bind(partnerId, lineId).first<RoutePlanRow>();
+      return row ? routePlanOf(row) : null;
+    },
+    async getPartnerSettings(partnerId) {
+      const row = await db.prepare(SQL.GET_PARTNER_SETTINGS).bind(partnerId).first<PartnerSettingsRow>();
+      return row ? { partnerId: row.partner_id as Hex, saturdayJson: row.saturday_json, versionId: row.version_id ?? null, updatedAt: Number(row.updated_at) } : null;
+    },
+    async putPartnerSettings(r) {
+      await db.prepare(SQL.PUT_PARTNER_SETTINGS).bind(r.partnerId, r.saturdayJson, r.versionId, r.updatedAt).run();
+    },
   };
 }
 
@@ -207,12 +294,16 @@ export function createMemoryStore(): Store & {
   quotes: Map<string, QuoteRecord>;
   lines: Map<string, LineRecord>;
   policyVersions: Map<string, PolicyVersionRecord>;
+  routePlans: Map<string, RoutePlanRecord>;
+  settings: Map<string, PartnerSettingsRecord>;
 } {
   const partners: PartnerRecord[] = [];
   const idempotency = new Map<string, IdempotencyRecord>();
   const quotes = new Map<string, QuoteRecord>();
   const lines = new Map<string, LineRecord>();
   const policyVersions = new Map<string, PolicyVersionRecord>();
+  const routePlans = new Map<string, RoutePlanRecord>();
+  const settings = new Map<string, PartnerSettingsRecord>();
   const byRecency = (a: LineRecord, b: LineRecord) => b.firstSeen - a.firstSeen || Number(BigInt(b.lineId) - BigInt(a.lineId));
   return {
     partners,
@@ -220,6 +311,8 @@ export function createMemoryStore(): Store & {
     quotes,
     lines,
     policyVersions,
+    routePlans,
+    settings,
     async findPartnerByKeyHash(hash) {
       return partners.find((p) => p.apiKeyHash === hash) ?? null;
     },
@@ -262,6 +355,26 @@ export function createMemoryStore(): Store & {
     async markPolicyVersionApplied(partnerId, id, policyVersionAfter, txHash, appliedAt) {
       const r = policyVersions.get(`${partnerId}:${id}`);
       if (r) Object.assign(r, { status: "applied", policyVersionAfter, txHash, appliedAt });
+    },
+    async getLine(lineId) {
+      const l = lines.get(lineId);
+      return l ? { ...l } : null;
+    },
+    async saveRoutePlan(r) {
+      if (!routePlans.has(r.planHash)) routePlans.set(r.planHash, { ...r });
+    },
+    async latestRoutePlanForLine(partnerId, lineId) {
+      const rows = [...routePlans.values()]
+        .filter((p) => p.partnerId === partnerId && p.lineId === lineId)
+        .sort((a, b) => b.createdAt - a.createdAt || (b.planHash > a.planHash ? 1 : -1));
+      return rows[0] ? { ...rows[0] } : null;
+    },
+    async getPartnerSettings(partnerId) {
+      const r = settings.get(partnerId);
+      return r ? { ...r } : null;
+    },
+    async putPartnerSettings(r) {
+      settings.set(r.partnerId, { ...r });
     },
   };
 }
