@@ -4,6 +4,7 @@ import type { LivenessTransition } from "./capture.js";
 import { escapeHtml, fmtAge, fmtBps, fmtEt, fmtUsd } from "./format.js";
 import type { GapsPanel, WeekendGap } from "./gaps.js";
 import type { PositionRow } from "./positions.js";
+import type { SeizeWatchBody } from "./seize.js";
 import type { Snapshot, TokenRow } from "./snapshot.js";
 import type { CaptureRunRecord } from "./stores.js";
 
@@ -34,6 +35,8 @@ export interface PageExtras {
   gaps?: GapsPanel | null;
   /** The nightly assurance run from KV, or the reason there is none to show. */
   assurance?: AssuranceStatus | null;
+  /** The seize watch from the indexer (cached in KV). */
+  seize?: SeizeWatchBody | null;
 }
 
 function sessionTag(s: string, live: boolean): string {
@@ -144,7 +147,8 @@ ${gapsPanel(extras.gaps ?? null)}
 ${positionsPanel(extras.positions)}
 ${aavePanel(extras.aave ?? null)}
 ${assurancePanel(extras.assurance ?? null)}
-<footer>Calendar: ${escapeHtml(s.session.calendarSource)} · JSON: <a href="/v1/tokens">/v1/tokens</a> · <a href="/v1/sessions">/v1/sessions</a> · <a href="/v1/captures">/v1/captures</a> · <a href="/v1/gaps">/v1/gaps</a> · <a href="/v1/positions">/v1/positions</a> · <a href="/v1/venues/morpho/markets">/v1/venues/morpho/markets</a> · <a href="/v1/venues/aave/positions">/v1/venues/aave/positions</a> · <a href="/v1/assurance">/v1/assurance</a> · MIT, public good.</footer>
+${seizePanel(extras.seize ?? null)}
+<footer>Calendar: ${escapeHtml(s.session.calendarSource)} · JSON: <a href="/v1/tokens">/v1/tokens</a> · <a href="/v1/sessions">/v1/sessions</a> · <a href="/v1/captures">/v1/captures</a> · <a href="/v1/gaps">/v1/gaps</a> · <a href="/v1/positions">/v1/positions</a> · <a href="/v1/venues/morpho/markets">/v1/venues/morpho/markets</a> · <a href="/v1/venues/aave/positions">/v1/venues/aave/positions</a> · <a href="/v1/assurance">/v1/assurance</a> · <a href="/v1/seize-watch">/v1/seize-watch</a> · MIT, public good.</footer>
 </body></html>`;
 }
 
@@ -232,6 +236,37 @@ export function assurancePanel(a: AssuranceStatus | null): string {
   return `${head}<div class="panel"><p>${verdict} ran ${escapeHtml(fmtEt(r.ranAt, true))} · fork block ${r.forkBlock} (${escapeHtml(fmtEt(r.forkBlockTime))}) · ${r.summary.positions} position${r.summary.positions === 1 ? "" : "s"} × ${r.summary.scenarios} scenario${r.summary.scenarios === 1 ? "" : "s"} · raw venue liquidatable in ${r.summary.rawLiquidatable}, with Boundline ${r.summary.boundlineLiquidatable}.</p>
 <p class="mute">Evidence <code>${escapeHtml(r.evidenceHash)}</code> · ${escapeHtml(r.artifact)}</p>
 <div class="wrap"><table><thead><tr><th>Scenario</th><th>Venue</th><th>Position</th><th>Collateral</th><th>Debt (USDC)</th><th>Raw HF at reopen</th><th>Raw venue</th><th>Boundline action</th><th>HF after</th><th>With Boundline</th></tr></thead><tbody>
+${rows}
+</tbody></table></div></div>`;
+}
+
+// ---------------------------------------------------------------- seize watch
+
+function verdictTag(v: string): string {
+  if (v === "NO_SEIZE_ROLE") return `<span class="tag ok">no seize role</span>`;
+  if (v === "SEIZE_ROLE_REVOKED") return `<span class="tag warn">role revoked</span>`;
+  return `<span class="tag bad">${escapeHtml(v.toLowerCase().replaceAll("_", " "))}</span>`;
+}
+
+export function seizePanel(w: SeizeWatchBody | null): string {
+  const head = `<h2>Seize watch</h2>`;
+  if (w === null) return `${head}<div class="panel"><p class="mute">Seize watch not available yet (the indexer answers it; refreshed every 30 minutes).</p></div>`;
+  const rows = w.tokens
+    .map((t) => {
+      const venues = t.venues === null ? `<span class="mute">not read</span>` : t.venues.every((v) => v.exempt === true) ? `<span class="tag ok">all ${t.venues.length} exempt</span>` : t.venues.filter((v) => v.exempt === false).map((v) => `<span class="tag bad">${escapeHtml(v.name)} seizable</span>`).join(" ") || `<span class="mute">unknown</span>`;
+      const last = t.seizeExemptPolicy.updates[t.seizeExemptPolicy.updates.length - 1];
+      const since = last ? `${escapeHtml(fmtEt(last.time))} <span class="mute">(${last.old} → ${last.new})</span>` : `<span class="mute">unset</span>`;
+      return `<tr><td><b>${escapeHtml(t.symbol)}</b></td><td>${verdictTag(t.verdict)}</td><td>${t.seizeRole.holders.length}</td><td>${t.seizeExemptPolicy.live === null ? "—" : t.seizeExemptPolicy.live}</td><td class="mute">${since}</td><td>${t.seizeReceiverPolicy.live === null ? "—" : t.seizeReceiverPolicy.live === 0 ? `<span class="mute">0 (any)</span>` : t.seizeReceiverPolicy.live}</td><td>${t.seized}</td><td>${venues}</td></tr>`;
+    })
+    .join("\n");
+  const changes = w.policyChanges.length
+    ? `<p class="mute">Exemption-policy changes: ${w.policyChanges.map((c) => `policy ${c.policyId} ${escapeHtml(c.event)} ${c.accounts.length} account${c.accounts.length === 1 ? "" : "s"} at block ${c.block} (${escapeHtml(fmtEt(c.time))})`).join("; ")}.</p>`
+    : "";
+  const live = w.live.block === null ? `live read unavailable (${escapeHtml(w.live.error ?? "unknown")})` : `live at block ${w.live.block}`;
+  return `${head}<div class="panel"><p>${escapeHtml(w.summary.statement)}</p>
+<p class="mute">A B20 issuer with SEIZE_ROLE can move tokens out of any account its SEIZE_EXEMPT_POLICY does not authorise; a seize from a venue pool would take every borrower's collateral at once. History scanned from each stock's creation (block ${w.coverage.baseline.from}) through block ${w.coverage.baseline.to}${w.coverage.tokenEvents ? `, indexed events through block ${w.coverage.tokenEvents.to}` : ""}; ${live}.</p>
+${changes}
+<div class="wrap"><table><thead><tr><th>Token</th><th>Verdict</th><th>Seize role holders</th><th>Exemption policy</th><th>Set (ET)</th><th>Seize receiver policy</th><th>Seized</th><th>Venue pools</th></tr></thead><tbody>
 ${rows}
 </tbody></table></div></div>`;
 }

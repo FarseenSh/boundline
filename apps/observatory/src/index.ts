@@ -10,6 +10,7 @@ import { findLivenessTransitions } from "./capture.js";
 import { appendSnapshot } from "./d1.js";
 import { logsRpcUrl, rpcUrl, type Env } from "./env.js";
 import { GAPS_REFRESH_MINUTES, GAPS_TTL_SECONDS, KV_GAPS, ROUNDS_PER_SYMBOL, buildGapsPanel, type GapsPanel, type IndexerRoundsBody } from "./gaps.js";
+import { KV_SEIZE, SEIZE_TTL_SECONDS, isSeizeWatchBody, seizeDue, type SeizeWatchBody } from "./seize.js";
 import { renderPage } from "./html.js";
 import { runAavePositions, runCapture, runPositions } from "./jobs.js";
 import { KV_LATEST, storeLatest } from "./kv-latest.js";
@@ -184,6 +185,30 @@ export function createApp(overrides: Partial<AppDeps> = {}) {
     return hit ?? computeGaps(env, now);
   }
 
+  /** The seize watch from the indexer, cached in KV (minute 3 of every 30). */
+  async function computeSeize(env: Env): Promise<SeizeWatchBody | null> {
+    const indexer = deps.indexer(env);
+    if (!indexer) return null;
+    const body = await indexer.json<unknown>("/v1/seize-watch");
+    if (!isSeizeWatchBody(body)) throw new Error("indexer seize-watch answer has an unexpected shape");
+    await env.SNAPSHOTS.put(KV_SEIZE, JSON.stringify(body), { expirationTtl: SEIZE_TTL_SECONDS });
+    return body;
+  }
+
+  async function refreshSeize(env: Env): Promise<void> {
+    try {
+      const w = await computeSeize(env);
+      if (w) console.log(`seize holders=${w.summary.seizeRoleHolders} policies=${w.summary.exemptionPolicies.join("/")} venuesNotExempt=${w.summary.venuesNotExempt.length} liveBlock=${w.live.block ?? "none"}`);
+    } catch (err) {
+      console.error("seize job failed", err instanceof Error ? err.message : err);
+    }
+  }
+
+  async function seizeWatch(env: Env): Promise<SeizeWatchBody | null> {
+    const hit = await env.SNAPSHOTS.get<SeizeWatchBody>(KV_SEIZE, "json");
+    return hit ?? computeSeize(env);
+  }
+
   const app = new Hono<{ Bindings: Env }>();
 
   app.get("/", async (c) => {
@@ -194,15 +219,16 @@ export function createApp(overrides: Partial<AppDeps> = {}) {
         console.error(`${label} failed`, err instanceof Error ? err.message : err);
         return null;
       });
-    const [capture, positions, aave, gaps, assurance] = await Promise.all([
+    const [capture, positions, aave, gaps, assurance, seize] = await Promise.all([
       quiet("latestRun", stores.capture.latestRun()),
       quiet("latestPositions", stores.positions.latestPositions(CHAIN_ID)),
       quiet("latestAave", stores.aave.latestPositions(AAVE_CHAIN_ID)),
       quiet("gaps", gapsPanel(c.env, s.takenAt)),
       quiet("assurance", readAssurance(c.env.SNAPSHOTS)),
+      quiet("seize", seizeWatch(c.env)),
     ]);
     const { next } = findLivenessTransitions(deps.calendar, s.takenAt);
-    return c.html(renderPage(s, { capture, nextTransition: next, positions, aave, gaps, assurance }));
+    return c.html(renderPage(s, { capture, nextTransition: next, positions, aave, gaps, assurance, seize }));
   });
   app.get("/health", (c) => c.json({ ok: true, service: "boundline-observatory" }));
 
@@ -306,6 +332,15 @@ export function createApp(overrides: Partial<AppDeps> = {}) {
     return c.json(await gapsPanel(c.env, s.takenAt));
   });
 
+  /** Seize watch (plan M9), as the indexer computes it; cached here for 30 minutes. */
+  app.get("/v1/seize-watch", async (c) => {
+    const w = await seizeWatch(c.env).catch((err: unknown) => {
+      console.error("seize-watch failed", err instanceof Error ? err.message : err);
+      return null;
+    });
+    return w ? c.json(w) : c.json({ error: "seize watch not available yet" }, 503);
+  });
+
   app.get("/v1/assurance", async (c) => {
     const a = await readAssurance(c.env.SNAPSHOTS);
     if (a.status === "ok") return c.json(a.run);
@@ -314,7 +349,7 @@ export function createApp(overrides: Partial<AppDeps> = {}) {
 
   app.get("/v1/events", (c) => c.json({ error: "not implemented", plan: "M5 indexer: Morpho, Aave, B20, OracleRegistry and Chainlink events with hash-chained roots" }, 501));
 
-  /** One cron a minute: the snapshot, the reopen capture and the indexer kick; on every fifth minute the Morpho positions, a minute later the Aave batch, on minute 2 of every ten the gap panel. */
+  /** One cron a minute: the snapshot, the reopen capture and the indexer kick; on every fifth minute the Morpho positions, a minute later the Aave batch, on minute 2 of every ten the gap panel, on minute 3 of every thirty the seize watch. */
   async function scheduled(_controller: ScheduledController, env: Env, ctx: ExecutionContext): Promise<void> {
     ctx.waitUntil(
       (async () => {
@@ -323,12 +358,13 @@ export function createApp(overrides: Partial<AppDeps> = {}) {
         if (positionsDue(snapshot.takenAt)) await refreshPositions(env, snapshot);
         if (aaveDue(snapshot.takenAt)) await refreshAave(env, snapshot);
         if (gapsDue(snapshot.takenAt)) await refreshGaps(env, snapshot.takenAt);
+        if (seizeDue(snapshot.takenAt)) await refreshSeize(env);
       })(),
     );
     ctx.waitUntil(kickIndexer(env));
   }
 
-  return { app, scheduled, takeSnapshot, afterSnapshot, refreshPositions, refreshAave, refreshGaps, computeGaps };
+  return { app, scheduled, takeSnapshot, afterSnapshot, refreshPositions, refreshAave, refreshGaps, computeGaps, refreshSeize, computeSeize };
 }
 
 /** Capture runs folded into the gap panel (one per reopen). */
