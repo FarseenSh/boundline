@@ -396,11 +396,27 @@
         "firstDrawTx": "0x661ebb1abc30e1fffe987b4598b006004ed746943afcc1e67ea82595854b8bac",
         "firstDrawBlock": 47759305,
         "partialRepayTx": "0xe3bc2f0b3a58975b5870d624fd4772656deab41ef9fbc3b5c0f727d3f464771b",
-        "state": "7 Oct 2026 19:40 IST: 10 AAPLt collateral, 1.600134 USDC debt (drawnPrincipal 1.6) after two protective repays through the DeskProtectionVault (0.5 from the user reserve, 0.7 = 0.5 user + 0.2 Reserve advance, settled); see reserve.liveCycle",
+        "state": "8 Oct 2026 (OVERNIGHT, feed 335.683): 0.02 AAPLt collateral (2,000,000 raw), 3.210175 USDC debt (47.82% LTV; the keeper-hold drill repaid 0.01 while held), user reserve 0.4 USDC in the DeskProtectionVault, the keeper's vault job target (grace 52%, target 45%); 7 Oct state was 10 AAPLt and 1.600134 USDC",
         "protectiveRepays": [
           "0xa0efe0c47d788acb8e0f756b62ebf01e155cb33c553d6e4ccdfc2d20065c9f07",
           "0x28c1ec4479d58ff7e362499b3e0b3f41517a1ec7ee4cd2fa83523de2ca5c08a4"
-        ]
+        ],
+        "saturdayStaging": {
+          "date": "2026-10-08",
+          "why": "the Saturday vault-ladder line (there is no line 4: openLine reverts LineExists for the same partner, user and market; a second partner would share the borrower's single Morpho position)",
+          "withdrawCollateralTx": "0xbc42e1792a8dbb6172d3684c01667e4a0bef27a7c5bd4c65df8f0a86860fd5c5",
+          "drawTx": "0xd2de1e4727e9a3754b8cc9a3e56e090e8add6d092562ecd3fdf48f2d9e4426ce",
+          "reserveApproveTx": "0xa0673e92341f1a8f3232899fb69f1d7f014ffecbf461d0cce3af4f895bb13776",
+          "reserveDepositTx": "0x070e87e80d92a37906396ffbfd3c37f30498452f7bd29defc0b81cf13f337928",
+          "blocks": [
+            47837476,
+            47837481,
+            47837485,
+            47837487
+          ],
+          "drawUsdc": "1.62",
+          "reserveUsdc": "0.4"
+        }
       },
       {
         "lineId": "2",
@@ -508,7 +524,24 @@
       "address": "0x5069f3753961efcaea8c7f6ec49a182e2c40081b",
       "tx": "0xffd1e554…6c6a",
       "block": 47760173,
-      "note": "token0 USDC, token1 AAPLt; TWAP tick -12021 = $332.69 (price36 3.3267e36); holds 2 USDC; the TWAP source of the ShadowGuard and the sale venue of the Protector (fixed-price swap, owner-set); TWAP setters are open as on MockCLPool"
+      "note": "token0 USDC, token1 AAPLt; TWAP tick -12021 = $332.69 (price36 3.3267e36); holds 2 USDC; the TWAP source of the ShadowGuard and the sale venue of the Protector (fixed-price swap, owner-set); TWAP setters are open as on MockCLPool",
+      "twapMirror8Oct": {
+        "tick": -12125,
+        "usd": 336.16751,
+        "source": "mainnet Aerodrome AAPLc/USDC 0xA3b1E3f9747065e2073722Ff4c9027d3eA4994F0 1h TWAP (scripts/sepolia/twap.py mirror)",
+        "txs": [
+          "0xcd177bfea00c8c42645c9b45eedcca20ef7b64866edfdd9eb0278305531998a2",
+          "0xd4517a08343688c7706e356a64578bde15969442174c89afd7366ba7d06e116b",
+          "0xaec35885ad3c0d0ed648176efca87222f39448754548a8d34bc1cd9d9a029f13"
+        ],
+        "blocks": [
+          47837901,
+          47837903,
+          47837905
+        ],
+        "shadowGuardTwap36": "3361675058416728161502400149334752128",
+        "poolUsdc": "1.805321"
+      }
     },
     "shadowGuardAAPLt": {
       "address": "0x7a53b459be6e5e9a12324cc3417bb027daf73f65",
@@ -579,7 +612,38 @@
         "gasUsed": 486363,
         "result": "status success; Morpho Repay + WithdrawCollateral, seized 52,273 raw AAPLt sold on the MockSwapPool for USDC, PreLiquidation.PreLiquidate and Protector.Protected emitted; position after: collateral 947,727 raw, debt 1.828624 USDC, shadow LTV 0.5799994 (band edge), standing BELOW_BAND; Protector kept 757 raw AAPLt as the incentive; decisionCount 1",
         "firstAttempt": "the first two ticks failed with 'replacement transaction underpriced' because the signer still shared the validity demo key whose != transaction was pending at the same nonce; fixed by giving the protection job its own key"
+      },
+      "prepositioned8Oct": {
+        "what": "the deployer repaid 0.06 USDC on its own position so the MockSwapPool's 1.805321 USDC covers a full close-out (headroom +0.059867) and the Fri 20:00 ET close does not by itself put the position in the band (56.33% at the mirrored TWAP while held); reason: Protector.sizing ignores the pool's USDC and the keeper does not simulate, so an unpayable IN_BAND close-out would be armed and revert every minute",
+        "approveTx": "0xa4c16a9152419bda10635d3d894dfd602455d568c90ddf079e1af3d1a94465bf",
+        "repayTx": "0x345aeea78f3e19955461de49b8f1f32845a17102d2c70eeeec00e042c9b7b939",
+        "block": 47837876,
+        "debtBefore": "1.805454",
+        "debtAfter": "1.745454",
+        "shadowLtvAtFeed": "55.28%"
       }
+    },
+    "drill2": {
+      "date": "2026-10-06",
+      "what": "a second automatic protection of the same opted-in drill position, found on 8 Oct in the Protector's logs: AAPLt fell from 332.67 to 330.92 in the REGULAR session, the shadow LTV crossed the 58% band edge again (58.3074%), and the keeper's protection job armed the partial the contract allowed",
+      "tx": "0x6d45ddc95b314de50f3a3375b2d764302e07a920869fd2000fa768fdc84a40d9",
+      "block": 47763353,
+      "timestamp": 1791294994,
+      "signer": "0x40668755c993a551db05e844ff9150a0c00a0373",
+      "signerNonce": 64,
+      "gasUsed": 438408,
+      "sizingBefore": "IN_BAND, collateral 947,727 raw, debt 1.828629 USDC, shadow = venue price 330.91685 (session open), shadow LTV 58.3074%, preLIF 1.010683, maxSeizedAssets 7,116 raw (repays 0.023302 USDC)",
+      "result": "status success; Morpho Repay 23,302 raw USDC (23,300,925,067 shares) + WithdrawCollateral 7,116 raw AAPLt; 7,005 raw sold on the MockSwapPool for 0.023302 USDC; PreLiquidate and Protected emitted; position after: collateral 940,611 raw, debt 1.805328 USDC, shadow LTV 57.9999% (band edge), standing BELOW_BAND; Protector kept 111 raw AAPLt (868 in total with the first action); decisionCount 2",
+      "decision": 2,
+      "decisionHash": "0x1a78c5499b814273cebb88529ef8095e83d3b568ff1360d30cdd2a17d849d444",
+      "predicate": {
+        "feed": "0xa652b75CA90084FA16D4F18Fd96B5dd7069ee52a",
+        "slot": 5,
+        "valueBefore": 1791294899,
+        "valueAtInclusion": 1791294899,
+        "held": true
+      },
+      "evidence": "docs/evidence/drills/protection.json (second run), scripts/sepolia/record_protect.py"
     }
   },
   "reserve": {
@@ -606,14 +670,27 @@
       "tx": "0xf24fef6ff6182d807631b7c3ae8bea0c974358bc1a14efb9986c6b8b710ab925",
       "block": 47806314,
       "desk": "0x39aBaDc0aAa12D1F7e259b89536Aa1848997399a",
-      "keeper": "0x2f0d9B1f16CD702259C6cC259e8D5E5455282a4E",
+      "keeper": "0x40668755c993A551dB05E844fF9150A0C00a0373",
       "funder": "0x7AcE5c9ca94d5B67feC97348Ff41778D092a6B6E",
       "advanceFeeBps": 100,
       "advanceCapPerLine": "2000000",
       "partnerAdmin": {
         "boundline-app": "0x2f0d9B1f16CD702259C6cC259e8D5E5455282a4E"
       },
-      "note": "the live desk predates setProtectionVault/recoverCollateral: recovery is unit- and invariant-proven, wired at the freeze redeploy (the Cobalt receiver allowlists must then admit the vault)"
+      "note": "the live desk predates setProtectionVault/recoverCollateral: recovery is unit- and invariant-proven, wired at the freeze redeploy (the Cobalt receiver allowlists must then admit the vault)",
+      "keeperHistory": [
+        {
+          "keeper": "0x2f0d9B1f16CD702259C6cC259e8D5E5455282a4E",
+          "from": "2026-10-07 deploy"
+        },
+        {
+          "keeper": "0x40668755c993A551dB05E844fF9150A0C00a0373",
+          "from": "2026-10-08",
+          "tx": "0x0154bde33ecbf5cfe11c0651c839533f724e71af75f25e60510628b872ba93b8",
+          "block": 47838039,
+          "note": "the keeper Worker's vault job (signer = the protect signer, shared with the Protector job; one signature per tick)"
+        }
+      ]
     },
     "seed": {
       "depositTx": "0xa274b4260a7fc6554716b3b6c1fffdecd13e586c48ab867c6c014185104597d6",
@@ -695,5 +772,150 @@
       "minOut": 450000
     },
     "forkProof": "10 USDC -> 8.944134 EURC on the real Aerodrome EURC/USDC pool (base-forge 4/4; stock forge 3 pass + 1 skip: the in-session gate verdict needs the Base precompile)"
+  },
+  "drills": {
+    "index": [
+      {
+        "drill": "bad-debt-probe",
+        "file": "docs/evidence/drills/bad-debt-probe.json",
+        "runs": 1,
+        "lastRanAt": 1791444401,
+        "txs": 0,
+        "chain": [
+          8453
+        ]
+      },
+      {
+        "drill": "ineligible-receiver",
+        "file": "docs/evidence/drills/ineligible-receiver.json",
+        "runs": 1,
+        "lastRanAt": 1791443573,
+        "txs": 4,
+        "chain": [
+          84532
+        ]
+      },
+      {
+        "drill": "issuer-transfer-pause",
+        "file": "docs/evidence/drills/issuer-transfer-pause.json",
+        "runs": 1,
+        "lastRanAt": 1791443421,
+        "txs": 2,
+        "chain": [
+          84532
+        ]
+      },
+      {
+        "drill": "keeper-hold",
+        "file": "docs/evidence/drills/keeper-hold.json",
+        "runs": 1,
+        "lastRanAt": 1791444093,
+        "txs": 4,
+        "chain": [
+          84532
+        ]
+      },
+      {
+        "drill": "partial-repayment",
+        "file": "docs/evidence/drills/partial-repayment.json",
+        "runs": 3,
+        "lastRanAt": 1791295842,
+        "txs": 5,
+        "chain": [
+          84532
+        ]
+      },
+      {
+        "drill": "protection",
+        "file": "docs/evidence/drills/protection.json",
+        "runs": 2,
+        "lastRanAt": 1791294994,
+        "txs": 5,
+        "chain": [
+          84532
+        ]
+      },
+      {
+        "drill": "registry-pause",
+        "file": "docs/evidence/drills/registry-pause.json",
+        "runs": 1,
+        "lastRanAt": 1791444124,
+        "txs": 4,
+        "chain": [
+          84532
+        ]
+      },
+      {
+        "drill": "scheduled-multiplier",
+        "file": "docs/evidence/drills/scheduled-multiplier.json",
+        "runs": 1,
+        "lastRanAt": 1791443693,
+        "txs": 2,
+        "chain": [
+          84532
+        ]
+      },
+      {
+        "drill": "stale-feed",
+        "file": "docs/evidence/drills/stale-feed.json",
+        "runs": 1,
+        "lastRanAt": 1791444154,
+        "txs": 2,
+        "chain": [
+          84532
+        ]
+      },
+      {
+        "drill": "validity-transactions",
+        "file": "docs/evidence/drills/validity-transactions.json",
+        "runs": 2,
+        "lastRanAt": 1791295842,
+        "txs": 2,
+        "chain": [
+          84532
+        ]
+      },
+      {
+        "drill": "venue-halt",
+        "file": "docs/evidence/drills/venue-halt.json",
+        "runs": 1,
+        "lastRanAt": 1791444401,
+        "txs": 3,
+        "chain": [
+          8453
+        ]
+      },
+      {
+        "drill": "weekend-gap",
+        "file": "docs/evidence/drills/weekend-gap.json",
+        "runs": 2,
+        "lastRanAt": 1791287803,
+        "txs": 2,
+        "chain": [
+          8453,
+          84532
+        ]
+      }
+    ],
+    "note": "run files are bundled by the partner API (/v1/drills) at build time; Sepolia drills executed by scripts/sepolia/drills.py, fork drills by scripts/drills (Lane K2); every tx hash in the files is a full hash",
+    "scripts": [
+      "scripts/sepolia/drills.py",
+      "scripts/sepolia/record_protect.py"
+    ]
+  },
+  "saturdayRescue": {
+    "runbook": "docs/runbooks/saturday-rescue-2026-10-10.md",
+    "evidence": "docs/evidence/saturday-rescue-2026-10-10.json",
+    "closeUnix": 1791590400,
+    "reopenUnix": 1791763200,
+    "captureRunId": 1791763200,
+    "positions": {
+      "protector": "deployer drill position (PROTECT_TARGETS #2)",
+      "vault": "desk line 1 (VAULT_TARGETS 1:5200:4500)"
+    },
+    "tools": [
+      "scripts/sepolia/twap.py",
+      "scripts/sepolia/record_protect.py"
+    ]
   }
 }

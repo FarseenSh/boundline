@@ -1,0 +1,290 @@
+{
+  "title": "Saturday rescue over the 9-11 Oct 2026 weekend (Base Sepolia)",
+  "runbook": "docs/runbooks/saturday-rescue-2026-10-10.md",
+  "close": {
+    "unix": 1791590400,
+    "et": "Fri 9 Oct 2026 20:00",
+    "ist": "Sat 10 Oct 2026 05:30"
+  },
+  "reopen": {
+    "unix": 1791763200,
+    "et": "Sun 11 Oct 2026 20:00",
+    "ist": "Mon 12 Oct 2026 05:30",
+    "captureRunId": 1791763200
+  },
+  "staging": {
+    "date": "2026-10-08",
+    "why": "Protector.sizing does not look at the sale pool's USDC and the keeper does not simulate before arming; with the pool short (1.805321 USDC vs 1.805454 debt) and the 200 bps weekend haircut moving the drill position into the band at the close (58.26% at the mirrored DEX TWAP), the keeper would have armed a close-out every minute from Sat 05:30 IST that reverts on the pool's exact-output swap. Pre-positioned instead: the drill position repaid 0.06 USDC, so the pool can pay a close-out and the close leaves it below the band; Saturday moves the mock TWAP deliberately.",
+    "drillPosition": {
+      "owner": "0x2f0d9B1f16CD702259C6cC259e8D5E5455282a4E",
+      "txs": [
+        {
+          "hash": "0xa4c16a9152419bda10635d3d894dfd602455d568c90ddf079e1af3d1a94465bf",
+          "block": 47837874,
+          "status": 1,
+          "gasUsed": 55425,
+          "from": "0x2f0d9B1f16CD702259C6cC259e8D5E5455282a4E",
+          "to": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+          "call": "approve(address,uint256)",
+          "label": "USDC.approve(Morpho, 0.060000) by the deployer"
+        },
+        {
+          "hash": "0x345aeea78f3e19955461de49b8f1f32845a17102d2c70eeeec00e042c9b7b939",
+          "block": 47837876,
+          "status": 1,
+          "gasUsed": 96309,
+          "from": "0x2f0d9B1f16CD702259C6cC259e8D5E5455282a4E",
+          "to": "0xBBBBBbbBBb9cC5e90e3b3Af64bdAF62C37EEFFCb",
+          "call": "repay((address,address,address,address,uint256),uint256,uint256,address,bytes)",
+          "label": "Morpho.repay(AAPLt/USDC, 0.060000 USDC, onBehalf = deployer): pre-positions the drill position for the weekend"
+        }
+      ],
+      "before": {
+        "at": "before",
+        "block": 47837870,
+        "borrowShares": 1805321834834,
+        "collateralRaw": 940611,
+        "debtRaw": 1805454,
+        "standing": "BELOW_BAND",
+        "shadowLtvPct": 57.180382654345834,
+        "poolUsdcRaw": 1805321,
+        "deployerUsdcRaw": 3020000,
+        "poolHeadroomRaw": -133
+      },
+      "after": {
+        "at": "after",
+        "block": 47837877,
+        "borrowShares": 1745326212175,
+        "collateralRaw": 940611,
+        "debtRaw": 1745454,
+        "standing": "BELOW_BAND",
+        "shadowLtvPct": 55.28012767179809,
+        "poolUsdcRaw": 1805321,
+        "deployerUsdcRaw": 2960000,
+        "poolHeadroomRaw": 59867
+      }
+    },
+    "line1": {
+      "note": "there is no line 4: openLine reverts LineExists for the same partner, user and market, and a second partner would share the borrower's single Morpho position; line 1 was shaped instead",
+      "txs": [
+        {
+          "hash": "0xbc42e1792a8dbb6172d3684c01667e4a0bef27a7c5bd4c65df8f0a86860fd5c5",
+          "block": 47837476,
+          "status": 1,
+          "gasUsed": 260401,
+          "from": "0xB789aD318945B37566E2549F65526Cc269a482Fc",
+          "to": "0x39aBaDc0aAa12D1F7e259b89536Aa1848997399a",
+          "call": "withdrawCollateral(uint256,uint256)",
+          "label": "desk.withdrawCollateral(1, 998,000,000 raw AAPLt): line 1 collateral 1,000,000,000 -> 2,000,000 raw, in the OVERNIGHT session (gate OPEN)"
+        },
+        {
+          "hash": "0xd2de1e4727e9a3754b8cc9a3e56e090e8add6d092562ecd3fdf48f2d9e4426ce",
+          "block": 47837481,
+          "status": 1,
+          "gasUsed": 278117,
+          "from": "0xB789aD318945B37566E2549F65526Cc269a482Fc",
+          "to": "0x39aBaDc0aAa12D1F7e259b89536Aa1848997399a",
+          "call": "draw(uint256,uint256)",
+          "label": "desk.draw(1, 1.62 USDC) at price 335.68300, OVERNIGHT session: line 1 to ~48% LTV"
+        },
+        {
+          "hash": "0xa0673e92341f1a8f3232899fb69f1d7f014ffecbf461d0cce3af4f895bb13776",
+          "block": 47837485,
+          "status": 1,
+          "gasUsed": 55425,
+          "from": "0xB789aD318945B37566E2549F65526Cc269a482Fc",
+          "to": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+          "call": "approve(address,uint256)",
+          "label": "USDC.approve(DeskProtectionVault, 0.400000)"
+        },
+        {
+          "hash": "0x070e87e80d92a37906396ffbfd3c37f30498452f7bd29defc0b81cf13f337928",
+          "block": 47837487,
+          "status": 1,
+          "gasUsed": 73136,
+          "from": "0xB789aD318945B37566E2549F65526Cc269a482Fc",
+          "to": "0x87f600279F021ca859b9903DE884d3A7A169f38c",
+          "call": "deposit(uint256)",
+          "label": "DeskProtectionVault.deposit(0.400000 USDC): the borrower's own protection reserve, step one of the ladder"
+        }
+      ],
+      "snapshots": [
+        {
+          "at": "before",
+          "block": 47837472,
+          "session": "OVERNIGHT",
+          "price8": 33568300000,
+          "collateralRaw": 1000000000,
+          "debtRaw": 1600174,
+          "maxDebtRaw": 1678415000,
+          "availableRaw": 1676814826,
+          "ltvBps": 4.77,
+          "borrowShares": 1600057382885,
+          "obligation": "OPEN",
+          "userReserveRaw": 0,
+          "borrowerUsdcRaw": 3298000,
+          "borrowerAaplRaw": 99000000000
+        },
+        {
+          "at": "after-withdraw",
+          "block": 47837476,
+          "session": "OVERNIGHT",
+          "price8": 33568300000,
+          "collateralRaw": 2000000,
+          "debtRaw": 1600174,
+          "maxDebtRaw": 3356830,
+          "availableRaw": 1756656,
+          "ltvBps": 2383.46,
+          "borrowShares": 1600057382885,
+          "obligation": "OPEN",
+          "userReserveRaw": 0,
+          "borrowerUsdcRaw": 3298000,
+          "borrowerAaplRaw": 99998000000
+        },
+        {
+          "at": "after-draw",
+          "block": 47837481,
+          "session": "OVERNIGHT",
+          "price8": 33568300000,
+          "collateralRaw": 2000000,
+          "debtRaw": 3220174,
+          "maxDebtRaw": 3356830,
+          "availableRaw": 136656,
+          "ltvBps": 4796.45,
+          "borrowShares": 3219939517019,
+          "obligation": "OPEN",
+          "userReserveRaw": 0,
+          "borrowerUsdcRaw": 4918000,
+          "borrowerAaplRaw": 99998000000
+        },
+        {
+          "at": "after-deposit",
+          "block": 47837488,
+          "session": "OVERNIGHT",
+          "price8": 33568300000,
+          "collateralRaw": 2000000,
+          "debtRaw": 3220174,
+          "maxDebtRaw": 3356830,
+          "availableRaw": 136656,
+          "ltvBps": 4796.45,
+          "borrowShares": 3219939517019,
+          "obligation": "OPEN",
+          "userReserveRaw": 400000,
+          "borrowerUsdcRaw": 4518000,
+          "borrowerAaplRaw": 99998000000
+        }
+      ],
+      "afterKeeperHoldDrill": {
+        "debtRaw": 3210175,
+        "repayTx": "0x1ad33de32096ff96df24df5184a74d006db9764bedcb2c8d30d81c4f308642f3",
+        "note": "the keeper-hold drill repaid 0.01 USDC while the line was HELD"
+      }
+    },
+    "twapMirror": {
+      "tick": -12125,
+      "usd": 336.16751,
+      "why": "mirror of the mainnet AAPLc/USDC 1h TWAP (tick -12125, 336.1675 USD; feed 335.683, DEX vs feed 14.4 bps)",
+      "txs": [
+        {
+          "hash": "0xcd177bfea00c8c42645c9b45eedcca20ef7b64866edfdd9eb0278305531998a2",
+          "block": 47837901,
+          "call": "setAverageTick(uint32,int24)"
+        },
+        {
+          "hash": "0xd4517a08343688c7706e356a64578bde15969442174c89afd7366ba7d06e116b",
+          "block": 47837903,
+          "call": "setSlot0(uint160,int24)"
+        },
+        {
+          "hash": "0xaec35885ad3c0d0ed648176efca87222f39448754548a8d34bc1cd9d9a029f13",
+          "block": 47837905,
+          "call": "setPrice36(uint256)"
+        }
+      ],
+      "shadowGuardTwap36": "3361675058416728161502400149334752128"
+    },
+    "vaultKeeper": {
+      "before": "0x2f0d9B1f16CD702259C6cC259e8D5E5455282a4E",
+      "after": "0x40668755c993A551dB05E844fF9150A0C00a0373",
+      "tx": "0x0154bde33ecbf5cfe11c0651c839533f724e71af75f25e60510628b872ba93b8",
+      "block": 47838039,
+      "note": "the keeper Worker's vault job (signer 0x4066...0373, shared with the Protector job, one signature per tick) reported not-keeper; the deployer handed it the keeper role"
+    },
+    "plannedSaturdaySteps": {
+      "step1": {
+        "command": "python3 -I scripts/sepolia/twap.py ltv --who drill --bps 5880",
+        "tick8Oct": -11695,
+        "twapUsd8Oct": 322.01938,
+        "positionsWhileHeld8Oct": {
+          "drill (deployer, Protector band 58%-62.5%)": {
+            "collateralRaw": 940611,
+            "debtRaw": 1745454,
+            "shadowUsd": 315.57899,
+            "shadowLtvPct": 58.8018
+          },
+          "line1 (borrower, vault grace 52%)": {
+            "collateralRaw": 2000000,
+            "debtRaw": 3210175,
+            "shadowUsd": 315.57899,
+            "shadowLtvPct": 50.8617
+          }
+        }
+      },
+      "step2": {
+        "command": "python3 -I scripts/sepolia/twap.py ltv --who line1 --bps 5400",
+        "tick8Oct": -11096,
+        "twapUsd8Oct": 303.29766,
+        "positionsWhileHeld8Oct": {
+          "drill (deployer, Protector band 58%-62.5%)": {
+            "collateralRaw": 940611,
+            "debtRaw": 1745454,
+            "shadowUsd": 297.23171,
+            "shadowLtvPct": 62.4314
+          },
+          "line1 (borrower, vault grace 52%)": {
+            "collateralRaw": 2000000,
+            "debtRaw": 3210175,
+            "shadowUsd": 297.23171,
+            "shadowLtvPct": 54.0012
+          }
+        },
+        "expectedVaultProtect8Oct": {
+          "amountRaw": 535090,
+          "fromUserRaw": 400000,
+          "fromAdvanceRaw": 135090,
+          "advanceFeeRaw": 1351
+        },
+        "tickWindow8Oct": {
+          "from": -11473,
+          "to": -10382,
+          "line1LtvAtFrom": 52.0034,
+          "line1LtvAtTo": 57.9977,
+          "twapUsdFrom": 314.9497,
+          "twapUsdTo": 282.3982,
+          "why": "line 1 between the vault's grace (52%) and the Protector's band (58%; the borrower is PROTECT_TARGETS #1): the vault acts, the Protector stays BELOW_BAND"
+        }
+      }
+    },
+    "thresholdsWhileHeld8Oct": {
+      "drillEntersBand": {
+        "shadowUsd": 319.94,
+        "twapUsd": 326.47,
+        "dexVsFeedPct": -2.74
+      },
+      "line1CrossesGrace": {
+        "shadowUsd": 308.67,
+        "twapUsd": 314.97,
+        "dexVsFeedPct": -6.17
+      },
+      "drillAboveLltv": {
+        "shadowUsd": 296.91,
+        "twapUsd": 302.96,
+        "dexVsFeedPct": -9.75
+      }
+    }
+  },
+  "friday": null,
+  "atClose": null,
+  "saturday": null,
+  "monday": null
+}
