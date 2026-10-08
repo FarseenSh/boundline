@@ -59,7 +59,7 @@ async function handleOne(req: JsonRpcRequest, tools: ReadonlyMap<string, ToolHan
   if (req.jsonrpc !== "2.0" || typeof req.method !== "string") return { jsonrpc: "2.0", id, error: { code: -32600, message: "invalid request" } };
   switch (req.method) {
     case "initialize":
-      return { jsonrpc: "2.0", id, result: { protocolVersion: PROTOCOL_VERSION, capabilities: { tools: { listChanged: false } }, serverInfo: SERVER_INFO, instructions: "Boundline agent surface: read sessions, positions and shadow health, quote a line, see what the keeper would protect, and route a draw across venues. Read-only; nothing here signs." } };
+      return { jsonrpc: "2.0", id, result: { protocolVersion: PROTOCOL_VERSION, capabilities: { tools: { listChanged: false } }, serverInfo: SERVER_INFO, instructions: "Boundline agent surface: read sessions, positions and shadow health, quote a line, see what the keeper would protect, and route a draw across venues. Read-only; nothing here signs. This MCP endpoint is free; the same tools over REST (POST /v1/tools/:name) cost $0.01 USDC on Base Sepolia per call through x402 unless the caller sends a partner key." } };
     case "notifications/initialized":
     case "notifications/cancelled":
       return null;

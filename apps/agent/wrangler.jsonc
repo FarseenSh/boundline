@@ -15,7 +15,14 @@
   "vars": {
     "BASE_RPC_URL": "https://base-rpc.publicnode.com,https://base.drpc.org,https://mainnet.base.org",
     "BASE_SEPOLIA_RPC_URL": "https://sepolia.base.org,https://base-sepolia-rpc.publicnode.com,https://base-sepolia.drpc.org",
-    "PARTNER_ID": "boundline-app"
+    "PARTNER_ID": "boundline-app",
+    // x402 on the REST aliases (POST /v1/tools/:name) for callers without a partner key: $0.01 USDC on Base Sepolia per
+    // call through the public facilitator, paid to the deployer (as on the partner API). MCP (POST /mcp) stays free.
+    "X402_ENABLED": "true",
+    "X402_PAY_TO": "0x2f0d9B1f16CD702259C6cC259e8D5E5455282a4E",
+    "X402_FACILITATOR": "https://x402.org/facilitator",
+    "X402_NETWORK": "base-sepolia",
+    "X402_PRICE_USDC": "0.01"
   },
   "observability": { "enabled": true }
 }
