@@ -1,8 +1,18 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "boundline-site",
+  "main": "worker/index.js",
   "compatibility_date": "2026-09-01",
-  // Assets only: no Worker script runs, Cloudflare serves ./public as static files (free, no CPU budget to mind).
-  "assets": { "directory": "./public", "not_found_handling": "404-page" }
+  // Static assets from ./public. The Worker runs first only for /obs/* and /live/* (worker/index.js): the page's live
+  // numbers come from the Observatory and the partner API, which a browser cannot read from this origin (no CORS headers
+  // on workers.dev; the API needs a key), so the Worker reads them through service bindings. Everything else is a free
+  // static asset that never invokes the Worker.
+  "assets": { "directory": "./public", "binding": "ASSETS", "not_found_handling": "404-page", "run_worker_first": ["/obs/*", "/live/*"] },
+  "services": [
+    { "binding": "OBSERVATORY", "service": "boundline-observatory" },
+    // The app Worker's /api/v1/* proxy adds the partner key; the site holds no secret at all.
+    { "binding": "APP", "service": "boundline-app" }
+  ],
+  "observability": { "enabled": true }
   // Custom domain: add `"routes": [{ "pattern": "boundline.xyz", "custom_domain": true }]` once the zone is pointed here (a human decision).
 }

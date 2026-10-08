@@ -1,6 +1,8 @@
-// Live numbers for the landing page, all from the Observatory's public JSON. Nothing here is a constant.
+// Live numbers for the landing page: the Observatory's public JSON and the partner API's drills registry, both read
+// through this site's own Worker (/obs/*, /live/*), because a browser cannot read either from this origin directly.
+// Nothing here is a constant.
 (function () {
-  var OBS = "https://boundline-observatory.papermind-ai.workers.dev";
+  var OBS = "/obs";
   var $ = function (id) { return document.getElementById(id); };
 
   function fmtDuration(seconds) {
@@ -63,6 +65,24 @@
     });
   }
 
-  sessions(); tokens();
+  function drills() {
+    return fetch("/live/drills").then(function (r) { if (!r.ok) throw new Error(String(r.status)); return r.json(); }).then(function (d) {
+      var rows = Array.isArray(d) ? d : (d.drills || []);
+      var withRuns = rows.filter(function (x) { return (x.runs || []).length > 0; });
+      var runs = rows.reduce(function (n, x) { return n + (x.runs || []).length; }, 0);
+      $("drillCount").textContent = withRuns.length + " / " + rows.length;
+      $("drillNote").textContent = "drills have recorded runs (" + runs + " runs in all), each with its transaction hashes; the rest are defined and waiting for their run.";
+      var list = $("drillList");
+      list.innerHTML = "";
+      rows.forEach(function (x) {
+        var li = document.createElement("li");
+        var n = (x.runs || []).length;
+        li.innerHTML = '<span class="tag ' + (n > 0 ? "live" : "") + '">' + (n > 0 ? n + (n === 1 ? " run" : " runs") : "defined") + "</span> " + x.title;
+        list.appendChild(li);
+      });
+    }).catch(function () { $("drillCount").textContent = "—"; $("drillNote").textContent = "The partner API did not answer."; });
+  }
+
+  sessions(); tokens(); drills();
   setInterval(sessions, 60000); setInterval(tokens, 60000);
 })();

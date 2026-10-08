@@ -85,3 +85,8 @@ pre code { color: var(--ink); }
 footer { margin: 44px 0 50px; padding-top: 16px; border-top: 1px solid var(--line); color: var(--mute); font-size: 13.5px; display: flex; gap: 14px; flex-wrap: wrap; justify-content: space-between; }
 footer a { color: var(--mute); }
 @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+
+/* The drills list (live from the partner API's registry). */
+ul.drills { list-style: none; margin: 0; padding: 0; }
+ul.drills li { padding: 6px 0; border-bottom: 1px solid var(--line); display: flex; gap: 10px; align-items: baseline; }
+ul.drills li:last-child { border-bottom: 0; }
