@@ -109,6 +109,10 @@ drill position enters the band and the keeper closes it out at once (the pool ca
 
 0. **Confirm the hold**: `/v1/sessions` → `state: WEEKEND`, `isFeedLive: false`; `/v1/protect` → `venueOracleLive: false`;
    keeper `/v1/status` → the Sepolia AAPLt feed equals mainnet's last Friday round.
+   **Order rule (keeper since 8 Oct, deploy `abcce602`):** the keeper simulates every action from its signer before signing
+   (`eth_call` at `latest` and `pending`); a simulated revert is never signed and puts that target on a **150-block (~5 min)
+   backoff** that a pool top-up alone does not lift. So if the pool needs USDC, top it up **before** moving the TWAP, never
+   after. `/v1/protect?simulate=…` and `/v1/vault` show the simulation result and any backoff (`untilHead`).
 1. **Protector close-out of the drill position.** `python3 -I scripts/sepolia/twap.py ltv --who drill --bps 5880`
    (8 Oct numbers: TWAP tick −11695 = 322.02, −4.2% from the mirror; drill shadow LTV 58.80%; line 1 50.86%, still below
    grace). Within a minute `/v1/protect` shows the drill target `IN_BAND`, `maxSeizedAssets: 0`, `fullCloseAllowed: true`,
