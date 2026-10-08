@@ -287,6 +287,34 @@
       "date": "2026-10-07",
       "what": "second x402 settlement: a keyless POST /v1/quotes paid $0.01 USDC the same way and received the quote",
       "tx": "0x055981d83ca73612b1677326f1ecb5847c9ccbfcdcad1b8a25f3a2c81eaca8f9"
+    },
+    {
+      "date": "2026-10-08",
+      "what": "webhooks end to end: the desk's keeper (the mirror key, inside a KV hold of all three symbols) held and released line 1; the indexer's credit-desk source picked up both Decision events, the partner API's poll (driven by the keeper's cron through API_EVENTS.tick, because the API's own cron never fires) turned them into hold and release events, and both were delivered HMAC-signed to the API's echo receiver, signatures valid",
+      "txs": {
+        "hold": {
+          "tx": "0x5dd9d8df6cac14096e4b0ae3e6eafe6553a0de8a760b271bf0e3438fe91e42b7",
+          "block": 47839633,
+          "decisionHash": "0x50b6f8cec03eae56db6348e6c9f53460a3113c5b8322d8c7d9eefc9fbefae234",
+          "eventId": "8a8dcf2c-38eb-42d9-96a2-2fdfd563ed82",
+          "deliveryId": "38b48adf-4994-493d-ad22-db3454407efd",
+          "blockTime": 1791447554,
+          "deliveredAt": 1791447638,
+          "latencySeconds": 84
+        },
+        "release": {
+          "tx": "0xd1687fdf25da3e4aeed84fde4d731431d35ccd4304ac02d9564111eb33202514",
+          "block": 47839650,
+          "decisionHash": "0x254eaeb389055e202793ef3d6b2e504c2a7083d81f5cb0ea961d8748c0a6d250",
+          "eventId": "2a96052b-f8dc-4ee0-a316-e13749680cff",
+          "deliveryId": "a2f2cfe2-40ab-45b2-81db-8fbd7d8e5fce",
+          "blockTime": 1791447588,
+          "deliveredAt": 1791447758,
+          "latencySeconds": 170
+        }
+      },
+      "receiver": "https://boundline-api.papermind-ai.workers.dev/v1/webhooks/echo/boundline-demo-53a54f87681c (webhook wh_0078c9cd-6ae3-4bd8-ac91-37f5e4710da1, events *)",
+      "result": "both deliveries signatureValid true; latency from the block to the delivery 84 s and 170 s (indexer near-head rescan + one API source per minute)"
     }
   ],
   "gas": {

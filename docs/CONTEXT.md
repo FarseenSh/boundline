@@ -3,7 +3,7 @@
 Living record of everything built so far, where it lives, how it is verified, and what is open.
 **Start here** in any new session (human or Claude), then `docs/BUILD.md` for the schedule.
 Update this file at the end of every session together with the ledger in `docs/BUILD.md`.
-Last update: **Wed 7 Oct 2026, night IST** (after the six 7 Oct lanes; see section 12).
+Last update: **Thu 8 Oct 2026, afternoon IST** (morning cross-check, then eight lanes G–M; see sections 8–12).
 
 ## 1. What Boundline is, in one paragraph
 
@@ -32,6 +32,14 @@ live desk line at any hour down the ladder (user reserve, then a Reserve advance
 of real Aave and Morpho positions through −3/−8/−15% weekend gaps shows three raw liquidations go through and none on the
 protected path; the **local-money payout leg** swapped drawn USDC into a local stablecoin in session; the partner API is
 **x402-metered** (two real settlements); the **console**, the **agent surface** (MCP) and the landing site are live.
+On 8 Oct 2026 the drills became evidence and the keeper became careful: **six drills ran live on Sepolia** (issuer
+transfer pause, ineligible receiver, scheduled multiplier, keeper hold, registry pause, stale feed) and **two on a mainnet
+fork** (the real 24 Sep Aave hub halt replayed with its own payloads; a bad-debt probe where the raw venue leaves 853.92
+USDC of bad debt and the protected path none); the keeper **simulates every action before signing**, runs the
+**DeskProtectionVault job** and re-signs its validity transactions; the **DividendHarvester** turns each cash dividend
+into a repayment (fork-tested on NVDAc's real 1 Oct dividend); the **mainnet deploy is one command**, rehearsed on forks
+(50 transactions, about $0.80 of gas); the partner API gained **route plans, webhooks and Saturday mode**; the indexer
+stopped dying on the CPU cap and gained **seize watch**; the submission package (portal text, scripts, deck) exists.
 
 ## 2. Frame
 
@@ -44,7 +52,7 @@ protected path; the **local-money payout leg** swapped drawn USDC into a local s
 | Plan of record | `/Users/farseen/BaseFlow/reports/Boundline v3 full build plan 2026-09-26.md` (mechanics) and `Boundline v3 winning idea plan 2026-09-26.md` (pitch) |
 | Repo | `/Users/farseen/boundline`, local git on `main`, no remote yet (public repo needed before submission; pushing later keeps the dates, never backdate) |
 | Old repo | `/Users/farseen/BaseFlow`: reference and plans only, nothing imported |
-| Cloudflare plan | Workers **Free** plan as of 6 Oct morning (10 ms CPU per invocation; every cron died `exceededCpu`); all Workers now hand-roll their hot paths; since 6 Oct afternoon ticks of 20 to 180 ms CPU pass and every cron fires, which looks like a plan change: **confirm in the dashboard** (the Observatory's Aave and gaps ticks and the indexer's mainnet scans need it) |
+| Cloudflare plan | Workers **Free** plan, and the 10 ms CPU cap **is enforced, inconsistently** (corrected 8 Oct: the 7 Oct note "no longer enforced" was wrong). 8 Oct 06:39 UTC: every indexer cron tick died `exceededCpu` at `cpuTime 10` and its sources had stalled for hours, while the keeper (8 ms) and Observatory (6 ms) ticks passed and API fetches at 16–19 ms ended `ok`. After the 8 Oct diets: keeper 3–6 ms, indexer 8–16 ms (passing), Observatory 4–25 ms. **Workers Paid ($5/month) is the fix; human decision pending.** Some crons never fire on this account (the API's, 8 Oct; the indexer's, 3 Oct): drive them from a cron that does, through a binding |
 | Dependency order | toolchain → calendar and oracles → Observatory → test stocks, CreditDesk and policy → indexer and registry → pre-liquidation, AaveDesk, ProtectionVault, Reserve → fork replay and nightly assurance → router, self-repaying and local-money legs → API, SDK, widget, console, app, agent surface → drills, evidence, docs → deck, videos, submission |
 
 ## 3. Repository map
@@ -86,6 +94,25 @@ protected path; the **local-money payout leg** swapped drawn USDC into a local s
 | `docs/BUILD.md` | day-by-day schedule to 10 Oct and the ledger | |
 | `.github/workflows/ci.yml` | contracts build/test/fmt, TypeScript build/typecheck/test, fork job gated on `BASE_RPC_URL` | not yet run (no remote) |
 | `.env.example` | every key, RPC and account the scripts and Workers read | |
+
+**8 Oct 2026 additions and changes to the map:**
+
+| Path | What | Verified by |
+| --- | --- | --- |
+| `contracts/src/harvest/DividendHarvester.sol` | the self-repaying leg (section 4.9) | 17 unit tests incl. a 256-run fuzz; fork test on NVDAc's real dividend; 21,310 bytes |
+| `contracts/src/aave/AaveVenue.sol` (+ `AaveDeskLib`, `ProtectionVault`) | the hub's `SpokeConfig` (`halted`, `active`) read for both reserves: reason `VENUE_HALTED` (25, appended), `HOLD_VENUE`; `ProtectionVault.venueReason` | AaveDesk 38, ProtectionVault 14 + 5 invariants with hub switches; sizes AaveDesk 22,552, Lib 14,693, ProtectionVault 16,879 |
+| `contracts/script/DeployMainnet.s.sol`, `deploy-mainnet.sh`, `DeployMainnet.cost.py`, `DeployHarvest.s.sol` | the whole mainnet footprint in one ordered, resumable run (`plan`, `rehearse`, `broadcast [--resume]`, `check`), 33 post-deploy checks; harvester deploy | rehearsed on base-anvil forks at 52,327,262 / 52,327,370 / 52,328,022: 50 txs, 50.98–51.02M gas, 0.00031 ETH, 33/33 |
+| `contracts/test/drills/`, `scripts/drills/` | fork drills `venue-halt` (the real 24 Sep hub halt, freeze, pause) and `bad-debt-probe` (largest Steakhouse AAPLc borrower), `run-fork-drills.sh` (`--only`) | base-forge; 71/71 and 75/75 checks; skip without `BASE_RPC_URL` |
+| `scripts/sepolia/` | the Sepolia operator's tools: `bl.py` (helpers), `drills.py`, `record_protect.py`, `stage_line1.py`, `stage_drill_position.py`, `twap.py` (`show`, `mirror`, `ltv --who drill|line1 --bps N`) | used live 8 Oct (123 transactions, all status 1) |
+| `docs/evidence/drills/*.json` | 12 drills, 17 runs (live and fork), served by the API's `/v1/drills` | |
+| `docs/evidence/validity-rearm-2026-10-08.md` | the re-arm experiment | |
+| `docs/submission/`, `docs/deck/` | portal text with an evidence index, 2:00 pitch and 3:00 demo scripts, logo, public-repo checklist, X thread, weekly-update scripts; 12-slide typst deck and PDF | every hash re-checked on chain by the lane that wrote them |
+| `docs/runbooks/mainnet-deploy.md` | what a funded key buys and the exact commands | |
+| `apps/keeper` | + `vault-job.ts`, `vault.ts`, `events.ts`, `reverts.ts`, `rpc.ts`, `warm.ts`; KV `KEEPER_STATE`; binding `API_EVENTS` | 118 tests |
+| `apps/indexer` | + `rpc.ts`, `multicall.ts`, `seize.ts`, `seize-baseline.ts`, `topics.ts`, migration `0003_event_hashes`; sources `sepolia-protection`, `mainnet-policy-registry` | 108 tests |
+| `apps/api` | + `route.ts`, `route-signer.ts`, `webhooks.ts`, migration `0003_route_webhooks`; the `Events` WorkerEntrypoint | 118 tests |
+| `apps/agent`, `packages/router` | x402 on the REST aliases; candidates and raw encoders moved into `@boundline/router` (`./candidates`, `./raw`) | agent 19, router 15 |
+| `packages/sdk`, `apps/app`, `apps/console`, `apps/site` | vault reads and calls, route, webhooks and events clients; the app's route card and protection reserve; the console's webhooks, events and Saturday mode; the site's bridge Worker (`apps/site/worker/`) | sdk 95, console 46 |
 
 ## 4. Contracts
 
@@ -254,6 +281,31 @@ the identical `eth_call`, because base-forge's local simulation runs Beryl preco
   recovery path is unit- and invariant-proven and goes live with the freeze redeploy, when the Cobalt receiver
   allowlists of the three test stocks must also admit the vault (else `PolicyForbids`).
 
+### 4.9 The self-repaying leg and the Aave hub halt (8 Oct 2026)
+
+- **What a dividend is on chain (researched 8 Oct):** the Chainlink Coinbase feeds report total return (share price ×
+  the OracleRegistry multiplier); a token's raw balance never changes and one token redeems for `multiplier` shares. On
+  mainnet the registry multiplier equals the token's own `multiplier()`: AAPLc 1.0, GOOGLc 1.000377118676784179, METAc
+  1.000313792289598084, NVDAc 1.000537939576369481, each moved once by an issuer `announce` (NVDAc's is a "Cash Dividend"
+  in Coinbase's corporate-actions API: tx `0x7aef5d1292d0f78b1cdc05518301553fc7220e5a0022d98b822dc09ac925ddcd`, block
+  52,041,960). So any venue valuing raw × feed already counts every dividend (multiplying again is the v1 double count),
+  and the harvestable collateral is `raw × (m1 − m0) / m1`, which leaves exactly the share count held at `m0`.
+- **`DividendHarvester`** (21,310 bytes): opt-in by `Morpho.setAuthorization(harvester, true)` plus `enroll(marketId,
+  lineId, mode)`; `harvest(user, marketId, deadline)` by an operator in an OPEN session only: flash-borrows the repayment
+  from Morpho, repays through `desk.repay` (desk lines; Morpho for plain positions), withdraws only the dividend
+  collateral, sells it on the stock's pool above a price floor (exact output, the Protector's direct-swap pattern), supplies
+  the unsold rest back, and checks LTV did not rise. Rises above `maxStepBps` (splits), falls, `HEADROOM` mode and no-debt
+  re-base without selling. The desk's `Line` holds no collateral amount (it reads Morpho), so the direct withdrawal cannot
+  desync it. Fork proof: real Steakhouse borrower `0xcBFB…f2E6` (4.888 NVDAc, 425.11 USDC debt): 259,715 raw NVDAc sold on
+  the real Aerodrome pool, 0.599048 USDC repaid, 3,086 raw back on the position. Not deployed yet (Sepolia needs the
+  harvester admitted to AAPLt's allowlist and a simulated multiplier; the reserve-yield source is not built).
+- **Aave hub halt:** the real 24 Sep 2026 halt was hub-level (`SpokeConfig.halted` through the Safe → executor → payload
+  → `HubConfigurator.updateSpokeHalted` for all 8 assets; halt tx `0x86de199821582541271107b04751115aafeec608901a6260b0a27af52c0eed8f`),
+  which `AaveDesk` did not read: during the replayed halt it quoted `NONE` with 991.48 USDC available and recorded `OPEN`.
+  Fixed (`AaveVenue`): quotes and records fail closed on a halted or unreadable hub (`VENUE_HALTED`, `HOLD_VENUE`, 0
+  available); desk and vault repays refuse only on a positive read of a halt or a paused USDC reserve, so a bad read never
+  blocks protection; `recover` refuses on a halted or unreadable hub and a paused collateral reserve.
+
 ## 5. TypeScript
 
 - **`@boundline/calendar`**: `sessionAt`, `isFeedLive`, `describe`, `nextTransition`, `dateKeyOf`,
@@ -363,6 +415,59 @@ the identical `eth_call`, because base-forge's local simulation runs Beryl preco
   silent). Live: `route` for 1 AAPLc at a 55% policy chose the Steakhouse market `0xae1a…3c28` at 5.53% APR with
   184.68 USDC capacity, `protection: none` (no Boundline pre-liquidation on mainnet yet).
 
+**8 Oct 2026 (Thursday):**
+
+- **Keeper** (deploys `abcce602` by Lane H, then `74212fbb` by main): five jobs in one cron: feed mirror, registry
+  mirror, protection, **vault** and events. **Every action is simulated before signing** (`eth_call` of the exact calldata
+  from the signer at `latest`, must pass, and `pending`, a revert blocks): a revert becomes `would-revert` with the error
+  decoded by 4-byte selector (98 entries), no signature, no event, and a 150-block backoff in KV unless the target's inputs
+  change. Found by the Sepolia operator: `Protector.sizing` never looks at the sale pool's USDC, so an unpayable close-out
+  used to be re-armed and reverted every minute. **Vault job** (`VAULT_TARGETS` = `lineId:graceBps:targetBps:shadowOracle:feed:slot`,
+  line 1 at grace 52% and target 45%): shadow LTV from the ShadowGuard, amount to the target capped by
+  `previewProtect` (no shortfall), `DeskProtectionVault.protect` as a validity transaction with the held-feed predicate;
+  it shares the protect signer `0x4066…0373` (the vault's keeper since 8 Oct) with the Protector job: one signature per
+  tick, the Protector first. **Re-arms re-sign** with a new hash (tip and cap +25% per 30-block window): in the 8 Oct
+  experiment known bytes re-sent after expiry were included 0 of 4 times, re-signed ones 2 of 2 within 1–2 blocks
+  (`docs/evidence/validity-rearm-2026-10-08.md`). **KV `KEEPER_STATE`** (`a648931723db46ca90aef102b0fe83bb`): key `hold`
+  (JSON `{feed, registry}`, merged with `MIRROR_HOLD_*`, so a drill holds a symbol without a redeploy; commands in
+  `apps/keeper/README.md`) and the jobs' grace, armed and backoff state. **Events**: RPC binding `API_EVENTS` →
+  `boundline-api#Events`: `grace`, `grace.cleared`, `protect` through `ingest`, and since main's `74212fbb` the keeper's
+  cron also calls the API's `tick()` once a minute (the API's own cron never fires). CPU: a raw JSON-RPC client and a
+  module-scope warm-up of every cron path took the first tick from 34–36 ms to 5.0 ms idle / 8.9 ms with a signature;
+  live 3–6 ms `ok`. Routes `/v1/vault`, `/v1/protect?simulate=…`, `/v1/events/probe`.
+- **Indexer** (v7 `cef99b88` by Lane G, then `aba6ef13` by main): raw JSON-RPC with batched ranges, a lean decoder
+  differential-tested against viem, one D1 read, one atomic lease and one commit per tick, incremental byte-identical
+  roots (migration `0003_event_hashes`); the 20 s lease replaced the start marker that a killed tick left behind (it
+  had blocked the Observatory's kick); every invocation `ok` at 8–16 ms; `mainnet-feeds` catching up at about 1,118
+  blocks a minute (lag 135.6 h → 110 h by 08:20 UTC, ETA about 3 h). New sources `sepolia-protection` (Protector,
+  DeskProtectionVault, Reserve, payout router; vault events folded into line timelines) and `mainnet-policy-registry`;
+  `/v1/seize-watch`. **Roots for Sepolia 2026-10-06 and 2026-10-07 report `drift: true`**: the backfill added events to
+  days already rooted; re-rooting needs `DELETE FROM daily_roots WHERE chain_id = 84532 AND day >= '2026-10-06'` on D1
+  `boundline-indexer` (the permission classifier denied it to the lane: a human approval).
+- **Seize watch (mainnet, 8 Oct):** no `SEIZE_ROLE` has ever been granted on the ten stocks (full-history scan from block
+  49,145,000, 187 governance logs, live `hasRole` checks); `SEIZE_EXEMPT_POLICY` went 0 → policy 129 on all ten on Mon 5 Oct
+  2026 17:38–18:00 UTC (a blocklist administered by `0x38467bE00970af18076fd08F6b4Cf38Ba91572B1`; two addresses blocklisted
+  at block 52,216,975 and removed at 52,217,211); seize receiver policy 0; all seven venue pools exempt (block 52,328,243).
+  Observatory panel "Seize watch".
+- **Partner API** (`b0264d18` by Lane I): `POST /v1/route` and `GET /v1/lines/:id/route` (plans stored in D1, EIP-712
+  signed only once `ROUTE_SIGNER_KEY` exists: pending the human, unsigned with a note until then; keyless x402-metered);
+  live: Sepolia 0.02 AAPLt → the AAPLt market, capacity 3.356830 USDC at 1.56% APR, `pre-liquidation`; mainnet 1 AAPLc →
+  Steakhouse `0xae1a…3c28`, 184.625650 USDC at 5.46%, `none`. Saturday mode as an off-chain partner policy (versioned,
+  around-the-clock venues only; off by default, proven on and off). Webhooks: HMAC-SHA256 signatures (`Boundline-Signature:
+  t=…,v1=…`), retries 1/2/4/8/16 min, a bounded poll of the indexer's `credit-desk` and `sepolia-protection` events (one
+  source a minute, at most 4 new events), the `Events` entrypoint (`ingest`, `tick`), the echo receiver
+  (`/v1/webhooks/echo/:token`; demo receiver `wh_0078c9cd-6ae3-4bd8-ac91-37f5e4710da1`, token `boundline-demo-53a54f87681c`),
+  `POST /v1/webhooks/poll` on demand. **The API's own cron trigger never fired** (registered 07:25:55 UTC, nothing in a 7-minute
+  tail): the keeper drives `tick()`. `/v1/drills` serves 12 drills and 17 runs. **Hono's default SmartRouter costs 24–26 ms
+  CPU on a cold request; `PatternRouter` 0.2–0.3 ms**: API, keeper, indexer and Observatory use `PatternRouter` since 8 Oct.
+- **Agent** (`f6ec84db`): keyless REST aliases pay $0.01 through x402 (partner key bypasses, `/mcp` stays free).
+- **SDK, app, console, site** (Lane J): `@boundline/sdk` vault reads and prepared calls, route, webhooks and events clients,
+  webhook signature verification; the app's route card (`/borrow`) and protection reserve (`/protect`), vault events in
+  `/statements`; the console's Webhooks (echo receiver, deliveries), Events and Saturday mode, and a fix for a crash on
+  "Prepare version"; the site reads the Observatory and `/v1/drills` through a bridge Worker (its live panel had shown
+  "Observatory unreachable" in every browser: no CORS headers) and lists twelve proofs re-checked on chain. Base Pay not
+  built: it sends a plain transfer and the vault credits only `deposit`/`repayAdvance`.
+
 ## 6. Deployments and live state
 
 ### 6.1 Base Sepolia (chain 84532), deployed 3 Oct 2026, all verified on sepolia.basescan.org
@@ -444,9 +549,46 @@ fee (`0x14c4ffbd…db9a`); the Reserve harvested the fee (`0xf2574764…da67`): 
 (`0x8816d08f…c6ff`, block 47806632, USDC transfer validity key → `0x2f0d…2a4E`, settled by the facilitator's signer
 `0xd407…f1bf`) and a keyless quote (`0x055981d8…a8f9`); record `proofs`.
 
+**8 Oct 2026 (Sepolia operator lane K1; every hash in `deployments/base-sepolia.json` and `docs/evidence/`):**
+
+- **Second automatic protection, found in the cross-check:** the keeper had pre-liquidated the deployer's drill position a
+  second time on Tue 6 Oct ~13:56 UTC, unrecorded until today: tx `0x6d45ddc95b314de50f3a3375b2d764302e07a920869fd2000fa768fdc84a40d9`,
+  block 47,763,353, 7,116 raw AAPLt seized, 0.023302 USDC repaid, 7,005 raw sold at 330.91685 (venue = shadow, in
+  session), shadow LTV 58.3074% → 57.9999%, decision `0x1a78c549…d444`. Now run 2 of the `protection` drill.
+- **Line 1 reshaped for the vault drill** (the desk allows one open line per partner, user and market, so there is no
+  line 4): withdraw 9.98 AAPLt `0xbc42e179…d5c5`, draw 1.62 USDC `0xd2de1e47…26ce`, a 0.4 USDC user reserve in the
+  DeskProtectionVault (`0xa0673e92…3776` approve, `0x070e87e8…7928` deposit). Line 1 now: 0.02 AAPLt, 3.210176 USDC,
+  47.8% LTV at the feed.
+- **Drill position pre-positioned below the band at the close:** the deployer repaid 0.06 USDC on its own position
+  (`0x345aeea78f3e19955461de49b8f1f32845a17102d2c70eeeec00e042c9b7b939`): debt 1.745454 USDC; the MockSwapPool's 1.805321
+  USDC covers a close-out with +0.059867; at the mirrored TWAP the position sits at 56.33% while held.
+- **Mock TWAP mirrored from the real Aerodrome AAPLc/USDC pool**: tick −12125 ($336.1675; `ShadowGuard.twapPrice36()`
+  equals the computed quote), txs `0xcd177bfe…98a2`, `0xd4517a08…116b`, `0xaec35885…9f13`.
+- **The DeskProtectionVault's keeper is the Worker's protect signer** `0x4066…0373`: `setKeeper` `0x0154bde33ecbf5cfe11c0651c839533f724e71af75f25e60510628b872ba93b8`
+  (block 47,838,039).
+- **Six live drills**, every one ended clean (the mirror-key drills inside a KV hold of all three symbols, released):
+  `issuer-transfer-pause` (TSLAt: `TRANSFER_PAUSED`, line 3 `HOLD_TRANSFER`, addCollateral `ContractPaused(0)`),
+  `ineligible-receiver` (the desk's B20 preflight `PolicyForbids` versus Morpho's opaque `transfer reverted`),
+  `scheduled-multiplier` (NVDAt via `announce`: line 2 capacity 592.39 → 296.20 → 592.39), `keeper-hold` (line 1:
+  `LINE_HELD`, `HOLD_KEEPER`, a 0.01 USDC repay landed while held), `registry-pause` (TSLAt: `FEED_PAUSED`, the desk shows
+  `HOLD_ISSUER`, addCollateral still lands), `stale-feed` (TSLAt: in-session `FEED_STALE`, `HOLD_FEED`, the Worker's
+  mirror restored the round).
+- **Webhooks proven end to end (main session, afternoon):** the desk's keeper held and released line 1 (inside a KV hold)
+  — `hold` `0x5dd9d8df6cac14096e4b0ae3e6eafe6553a0de8a760b271bf0e3438fe91e42b7` (block 47,839,633), `release`
+  `0xd1687fdf25da3e4aeed84fde4d731431d35ccd4304ac02d9564111eb33202514` (block 47,839,650); the indexer picked up both
+  Decision events, the API's poll (driven by the keeper's cron) made `hold` and `release` events, and both reached the
+  echo receiver HMAC-signed with valid signatures, 84 s and 170 s after their blocks (`deployments/base-sepolia.json`
+  `proofs`).
+- Balances after: deployer 0.039566 ETH, 2.96 USDC; borrower 4.508 USDC; vault 1.4 USDC (1.0 advance liquidity + 0.4
+  user reserve); pool 1.805321 USDC; Reserve 1.002 USDC idle. The borrower EOA is EIP-7702-delegated to MetaMask's
+  verified `EIP7702StatelessDeleGator` (`0x63c0…e32b`); it still signs normally.
+
 ### 6.2 Base mainnet (chain 8453)
 
-Nothing deployed: there is no mainnet deployer key yet. Constants the code relies on: Morpho
+Nothing deployed: there is no mainnet deployer key yet. **Since 8 Oct the whole footprint is one command**
+(`contracts/script/deploy-mainnet.sh broadcast`, runbook `docs/runbooks/mainnet-deploy.md`): 50 transactions, about 51M
+gas, 0.00031 ETH at 8 Oct fees (about $0.80); fund the deployer with 0.005 ETH and a keeper key with 0.002 ETH. METAc and
+GOOGLc get no pre-liquidation (no 24/7 pool in the address book). Constants the code relies on: Morpho
 `0xBBBBBbbBBb9cC5e90e3b3Af64bdAF62C37EEFFCb`, AdaptiveCurveIrm
 `0x46415998764C29aB2a25CbeA6254146D50D22687`, OracleRegistry
 `0x3f3E8cf41cdd3b1D118c16471aB0113DfDDd5CaD`, USDC `0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913`,
@@ -478,6 +620,16 @@ Indexer: `INDEX_MAINNET=true`, migration 0002 applied, RPC list Tenderly public 
 source), own cron firing. The Observatory keeps one cron (`* * * * *`: snapshot, capture, indexer kick, positions on
 every fifth minute) and the secret `BASE_RPC_URL_PRIVATE` (Alchemy, `eth_call` only).
 
+Since 8 Oct: keeper vars `DESK_PROTECTION_VAULT`, `CREDIT_DESK`, `VAULT_TARGETS`, KV `KEEPER_STATE`
+(`a648931723db46ca90aef102b0fe83bb`), service binding `API_EVENTS` → `boundline-api` entrypoint `Events`; the keeper's
+cron drives the API's webhook `tick()` because **the API's own cron never fires**; the indexer's own cron fires and the
+Observatory's kick is de-duplicated by a 20 s lease; the API has migration 0003 (route plans, webhooks), a cron trigger that
+does not fire, the `Events` entrypoint and `/health` `features: ["route","webhooks","events-entrypoint","saturday-mode"]`;
+the site has a bridge Worker (`apps/site/worker/`) with service bindings to the Observatory and the API. Deploy a router
+change with `pnpm --filter @boundline/router build` first (`dist/` is gitignored). Last deploys 8 Oct: keeper
+`74212fbb`, indexer `aba6ef13`, Observatory `326a3f30`, API `b0264d18`, agent `f6ec84db`, app `75aa8695`, console
+`1bfb9a5b`, site `b15a91fe`.
+
 ## 7. Keys, accounts and secrets (locations only, never values)
 
 - Test-only Base Sepolia keys from the old project live **outside the repo** in a 0600 env file on
@@ -497,6 +649,11 @@ every fifth minute) and the secret `BASE_RPC_URL_PRIVATE` (Alchemy, `eth_call` o
   `--private-key "$VAR"`; never echo a value, never point these keys at chain 8453.
 - Cloudflare: `wrangler` holds an OAuth login on the deployer's machine (scopes: workers, KV, D1,
   pages, zone read; **no R2**). Account id `d1dc74d76398a3583271827dd3384c07`.
+- **8 Oct:** no new key was created. Writing new keys under `~/.boundline` (a vault-keeper key, a route-signer key) was
+  refused by the session's permission classifier, so the vault job shares the protect signer (the plan of 6 Oct named it)
+  and the route signer waits for the human: generate a key, keep it in `~/.boundline/base-sepolia.env` as
+  `BOUNDLINE_ROUTE_SIGNER_KEY`, `wrangler secret put ROUTE_SIGNER_KEY` in `apps/api` (typed data only, unfunded).
+  The keeper→API events use an RPC entrypoint, which needs no shared secret.
 - Not yet existing: mainnet deployer key, dedicated keeper key, CDP project (paymaster, Node RPC
   key), Builder Code, Arena project with both developers, team AAPLc positions, USDC seed for the
   mainnet market. `.env.example` lists every variable the code reads.
@@ -547,6 +704,24 @@ reverts), cNGN/USDC is Uniswap v4; the x402.org facilitator lists v2 `eip155:845
 and settles from its own signer; the Observatory's workers.dev origin sends no CORS headers (browser pages read it through a
 service binding); a freshly deployed Worker can answer empty bodies for its first seconds (retry once).
 
+**8 Oct facts:** the Free plan's 10 ms cap kills heavy cron ticks (`exceededCpu` at exactly `cpuTime 10`) while light
+ones and some 16–19 ms fetches pass: never rely on leniency, measure with a tail. Hono's default SmartRouter compiles a
+regular expression over every route on the first request of a cold isolate (24–26 ms CPU); `PatternRouter` costs 0.2–0.3
+ms. viem's request code dominated a cold keeper tick (34 ms); a raw client plus a module-scope warm-up removed it. The
+desk allows **one open line per (partner, user, market)** (`LineExists`). `Protector.sizing` reports `fullCloseAllowed`
+without looking at the sale pool's USDC, so the keeper must simulate before signing (it does since 8 Oct). The sequencer
+did not include **known validity-transaction bytes re-sent after their bound expired** (0 of 4), while re-signed ones
+landed in 1–2 blocks (2 of 2): re-sign every re-arm. On the desk, a registry pause (`FEED_PAUSED`) shows as obligation
+`HOLD_ISSUER`; a scheduled split is a lower UI multiplier via the B20 `announce`/`updateUIMultiplier` path, which the desk
+haircuts only when lower; an unadmitted receiver is refused by the desk's own B20 preflight (`PolicyForbids`) while
+Morpho's path gives only `transfer reverted`. The real 24 Sep Aave halt was **hub-level** (`SpokeConfig.halted`), not a
+reserve freeze; under a reserve freeze a direct venue borrow and liquidation still pass. The Sunday 11 Oct reopen is unix
+**`1791763200`** (Mon 12 Oct 00:00 UTC); the earlier `1791849600` in this file was a day late. `wrangler tail` output
+flushes late: run it detached and stop it with SIGINT; a stray tail from a previous session can keep running for a day.
+`ps` shows a forked anvil's full `--fork-url` (with the key): never print process command lines. The permission
+classifier refuses writes to the secret store (`~/.boundline`) and destructive D1 statements (a re-root delete): ask the
+human.
+
 Operational lessons: a brand-new Worker's cron can take ten minutes to start, and one Worker's cron never
 started at all (drive it from a working cron through a service binding); a fresh workers.dev route can answer
 Cloudflare error 1042 (HTTP 404) for a minute after its first deploy, and the same 1042 is what a Worker gets when
@@ -558,23 +733,28 @@ disagree on the head for a few seconds, so run one broadcaster per key at a time
 retry a `nonce too low`; `mainnet.base.org` rate-limits Cloudflare egress, hence the RPC fallback
 list; KV on the free tier allows 1,000 writes a day, hence the throttle; macOS has no `timeout`.
 
-## 9. Verification state (7 Oct 2026, night)
+## 9. Verification state (8 Oct 2026, afternoon IST)
 
 ```sh
-forge test --root contracts     # 240 passed, 0 failed, 5 skipped (the fork suites without BASE_RPC_URL), 25 suites
-pnpm test                       # 691 vitest: calendar 106, chain 19, router 11, ledger 10, sdk 73, observatory 210, keeper 65, indexer 69, api 85, console 30, agent 13
+forge test --root contracts     # 264 passed, 0 failed, 8 skipped (fork suites without BASE_RPC_URL), 29 suites
+pnpm test                       # 871 vitest: calendar 106, chain 19, ledger 10, router 15, agent 19, api 118, indexer 108,
+                                #   keeper 118, observatory 217, sdk 95, console 46
 pnpm typecheck                  # clean (every package and app)
-BASE_RPC_URL=<alchemy archive> FOUNDRY_BASE=true ~/.foundry/bin/base-forge test --root contracts --match-path 'test/fork/*'   # Morpho, protection, Aave, payout (4/4), replay (36.8 s)
-pnpm replay                     # scripts/replay/run.ts: writes docs/evidence/assurance/<date>.json/.md, --kv publishes assurance-latest
+BASE_RPC_URL=<alchemy archive> FOUNDRY_BASE=true ~/.foundry/bin/base-forge test --root contracts --match-path 'test/fork/*'
+                                # + test/drills and test/harvest: 9 fork suites, 42 passed (8 Oct)
+scripts/drills/run-fork-drills.sh [--only venue-halt|bad-debt-probe]   # writes docs/evidence/drills/{venue-halt,bad-debt-probe}.json
+contracts/script/deploy-mainnet.sh rehearse                            # 50 txs, ~51M gas, 33/33 checks on a base-anvil fork
+python3 -I scripts/sepolia/twap.py show                                # the Saturday numbers, live
 ```
 
-Per Foundry suite: MarketCalendar 18, MarketCalendarDifferential 2, SessionOracles 34, CreditDesk 24, Protector 18,
-AaveDesk 33, ProtectionVault 12 + 5 invariants, BoundlineReserve 16, DeskProtectionVault 13 + 6 invariants,
-DeployReserve 5, LocalPayoutRouter 15, DeployAave 4, IssueTestStocks 6, DeployCreditDesk 9, TestPriceFeed 6,
-MirrorOracleRegistry 5, MockB20 5, MockCLPool 4, fork suites 5 (skip without an RPC). Sizes at 10,000 runs: CreditDesk
-20,807 + Lib 15,097; AaveDesk 22,552 + Lib 13,664; ProtectionVault 15,186; DeskProtectionVault 18,000; BoundlineReserve
-13,568. Live on 7 Oct: the keeper's ticks `ok`; the Observatory's six panels render; the API answers 402 keyless on the
-metered routes and 200 with the key; the console, site and agent answer; the Reserve shows 2.002 USDC on 2.0 shares.
+Morning cross-check (8 Oct 06:35–07:00 UTC, before the lanes): forge 240/0/5, vitest 691 and typecheck matched section 9 of
+7 Oct; all 8 Workers answered; **94 of 94** recorded full transaction hashes are successful Base Sepolia transactions (the
+other 14 32-byte strings are ids and hashes); the Observatory had 60/60 snapshots in every hour since 7 Oct 07:00 UTC.
+Live after the lanes: keeper ticks `ok` at 3–6 ms with `apiTick: ok`; indexer every invocation `ok` (8–16 ms), every Sepolia
+source and the mainnet Aave/Morpho sources at head, `mainnet-feeds` catching up; `/v1/drills` 12 drills and 17 runs; the
+API's route, webhooks (echo delivery 200, signature valid) and Saturday mode answer; the agent's REST aliases answer 402
+keyless; the site's live panel renders through its bridge Worker. Every hash cited by the 8 Oct lanes was re-checked on
+chain by the lane that wrote it (K1: 123 transactions, all status 1).
 
 ## 10. Decisions, dated
 
@@ -608,6 +788,16 @@ metered routes and 200 with the key; the console, site and agent answer; the Res
   the router is pure and dependency-free; the keeper's mirror can hold a symbol (`MIRROR_HOLD_*`) so Thursday's drills
   are not reverted a minute later; the payout router has no owner and refunds unfilled input; cNGN is not routed
   (Uniswap v4 pool); the Reserve, vault, router and agent keep the deployer as their operator until a keeper job exists.
+- **8 Oct**: the drill position is pre-positioned below the band at the close (a 0.06 USDC repay) instead of leaving the
+  pool short, because the keeper then had no pre-arm simulation; the keeper now simulates every action and re-signs every
+  re-arm; line 1 (not a new line) is the vault drill's subject; the vault job shares the protect signer (one signature per
+  tick, the Protector first) because new keys could not be written; keeper→API events go over an RPC entrypoint, and the
+  keeper's cron drives the API's webhook tick; route plans stay unsigned until the human approves a signer key; Saturday
+  mode is an off-chain partner policy, off by default; Base Pay is not built (the vault credits only `deposit` and
+  `repayAdvance`, so a Base Pay transfer would land uncredited); the harvester repays first through a Morpho flash loan,
+  then withdraws only the dividend collateral; Aave desk lending fails closed on a hub halt or an unreadable hub while
+  repays refuse only on a positive read; every Hono Worker uses `PatternRouter`; the CreditDesk is not redeployed for
+  the harvester (the desk reads collateral from Morpho, so the harvester needs no desk change).
 - **3 Oct, night**: a dedicated keeper key owns the Sepolia simulators and lives in Cloudflare as a secret; the
   Sepolia feeds mirror mainnet's rounds verbatim (held, stale and reopening like the real thing) instead of being
   kept artificially fresh. The desk went to Sepolia at 200 optimizer runs rather than waiting for the library
@@ -616,32 +806,44 @@ metered routes and 200 with the key; the console, site and agent answer; the Res
 
 ## 11. Open items
 
-**Clocked**
-- Fri 9 Oct, before 20:00 ET: run the Friday steps of `docs/runbooks/saturday-rescue-2026-10-10.md` (top up the
-  MockSwapPool with ≥ 0.5 USDC so the close-out can pay; read the sizing; check the keeper and signer balances).
-- Sat 10 Oct, after 05:30 IST: move the mock DEX price 4–6% down; the keeper's protection job closes the deployer's drill
-  position as a validity transaction while the feed is held; record the hashes and the refused raw liquidation.
-- Sun 11 Oct 20:00 ET / Mon 12 Oct 05:30 IST: the reopen; `/v1/captures` run `1791849600`; first-print hashes into the
-  submission before Tue 13 Oct 12:29 IST.
+**Clocked** (the runbook `docs/runbooks/saturday-rescue-2026-10-10.md` has every command and number)
+- **Fri 9 Oct, before 20:00 ET (before Sat 05:15 IST):** `python3 -I scripts/sepolia/twap.py mirror`, then `show`:
+  drill position below 58% and line 1 below 52% at the mirrored TWAP while held, pool USDC ≥ drill debt + 0.03 (top up
+  first if not); keeper `/v1/status`, `/v1/protect`, `/v1/vault` healthy, `/v1/config` hold empty; record the "before"
+  state. If the DEX gaps more than ~2.7% under the feed into the close, the keeper closes the drill position out at once:
+  record it as Saturday's step 1.
+- **Sat 10 Oct, after 05:30 IST, screen recording on:** step 1 `twap.py ltv --who drill --bps 5880` → the keeper closes
+  the drill position out (validity transaction, held predicate) + the refused raw `Morpho.liquidate` call; step 2 (only
+  after step 1 landed) `twap.py ltv --who line1 --bps 5400` → the vault job repays line 1 ≈ 0.535 USDC (0.4 user reserve
+  + ≈ 0.135 Reserve advance); step 3 `twap.py mirror`; record both. Top the pool up before moving the TWAP, never after
+  (a simulated revert backs a target off ~5 min).
+- **Mon 12 Oct after 05:30 IST:** `/v1/captures` run `1791763200` (Sun 11 Oct 20:00 ET); first-print hashes into the
+  submission; the borrower settles the advance (`repayAdvance(1, …)` ≈ 0.136 USDC) and the Reserve harvests; deadline
+  Tue 13 Oct 12:29 IST.
 
-**Next build items (dependency order)**: keeper job for the DeskProtectionVault (`protect(lineId, amount)` on the grace
-line, then `setKeeper` to the Worker's protect key) and webhooks (hold, grace, protect, recovery); Thursday's Sepolia
-drills executed and rendered (weekend gap, stale feed, registry pause, issuer transfer pause, scheduled multiplier with
-`MIRROR_HOLD_REGISTRY`, ineligible receiver, venue halt, partial repayment, bad-debt probe) into `docs/evidence/drills`;
-the router wired into the API (`/v1/route`, signed plans on obligations) and the app; self-repaying leg (dividend harvest
-on `UIMultiplierUpdated`, reserve yield via a mock ERC-4626); Saturday mode as a partner policy option; seize watch;
-x402 on the agent's REST aliases; Base Pay; README refresh, deck, videos, submission text; the validity re-arm
-experiment (new hash per re-arm); mainnet deploys (SessionGuard, market, pre-liquidations on the Steakhouse markets,
-AaveDesk, ProtectionVault, Reserve, payout router) as soon as a mainnet key exists; Robinhood Chain and Arbitrum; the
-freeze redeploy of the CreditDesk (with `setProtectionVault` and the Cobalt receiver allowlists admitting the vault).
+**Next build items:** the Sepolia `DividendHarvester` deploy and one live harvest (admit it to AAPLt's allowlist, a
+simulated dividend multiplier under a KV registry hold, the borrower's opt-in); re-root Sepolia 2026-10-06/07 once the
+human approves the D1 delete; the console mock's old 10-06 root; the reserve-yield source of the self-repaying leg;
+`/v1/whoami` reports the API's stored policy version (1) while the desk is at 4; mainnet deploy with
+`deploy-mainnet.sh broadcast` the moment a funded key exists, then point the agent, router and Observatory at it;
+Robinhood Chain and Arbitrum (only with a real deployment and position each); the CreditDesk freeze redeploy (with
+`setProtectionVault`; the Cobalt allowlists must admit the vault) is optional now: the live desk carries every live flow
+except the vault's `recover`.
 
-**Human-only**: confirm the Cloudflare plan in the dashboard (Workers Paid, or the startup credits) so the crons are
-guaranteed rather than lenient; mainnet deployer and keeper keys with ETH; USDC seed (about $300); each developer's
-AAPLc position; CDP project (paymaster, Node RPC); Builder Code; Arena project with both developers; Cloudflare
-re-login with the R2 scope if exports are wanted; decision on boundline.xyz; Circle faucet top-ups for the Sepolia
-book (20 USDC per 2 h; the NVDAt and TSLAt markets need seed, the MockSwapPool needs USDC for close-outs, the deployer
-holds 3 USDC); a GitHub remote (the nightly workflow and CI need secrets `BASE_RPC_URL`/`ALCHEMY_KEY`,
-`CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`).
+**Human-only**:
+- **Workers Paid ($5/month)**: the 10 ms cap is enforced inconsistently (section 2); Saturday's keeper fits today
+  (3–6 ms) but nothing guarantees it.
+- **Route signer key** for the API (typed data only, unfunded), or a decision to keep plans unsigned.
+- **Mainnet keys**: deployer 0.005 ETH, keeper 0.002 ETH (about $25); optional USDC seed and each developer's AAPLc position.
+- **Arena project with both developers registered**; the second developer's own commits (all commits so far are
+  Farseen's, and the roster must match who did the work); a **public GitHub repo** (`docs/submission/PUBLIC-REPO-CHECKLIST.md`).
+- The `TODO-HUMAN` fields in `docs/submission/SUBMISSION.md` (backgrounds, teammate, GitHub URL, X handle, University
+  wording, the prior-work sentence) and the two videos.
+- The recording wallet's address if the demo is not recorded with the borrower test wallet (it must be admitted to the
+  test stocks' allowlists first).
+- Approval for the indexer re-root (`DELETE FROM daily_roots WHERE chain_id = 84532 AND day >= '2026-10-06'`).
+- Circle faucet top-ups (20 USDC per 2 h) for the deployer `0x2f0d…2a4E` (2.96 USDC; Saturday needs ≥ 1.2 in reserve);
+  CDP project and Builder Code; boundline.xyz; Cloudflare R2 scope if exports are wanted; CI secrets once the remote exists.
 
 ## 12. Commit history
 
@@ -692,6 +894,20 @@ holds 3 USDC); a GitHub remote (the nightly workflow and CI need secrets `BASE_R
 | `94eb94d` | Partner API: x402 metering, policy versions, drills, reconciliation, evidence export, shadow health |
 | `4344a83` | Local-money payout leg live on Sepolia; SDK payout option; app "Receive as"; landing site |
 | `152d099` | Partner console |
+| `8b70c13`, `549f90c` | Observatory Aave V4 positions, gap panel, assurance status; 7 Oct context and ledger |
+| `fa25261` | 8 Oct: the API depends on `@boundline/router` |
+| `fbfc447` | Submission package: portal text, pitch and demo scripts, deck, logo, checklist, X thread; README |
+| `e460ee4` | Sepolia drills executed live (six) and the second automatic protection recorded |
+| `ead6852` | Saturday rescue staged on line 1 and the drill position; runbook rewritten |
+| `464efe1` | Fork drills: the real 24 Sep Aave hub halt; the bad-debt probe |
+| `d765c10` | DividendHarvester |
+| `ef27a70` | Mainnet in one run: `DeployMainnet`, `deploy-mainnet.sh`, runbook |
+| `f8c9119`, `7784be2`, `b7479d6`, `c246efa` | SDK vault/route/webhooks; app route card and reserve; console webhooks, events, Saturday mode; site bridge Worker |
+| `32d6869` | Aave desk and vault read the hub's halt switch (`VENUE_HALTED`) |
+| `301cca9`, `ad5616e` | Keeper: vault job, simulate before signing, KV hold, events, CPU; the re-arm experiment |
+| `12c9392` | Runbook order rule (top up before moving the TWAP) |
+| `9154059`, `af446a3`, `862c31e` | Router shared candidates; agent x402; partner API route plans, Saturday mode, webhooks, drills registry |
+| `f18311e`, `453dea0` | Indexer CPU diet, protection events, seize watch; Observatory seize-watch panel |
 
 ## 13. How to keep this file true
 
