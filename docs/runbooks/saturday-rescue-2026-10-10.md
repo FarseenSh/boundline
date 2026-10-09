@@ -88,6 +88,15 @@ Thresholds while the feed is held (debts above; the shadow price is the TWAP × 
 
 ## Friday 9 Oct, before 20:00 ET (before Sat 05:15 IST)
 
+**One command for steps 1, 2, 4 and 5 (9 Oct):** `python3 -I scripts/sepolia/friday.py` (add `--dry` to look first). It
+mirrors the mainnet TWAP only when that keeps the drill position under 57.5% and line 1 under 51% while held (otherwise
+the previous mirror stays, so nothing acts unrecorded at the close, and the record says why), tops the pool up by 0.1 USDC
+when its headroom is under 0.03, checks the keeper (keys funded, pairs in sync, no hold, vault and harvest keepers, both
+targets below band, line 1 below grace) and the Observatory's close, and writes the `friday` section of
+`docs/evidence/saturday-rescue-2026-10-10.json`. Exit 1 means a check failed: read `fails` in the output. The dry run at
+13:30 IST passed every check (the mirror would move the TWAP from tick −12125 to −12176, 336.17 → 337.89 USD).
+The steps it runs, by hand:
+
 1. **Mirror the real DEX** (the deployer owns the pool's swap price):
    `python3 -I scripts/sepolia/twap.py mirror` (copies the live Aerodrome AAPLc/USDC 1h TWAP from mainnet onto the mock:
    `setAverageTick(3600, tick)`, `setSlot0`, `setPrice36`; checks `ShadowGuard.twapPrice36()` equals the computed quote).
