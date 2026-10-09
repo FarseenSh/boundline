@@ -127,17 +127,28 @@ export function rpcClient(urls: readonly string[], fetchImpl?: FetchLike, timeou
         }
         const byId = new Map<number, RawAnswer>();
         for (const a of json as RawAnswer[]) if (a && typeof a.id === "number") byId.set(a.id, a);
-        return calls.map((_, i): RpcOutcome => {
+        const out = calls.map((_, i): RpcOutcome => {
           const a = byId.get(i + 1);
           if (!a) return { ok: false, error: "missing from the batch answer" };
           if (a.error) return { ok: false, error: `rpc ${a.error.code ?? "?"} ${a.error.message ?? ""}`.trim(), ...(a.error.data !== undefined ? { data: a.error.data } : {}) };
           return a.result === undefined ? { ok: false, error: "no result" } : { ok: true, result: a.result };
         });
+        // A node that rate-limits part of a batch (sepolia.base.org answers -32007 "25/second request limit reached"
+        // per entry, seen 9 Oct 2026) is skipped like a dead one while another URL is left; the last URL's answer stands.
+        const limited = out.find((o) => !o.ok && RATE_LIMITED.test(o.error));
+        if (limited && url !== list[list.length - 1]) {
+          attempts.push({ host: hostOf(url), error: limited.ok ? "" : limited.error });
+          continue;
+        }
+        return out;
       }
       throw new RpcError(label, attempts);
     },
   };
 }
+
+/** Per-entry errors that mean "this node, not this call": a rate limit. */
+const RATE_LIMITED = /rpc (-32007|-32005|429)\b|request limit|rate limit|too many requests/i;
 
 const clients = new Map<string, RpcClient>();
 /** Memoised per isolate by the comma list (secrets first: see env.ts). */

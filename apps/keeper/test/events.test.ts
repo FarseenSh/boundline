@@ -181,6 +181,31 @@ describe("rpcClient", () => {
     const out = await rpcClient(["https://nobatch", "https://ok"], f, 0).batch([{ method: "eth_blockNumber", params: [] }, { method: "bad", params: [] }, { method: "eth_gasPrice", params: [] }]);
     expect(out).toEqual([{ ok: true, result: "eth_blockNumber" }, { ok: false, error: "rpc -32601 no such method" }, { ok: true, result: "eth_gasPrice" }]);
   });
+  it("re-sends a batch to the next node when any entry is rate-limited, and keeps the last node's answer", async () => {
+    const hits: string[] = [];
+    const limitedAnswer = (req: { id: number; method: string }[]) =>
+      req.map((r, i) => (i === 1 ? { jsonrpc: "2.0", id: r.id, error: { code: -32007, message: "25/second request limit reached - reduce calls per second or upgrade your account" } } : { jsonrpc: "2.0", id: r.id, result: "0x1" }));
+    const f: FetchLike = async (url, init) => {
+      hits.push(url);
+      const req = JSON.parse(String(init.body)) as { id: number; method: string }[];
+      if (url === "https://limited" || url === "https://last") return respond(limitedAnswer(req));
+      return respond(req.map((r) => ({ jsonrpc: "2.0", id: r.id, result: "0x2" })));
+    };
+    const calls = [{ method: "eth_blockNumber", params: [] }, { method: "eth_call", params: [] }];
+    expect(await rpcClient(["https://limited", "https://ok"], f, 0).batch(calls)).toEqual([{ ok: true, result: "0x2" }, { ok: true, result: "0x2" }]);
+    expect(hits).toEqual(["https://limited", "https://ok"]);
+    const last = await rpcClient(["https://limited", "https://last"], f, 0).batch(calls);
+    expect(last[1]).toMatchObject({ ok: false, error: expect.stringContaining("-32007") });
+    // a revert in a batch is the chain's answer, not the node's: no re-send
+    hits.length = 0;
+    const revertF: FetchLike = async (url, init) => {
+      hits.push(url);
+      const req = JSON.parse(String(init.body)) as { id: number }[];
+      return respond(req.map((r) => ({ jsonrpc: "2.0", id: r.id, error: { code: 3, message: "execution reverted" } })));
+    };
+    await rpcClient(["https://a", "https://b"], revertF, 0).batch(calls);
+    expect(hits).toEqual(["https://a"]);
+  });
 });
 
 describe("module-scope warm-up", () => {
