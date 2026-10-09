@@ -19,7 +19,8 @@ import urllib.request
 sys.path.insert(0, os.path.dirname(__file__))
 import bl  # noqa: E402
 
-SCRATCH = "/private/tmp/claude-501/-Users-farseen-boundline/1fd71904-49d3-4ae8-ac56-4ecd07d28f93/scratchpad"
+REPO = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+KEEPER_KV = "a648931723db46ca90aef102b0fe83bb"  # KEEPER_STATE in apps/keeper/wrangler.jsonc (the hold switch)
 API = "https://boundline-api.papermind-ai.workers.dev"
 KEEPER_API = "https://boundline-keeper.papermind-ai.workers.dev"
 TRANSFER = 0  # IB20.PausableFeature.TRANSFER
@@ -83,18 +84,15 @@ def api_line(line_id):
 
 # ------------------------------------------------------------------------------------------------ KV hold switch
 
-def hold_cfg():
-    with open(os.path.join(SCRATCH, "keeper-hold.json")) as f:
-        cfg = json.load(f)
-    if not cfg.get("ready"):
-        sys.exit("keeper hold switch not ready (keeper-hold.json)")
-    return cfg
-
-
 def kv(args):
-    cfg = hold_cfg()
-    cmd = ["pnpm", "exec", "wrangler", "kv", "key", *args, "--remote", "--namespace-id", cfg["namespaceId"]]
-    p = subprocess.run(cmd, cwd="/Users/farseen/boundline/apps/keeper", capture_output=True, text=True)
+    cmd = ["pnpm", "exec", "wrangler", "kv", "key", *args, "--remote", "--namespace-id", KEEPER_KV]
+    cwd = os.path.join(REPO, "apps", "keeper")
+    p = subprocess.run(cmd, cwd=cwd, capture_output=True, text=True)
+    if p.returncode != 0 and "code: 10000" in (p.stderr + p.stdout):
+        # An expired OAuth token fails the KV write with "Authentication error [code: 10000]"; `wrangler whoami`
+        # refreshes it (seen 8 and 9 Oct), then the write is tried once more.
+        subprocess.run(["pnpm", "exec", "wrangler", "whoami"], cwd=cwd, capture_output=True, text=True)
+        p = subprocess.run(cmd, cwd=cwd, capture_output=True, text=True)
     if p.returncode != 0:
         raise RuntimeError(f"wrangler kv {args[0]} failed: {(p.stderr or p.stdout)[-400:]}")
 
