@@ -315,6 +315,27 @@
       },
       "receiver": "https://boundline-api.papermind-ai.workers.dev/v1/webhooks/echo/boundline-demo-53a54f87681c (webhook wh_0078c9cd-6ae3-4bd8-ac91-37f5e4710da1, events *)",
       "result": "both deliveries signatureValid true; latency from the block to the delivery 84 s and 170 s (indexer near-head rescan + one API source per minute)"
+    },
+    {
+      "date": "2026-10-09",
+      "what": "the self-repaying leg live: desk line 1 opted into the DividendHarvester; NVDAc's real 1 Oct dividend step (registry multiplier 1.0 -> 1.000537939576369481) replayed on the AAPLt registry mirror under a keeper hold; the operator's harvest flash-borrowed the repayment, repaid through desk.repay, withdrew the dividend collateral and sold it on the AAPLt pool, supplied the rest back; after the release the keeper mirrored 1.0 back and the next harvest re-based (STEP_DOWN) without a sale",
+      "txs": {
+        "setMultiplier": "0x8ee7e75e251bef6966068be2212ef1e268426a792ededeef154c6fdcaabc59b5",
+        "harvest": {
+          "tx": "0xa44b786744d8246b9352914d843ee96723314d5fd74e2fcaecdafcf85624f680",
+          "block": 47881125,
+          "decisionHash": "0x12aeea9d09e10ef08b59879845c73da122fdc8809ca491ccf1f419f47b1ff0aa",
+          "dividendRaw": 1075,
+          "collateralSold": 1066,
+          "repaidUsdcRaw": 3582,
+          "collateralReturned": 9,
+          "price8": 33669000000
+        },
+        "mirrorBack": "0x9f12f40d32f3ddd887adf7edd75f3c1cba997a280152f3f6f3127bc13c3b22ae",
+        "rebase": "0xaa136601955d0db9b78243f2e6ee24cc609c0c53ba3bf5013c060466e7efae66"
+      },
+      "result": "line 1 debt 3.210307 -> 3.206725 USDC, collateral 2,000,000 -> 1,998,934 raw AAPLt, LTV not higher; harvester holds nothing after; the Sepolia feed was not moved (on mainnet the total-return feed rises by the same step, so value is unchanged and only the share count falls)",
+      "evidence": "docs/evidence/drills/dividend-harvest.json"
     }
   ],
   "gas": {
@@ -945,5 +966,40 @@
       "scripts/sepolia/twap.py",
       "scripts/sepolia/record_protect.py"
     ]
+  },
+  "harvest": {
+    "dividendHarvester": {
+      "address": "0x5b1d1975929d764f41BAb9DA32C696ba137BD58E",
+      "deployTx": "0x15ac4ee1613150727a773d1b89336be26469379fe5e775209b4fd2dd5b2ae347",
+      "block": 47880898,
+      "setRouteTx": "0xbf7baa5a2f3ec3ced68635c9b74245c0fa52dd184ea5a1fbebffb0e5d1641141",
+      "owner": "0x2f0d9B1f16CD702259C6cC259e8D5E5455282a4E",
+      "keeper": "0x2f0d9B1f16CD702259C6cC259e8D5E5455282a4E",
+      "gate": "0x92f59437d4ef5CDcEAe2CcDE89B03A7B4B1Ae427",
+      "desk": "0x39aBaDc0aAa12D1F7e259b89536Aa1848997399a",
+      "routes": {
+        "AAPLt": "0x5069f3753961efcaea8c7f6ec49a182e2c40081b"
+      },
+      "maxStepBps": 500,
+      "maxSlippageBps": 100,
+      "verified": "https://sepolia.basescan.org/address/0x5b1d1975929d764f41bab9da32c696ba137bd58e#code",
+      "script": "contracts/script/DeployHarvest.s.sol",
+      "wire": {
+        "allowlistTx": "0x148561d2f442c8aad1f090d5177157facbf501ab9d1e8a03b9e387d0c3f9b59e",
+        "seizeExemptTx": "0x523f9b8b3b870b6beadb4c1084513b499ceb1e2b7610bd6ca7bc9615df9e0ad4",
+        "result": "admitted to AAPLt's holders allowlist 72057594037928092 and seize-exempt list 72057594037928099 (contracts/script/wire-protection-sepolia.sh)"
+      }
+    },
+    "enrolled": [
+      {
+        "user": "0xB789aD318945B37566E2549F65526Cc269a482Fc",
+        "market": "AAPLt/USDC",
+        "lineId": 1,
+        "mode": "HARVEST",
+        "setAuthorizationTx": "0x68e31e0c9fc047085719b61268865800a174412549c6d3fb33e1f69dccc75f0d",
+        "enrollTx": "0x329962dd07d36e2816c10f1877696dde8a0ee5a63c2ea4566d725040c60e88a9"
+      }
+    ],
+    "liveRun": "docs/evidence/drills/dividend-harvest.json (scripts/sepolia/harvest.py)"
   }
 }

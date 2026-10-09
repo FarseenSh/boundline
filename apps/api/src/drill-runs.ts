@@ -1,6 +1,7 @@
 // Recorded drill runs, bundled from docs/evidence/drills/*.json at build time so the API serves exactly what the
 // repository documents. Add a file there (same shape) and import it here to publish a new run.
 import badDebtProbe from "../../../docs/evidence/drills/bad-debt-probe.json" with { type: "json" };
+import dividendHarvest from "../../../docs/evidence/drills/dividend-harvest.json" with { type: "json" };
 import ineligibleReceiver from "../../../docs/evidence/drills/ineligible-receiver.json" with { type: "json" };
 import issuerTransferPause from "../../../docs/evidence/drills/issuer-transfer-pause.json" with { type: "json" };
 import keeperHold from "../../../docs/evidence/drills/keeper-hold.json" with { type: "json" };
@@ -49,4 +50,5 @@ export const DRILL_RUNS: readonly DrillRunFile[] = [
   badDebtProbe,
   protection,
   validityTransactions,
+  dividendHarvest,
 ] as unknown as DrillRunFile[];

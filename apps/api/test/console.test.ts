@@ -11,10 +11,10 @@ describe("drills registry", () => {
     const { app } = await world();
     const { res, json } = await call(app, "GET", "/v1/drills");
     expect(res.status).toBe(200);
-    expect(json.count).toBe(12);
+    expect(json.count).toBe(13);
     expect(json.drills.map((d: { id: string }) => d.id)).toEqual([
       "weekend-gap", "stale-feed", "registry-pause", "issuer-transfer-pause", "scheduled-multiplier", "ineligible-receiver",
-      "venue-halt", "keeper-hold", "partial-repayment", "bad-debt-probe", "protection", "validity-transactions",
+      "venue-halt", "keeper-hold", "partial-repayment", "bad-debt-probe", "protection", "validity-transactions", "dividend-harvest",
     ]);
     for (const d of json.drills as { steps: { n: number }[]; runs: unknown[] }[]) {
       expect(d.steps.map((s) => s.n)).toEqual(d.steps.map((_, i) => i + 1));
@@ -29,6 +29,9 @@ describe("drills registry", () => {
     for (const d of json.drills as { id: string; runs: unknown[] }[]) expect(d.runs.length, d.id).toBeGreaterThanOrEqual(1);
     expect(json.drills.find((d: { id: string }) => d.id === "validity-transactions").runs).toHaveLength(2);
     expect(json.drills.find((d: { id: string }) => d.id === "weekend-gap").runs.map((r: { chainId: number }) => r.chainId)).toEqual([84532, 8453]);
+    // 9 Oct: the self-repaying leg live on Sepolia (the harvest, then the re-base on the step down)
+    const harvest = json.drills.find((d: { id: string }) => d.id === "dividend-harvest").runs[0];
+    expect(harvest.txs.map((t: { hash: string }) => t.hash)).toContain("0xa44b786744d8246b9352914d843ee96723314d5fd74e2fcaecdafcf85624f680");
   });
 
   it("serves one drill, 404s an unknown id and needs a key", async () => {
@@ -127,7 +130,7 @@ describe("GET /v1/evidence/export", () => {
     expect(json.decisions[0].timeline[0].event).toBe("LineOpened");
     expect(json.reconciliation.reconcile.status).toBe("PASS");
     expect(json.reconciliation.roots.roots).toHaveLength(1);
-    expect(json.drills).toHaveLength(12);
+    expect(json.drills).toHaveLength(13);
     expect(json.hash).toMatch(/^0x[0-9a-f]{64}$/);
     expect(json.hashScheme).toMatch(/keccak256/);
     // Anyone can recompute: the hash covers everything except itself and the correlation id.

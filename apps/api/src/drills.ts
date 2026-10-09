@@ -167,6 +167,18 @@ export const DRILL_DEFINITIONS: readonly DrillDefinition[] = [
       step(4, "Inclusion", "The transaction lands only in a block where the predicate holds; recorded with the slot value in that block."),
     ],
   },
+  {
+    id: "dividend-harvest",
+    title: "Dividend harvest (self-repaying leg)",
+    description: "A cash dividend on a Coinbase tokenized stock arrives as a registry multiplier step; the DividendHarvester sweeps the dividend-equivalent collateral raw × (m1 − m0) / m1 into the loan in an open session, so the borrower keeps their share count and the debt falls. Splits, falls and HEADROOM mode re-base without selling.",
+    venue: "morpho",
+    steps: [
+      step(1, "Opt in", "Morpho.setAuthorization(harvester, true) and enroll(market, line, HARVEST) by the borrower: the base multiplier m0 is the registry's value now."),
+      step(2, "The multiplier steps", "On Sepolia the keeper-owned MirrorOracleRegistry replays NVDAc's real 1 Oct 2026 step (1.0 → 1.000537939576369481), with the mirror held for the run."),
+      step(3, "Harvest", "The operator's harvest(): a Morpho flash loan repays through desk.repay first, the dividend collateral is withdrawn and sold on the stock's pool above a 1% floor under the gate's price, the rest is supplied back; LTV may not rise; Harvested with a decision hash."),
+      step(4, "Re-base on a fall", "The mirror restores mainnet's multiplier; the step down re-bases m0 and sells nothing (Rebased STEP_DOWN)."),
+    ],
+  },
 ];
 
 const runsByDrill = new Map<string, DrillRun[]>(DRILL_RUNS.map((file) => [file.drill, file.runs]));
