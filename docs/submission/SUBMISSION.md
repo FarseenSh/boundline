@@ -54,6 +54,9 @@ offer a line of credit against a user's stocks:
 - **Actions that Base itself conditions on the feed.** The keeper submits each protective action as a Cobalt validity
   transaction: Base includes it only while the feed's storage slot still shows the held round (or only once it shows
   a new one), so a rescue planned on a frozen price can never land on a different one.
+- **Dividends that repay the loan.** A cash dividend on a Coinbase stock arrives as a multiplier step; with the
+  borrower's opt-in, the `DividendHarvester` sweeps exactly the dividend-equivalent collateral into the loan in the next
+  open session, so the share count is unchanged and the debt falls. Splits and falls re-base without selling.
 - **Credit lines a partner can embed.** Partner-scoped self-custody lines on Morpho (`CreditDesk`) and Aave V4
   (`AaveDesk`) with per-partner policy (tickers, LTV below the venue's limit, draw bounds, exposure caps, eligibility),
   a decision hash on every action, a partner API with x402-metered public routes, an SDK with one-tap batched borrows
@@ -98,8 +101,29 @@ evidence index below):
   (fork block 52,295,895): across 5 positions × 3 gaps, the raw venues let 3 liquidations through at the reopen,
   Boundline 0 (evidence hash `0xa626f099…3c45`).
 - `[pending: Saturday 10 Oct rescue — the keeper's held-feed validity transaction on Base Sepolia, with its hash]`
-- `[pending: Thursday's drills — stale feed, registry pause, issuer transfer pause, scheduled multiplier, ineligible receiver, keeper hold, venue halt and bad-debt probe — with hashes]`
-- `[pending: route plans, webhooks, the dividend harvester]`
+- **Drills with recorded runs** (Thu 8 Oct; the partner API serves each at `/v1/drills/<id>` with every hash): a stale
+  feed (the gate answers `FEED_STALE`, the draw is refused, the obligation holds `HOLD_FEED` until the keeper's next
+  mirrored round), a registry pause (`FEED_PAUSED`; collateral can still be added), an issuer transfer pause
+  (`TRANSFER_PAUSED`, `HOLD_TRANSFER`), a scheduled lower multiplier (capacity haircut by next/current, cleared when the
+  issuer cancels), an ineligible receiver (the desk refuses a withdrawal the stock's Cobalt policy would forbid, by name,
+  before Morpho is called) and a keeper hold (a held line refuses draws and still takes repays). Two more on mainnet
+  forks: the real 24 Sep Aave V4 hub halt replayed (the desk quotes `VENUE_HALTED` and refuses by name before the venue
+  does), and a bad-debt probe on a real Steakhouse AAPLc borrower: at a −45% reopen print the raw venue wrote off 853.92
+  USDC of bad debt; a session-safe oracle alone still wrote off 852.96 (it refuses a held price, it does not prevent a
+  gap); with protection on, seven pre-liquidations as the DEX walked down left 0.00 USDC of bad debt and the borrower kept
+  3.5457 AAPLc.
+- **Webhooks, end to end:** a hold and a release on a live line (`0x5dd9d8df…42b7`, `0xd1687fdf…2514`) reached a
+  partner's receiver HMAC-signed, signatures valid, 84 s and 170 s after their blocks.
+- **Route plans:** `POST /v1/route` answers where a stock should be borrowed against, live on both chains (Sepolia: 0.02
+  AAPLt → the AAPLt market, 3.36 USDC of capacity at 1.56% APR with pre-liquidation; mainnet: 1 AAPLc → the Steakhouse
+  AAPLc market, 184.63 USDC at 5.46%), stored per line for the partner.
+- **The self-repaying leg** (Fri 9 Oct): a cash dividend on a Coinbase stock arrives as a registry multiplier step, and
+  the `DividendHarvester` sweeps the dividend-equivalent collateral into the loan in the next open session, so the
+  borrower keeps their share count and the debt falls. Live on a desk line, with NVDAc's real 1 Oct step replayed on the
+  test stock's registry mirror: a Morpho flash loan repaid 0.003582 USDC through the desk first, the 1,075 raw AAPLt of
+  dividend collateral were withdrawn and sold on the pool and the rest supplied back, LTV not higher
+  (`0xa44b7867…f680`); when the step was removed the next harvest re-based without selling (`0xaa136601…ae66`). Base's
+  Tokenized Stocks request asks for "self-repaying structures".
 - `[pending: mainnet — SessionGuard, the session-safe AAPLc market and the pre-liquidations on the Steakhouse markets, deployed as soon as a funded mainnet key exists]`
 
 **Built in the window:** 53 commits from Sat 3 Oct to Thu 8 Oct 2026 in a new repository; 240 Foundry tests (unit,
@@ -300,4 +324,8 @@ Every row can be checked by a stranger: open the link or run the command. Base S
 | Replay of 7 Oct: raw 3 liquidations, Boundline 0 | `docs/evidence/assurance/2026-10-07.md`, hash `0xa626f0997c74896d125080de615e1407fdc4abb6d8f8296ce62caabbc8793c45`; live at `/v1/assurance` |
 | Mainnet-fork proofs | `contracts/test/fork/` (`SessionGuardMorpho`, `ProtectionFork`, `AaveFork`, `PayoutFork`, `ReplayFork`); run with an archive RPC (README) |
 | Every contract address | `deployments/base-sepolia.json`, `docs/CONTEXT.md` §6.1 |
-| `[pending]` | Saturday rescue; Thursday's drills; route plans and webhooks; mainnet deploys; Sunday reopen capture (`/v1/captures`, run `1791763200`) |
+| Drills: stale feed, registry pause, issuer transfer pause, scheduled multiplier, ineligible receiver, keeper hold | `docs/evidence/drills/*.json`, live at `/v1/drills` (with a partner key); e.g. stale feed `0x84064c22e3ba4b33456c4a04721c66070a88a2c19fd67811072a5ccaecad8429`, registry pause `0x7b9fc996d3c579a68d6e7eb0b98a851f8c46f4f93c9172d09cef60a2f75b53cb`, issuer pause `0x73a518fa185fa8217aefd78f99ab51b677e8ae98c14024fa7f184d33f0c17bc7`, keeper hold `0x7c11ac686dff9ad21b4dbe647dc3d8abb76b808e87af8ccaecd2905d3bb39ef1` and the repay that landed while held `0x1ad33de32096ff96df24df5184a74d006db9764bedcb2c8d30d81c4f308642f3` |
+| Fork drills: the Aave V4 hub halt replayed; bad debt at a −45% reopen, raw 853.92 USDC, protected 0.00 | `docs/evidence/drills/venue-halt.json` (71 of 71 checks), `docs/evidence/drills/bad-debt-probe.json` (75 of 75); `contracts/test/drills/` |
+| Webhooks delivered HMAC-signed, 84 s and 170 s after the block | `0x5dd9d8df6cac14096e4b0ae3e6eafe6553a0de8a760b271bf0e3438fe91e42b7`, `0xd1687fdf25da3e4aeed84fde4d731431d35ccd4304ac02d9564111eb33202514`; `deployments/base-sepolia.json` (`proofs`) |
+| A dividend harvested into a desk line's loan; the step removed, re-based without a sale | `0xa44b786744d8246b9352914d843ee96723314d5fd74e2fcaecdafcf85624f680`, `0xaa136601955d0db9b78243f2e6ee24cc609c0c53ba3bf5013c060466e7efae66`; `docs/evidence/drills/dividend-harvest.json` |
+| `[pending]` | Saturday rescue; mainnet deploys; Sunday reopen capture (`/v1/captures`, run `1791763200`) |

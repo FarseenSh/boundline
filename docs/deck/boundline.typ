@@ -177,7 +177,9 @@
   [Local money], [0.5 USDC → 0.46 EURCt inside the borrow flow, session-checked], [#hx[0x9090633c…5bd3]],
   [x402], [two keyless API calls paid \$0.01 test USDC each], [#hx[0x8816d08f…c6ff]],
   [#pend[Sat 10 Oct]], [the keeper's rescue while the feed is frozen], [#pend[hash]],
-  [#pend[drills]], [stale feed, registry pause, issuer pause, scheduled multiplier, blocked receiver, venue halt, bad debt], [#pend[hashes]],
+  [Drills], [stale feed, registry pause, issuer pause, scheduled multiplier, blocked receiver, keeper hold: each refused by name, repays still land], [#hx[0x84064c22…8429]],
+  [Webhooks], [a hold and a release on a live line reached the partner HMAC-signed, 84 s and 170 s after the block], [#hx[0x5dd9d8df…42b7]],
+  [Dividend → loan], [a dividend multiplier step swept into a desk line's debt: flash loan, repay first, sell only the dividend collateral], [#hx[0xa44b7867…f680]],
 )
 #v(3pt)
 #text(size: 8pt, fill: mute)[Every contract verified on sepolia.basescan.org; addresses and full hashes in `deployments/base-sepolia.json`. #pend[mainnet deploys need a funded key]]
