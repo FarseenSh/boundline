@@ -28,6 +28,32 @@ describe("GET /v1/policy", () => {
   });
 });
 
+describe("the stored policy version follows the desk", () => {
+  it("GET /v1/whoami reads the desk and stores a version applied on chain without POST .../applied", async () => {
+    const { app, store } = await world({ desk: makeDesk({ partner: async () => samplePartner({ policyVersion: 4 }) }) });
+    store.partners[0]!.policyVersion = 1;
+    const { res, json } = await call(app, "GET", "/v1/whoami");
+    expect(res.status).toBe(200);
+    expect(json).toMatchObject({ partnerId: PARTNER_ID, policyVersion: 4, policyVersionSource: "desk" });
+    expect(res.headers.get("x-policy-version")).toBe("4");
+    expect(store.partners[0]!.policyVersion).toBe(4);
+    expect((await call(app, "GET", "/v1/policy/versions")).res.headers.get("x-policy-version")).toBe("4");
+  });
+
+  it("GET /v1/policy stores the desk's version", async () => {
+    const { app, store } = await world({ desk: makeDesk({ partner: async () => samplePartner({ policyVersion: 5 }) }) });
+    expect((await call(app, "GET", "/v1/policy")).json.policyVersion).toBe(5);
+    expect(store.partners[0]!.policyVersion).toBe(5);
+  });
+
+  it("keeps the stored version when the desk cannot be read, or there is no desk", async () => {
+    const failing = await world({ desk: makeDesk({ partner: async () => { throw new Error("rpc down"); } }) });
+    expect((await call(failing.app, "GET", "/v1/whoami")).json).toMatchObject({ policyVersion: 3, policyVersionSource: "stored" });
+    const none = await world({ desk: null });
+    expect((await call(none.app, "GET", "/v1/whoami")).json).toMatchObject({ policyVersion: 3, policyVersionSource: "stored" });
+  });
+});
+
 describe("POST /v1/policy/versions", () => {
   it("prepares a version: field diffs and the setTickerPolicy call the admin signs", async () => {
     const { app, store } = await world();

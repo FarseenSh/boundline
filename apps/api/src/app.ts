@@ -877,6 +877,7 @@ export function createApp(deps: AppDeps): Hono<{ Variables: Vars }> {
     const partner = c.get("partner");
     const r = await livePolicy(partner);
     if (!r.ok) return answer(c, r.out);
+    await syncPolicyVersion(partner, r.policy.policyVersion);
     const sat = await saturdayOf(partner.partnerId);
     c.header("X-Policy-Version", String(r.policy.policyVersion));
     return c.json({
@@ -1039,9 +1040,26 @@ export function createApp(deps: AppDeps): Hono<{ Variables: Vars }> {
 
   // ------------------------------------------------------------------ route plans (plan M11)
 
-  app.get("/v1/whoami", (c) => {
+  /** The stored partner version follows the desk: a policy applied on chain without POST .../applied left it behind. */
+  async function syncPolicyVersion(partner: PartnerRecord, live: number): Promise<void> {
+    if (live === partner.policyVersion) return;
+    await store.setPartnerPolicyVersion(partner.partnerId, live);
+    partner.policyVersion = live;
+  }
+
+  app.get("/v1/whoami", async (c) => {
     const p = c.get("partner");
-    return c.json({ correlationId: c.get("correlationId"), partnerId: p.partnerId, name: p.name, policyVersion: p.policyVersion });
+    let source: "desk" | "stored" = "stored";
+    if (desk) {
+      try {
+        await syncPolicyVersion(p, (await desk.partner(p.partnerId)).policyVersion);
+        source = "desk";
+      } catch {
+        // the stored version stands when the desk cannot be read
+      }
+    }
+    c.header("X-Policy-Version", String(p.policyVersion));
+    return c.json({ correlationId: c.get("correlationId"), partnerId: p.partnerId, name: p.name, policyVersion: p.policyVersion, policyVersionSource: source });
   });
 
   /** The partner a line belongs to: this API's records, else the desk; null when the desk does not know it. */
