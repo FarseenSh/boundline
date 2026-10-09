@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { app } from "../src/index.js";
+import { app, protectionView } from "../src/index.js";
 
 describe("boundline-keeper", () => {
   it("answers /health", async () => {
@@ -112,5 +112,21 @@ describe("/v1/events/probe", () => {
     const res = await app.request("/v1/events/probe", {}, { ...env, API_EVENTS });
     expect(await res.json()).toMatchObject({ bound: true, answer: { accepted: false, deliveries: 0 } });
     expect(seen).toEqual([{ type: "probe" }]);
+  });
+});
+
+describe("protectionView (the harvest job's gate, from what the protection jobs read)", () => {
+  type P = Parameters<typeof protectionView>;
+  const quote = (reason: string, session: string) => ({ reason, session, price8: 0n, collateralValue: 0n, corporateActionHaircut: false });
+  const vault = (q: ReturnType<typeof quote>, action: "protect" | "none" = "none") =>
+    ({ armed: null, targets: [{ quote: q, decision: action === "protect" ? { action: "protect" } : { action: "none", reason: "below-grace" } }] }) as unknown as P[1];
+  const protect = (live: boolean) => ({ targets: [{ sizing: { venueOracleLive: live } }] }) as unknown as P[0];
+  it("is open only in session with nothing wanting the signer", () => {
+    expect(protectionView(protect(true), vault(quote("NONE", "OVERNIGHT")), false)).toEqual({ signerWanted: false, marketClosed: false });
+    expect(protectionView(protect(true), vault(quote("MARKET_CLOSED", "WEEKEND")), false).marketClosed).toBe(true);
+    expect(protectionView(protect(false), vault(quote("NONE", "REGULAR")), false).marketClosed).toBe(true);
+    expect(protectionView(protect(true), vault(quote("NONE", "REGULAR"), "protect"), false).signerWanted).toBe(true);
+    expect(protectionView(protect(true), vault(quote("NONE", "REGULAR")), true).signerWanted).toBe(true);
+    expect(protectionView(null, null, false)).toEqual({ signerWanted: false, marketClosed: false });
   });
 });

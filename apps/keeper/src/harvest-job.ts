@@ -89,6 +89,26 @@ export function decideHarvest(p: HarvestPreview): HarvestDecision {
   return { action: "none", reason: p.standing };
 }
 
+/** What the two protection jobs already read this tick, as far as the harvest job cares. */
+export interface ProtectionView {
+  /** The Protector or the vault wanted the shared signer (or armed). */
+  signerWanted: boolean;
+  /** A desk quote answered MARKET_CLOSED or a WEEKEND/HOLIDAY session, or the venue oracle is not live (the feed is held). */
+  marketClosed: boolean;
+}
+
+/**
+ * Whether the harvest job may spend this tick at all. It reads nothing when it could not act: while the market is
+ * closed the harvester refuses anyway (GATE_CLOSED), and while a protection job wants the signer the harvest would
+ * yield after its reads. So on a Saturday, and on any tick that signs a protection, the harvest job costs no CPU and
+ * the tick is exactly the 8 Oct profile (3-6 ms, measured).
+ */
+export function harvestGate(view: ProtectionView): "signer-busy" | "market-closed" | null {
+  if (view.signerWanted) return "signer-busy";
+  if (view.marketClosed) return "market-closed";
+  return null;
+}
+
 export interface HarvestRpc {
   batch(calls: readonly RpcCall[]): Promise<RpcOutcome[]>;
   call<T = unknown>(method: string, params: readonly unknown[]): Promise<T>;

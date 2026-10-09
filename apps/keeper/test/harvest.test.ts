@@ -8,6 +8,7 @@ import {
   decideHarvest,
   decodePreview,
   encodeHarvest,
+  harvestGate,
   encodePreview,
   parseHarvestTargets,
   runHarvest,
@@ -179,5 +180,14 @@ describe("runHarvest", () => {
     expect(r.skipped).toBe("read-failed");
     expect(r.errors[0]).toContain("rpc down");
     expect((await runHarvest(deps(fake().rpc, { targets: [] }))).skipped).toBe("no-targets");
+  });
+});
+
+describe("harvestGate", () => {
+  it("reads nothing while a protection job wants the signer or the market is closed", () => {
+    expect(harvestGate({ signerWanted: false, marketClosed: false })).toBeNull();
+    expect(harvestGate({ signerWanted: true, marketClosed: false })).toBe("signer-busy");
+    expect(harvestGate({ signerWanted: false, marketClosed: true })).toBe("market-closed");
+    expect(harvestGate({ signerWanted: true, marketClosed: true })).toBe("signer-busy");
   });
 });

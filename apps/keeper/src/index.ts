@@ -10,7 +10,7 @@ import { collectStatus } from "./status.js";
 import { runTick } from "./tick.js";
 import { encodeVaultProtect, parseVaultTargets, pct, usdc, type VaultTarget } from "./vault.js";
 import { runVault, simulateBatch, type VaultReport } from "./vault-job.js";
-import { parseHarvestTargets, runHarvest, type HarvestReport, type HarvestTarget } from "./harvest-job.js";
+import { harvestGate, parseHarvestTargets, runHarvest, type HarvestReport, type HarvestTarget, type ProtectionView } from "./harvest-job.js";
 import { warmUp } from "./warm.js";
 import type { Address } from "viem";
 
@@ -312,12 +312,25 @@ function liveHarvestDeps(env: Env, cfg: HarvestConfig) {
   return { rpc: liveProtectRpc(sepoliaRpc(env), sequencerUrl(env)), harvester: cfg.harvester!, targets: cfg.targets, account: protectAccount(protectKey(env)), chainId: CHAINS.sepolia };
 }
 
-/** The harvest job: one batch, at most one plain transaction, only when neither protection job wanted the signer. Never throws. */
-export async function harvestTick(env: Env, signerBusy: boolean): Promise<HarvestReport | null> {
+/** What the protection jobs read this tick, for the harvest job's gate (no extra reads). */
+export function protectionView(protect: ProtectReport | null, vault: VaultReport | null, signerBusy: boolean): ProtectionView {
+  const vaultWanted = vault?.armed != null || (vault?.targets.some((t) => t.decision?.action === "protect") ?? false);
+  const closedQuote = vault?.targets.some((t) => t.quote !== null && (t.quote.reason === "MARKET_CLOSED" || t.quote.session === "WEEKEND" || t.quote.session === "HOLIDAY")) ?? false;
+  const heldFeed = protect?.targets.some((t) => t.sizing !== null && t.sizing !== undefined && t.sizing.venueOracleLive === false) ?? false;
+  return { signerWanted: signerBusy || vaultWanted, marketClosed: closedQuote || heldFeed };
+}
+
+/** The harvest job: one batch, at most one plain transaction; nothing at all while it could not act (harvestGate). Never throws. */
+export async function harvestTick(env: Env, view: ProtectionView): Promise<HarvestReport | null> {
   const cfg = harvestConfig(env);
   if (!cfg.harvester || cfg.targets.length === 0) return null;
+  const gate = harvestGate(view);
+  if (gate) {
+    console.log(JSON.stringify({ harvest: nowSeconds(), skipped: gate, reads: 0 }));
+    return null;
+  }
   try {
-    const r = await runHarvest({ ...liveHarvestDeps(env, cfg), signerBusy });
+    const r = await runHarvest({ ...liveHarvestDeps(env, cfg) });
     console.log(
       jsonWithBigints({
         harvest: r.at,
@@ -407,9 +420,9 @@ export async function runCron(env: Env): Promise<void> {
   // The Protector keeps the shared signer whenever it wanted to act (a simulated revert or a backoff is not wanting).
   const signerBusy = protect?.targets.some((t) => t.decision !== null && t.decision.action !== "none") ?? false;
   const vault = await vaultTick(env, cfg, signerBusy, state);
-  // The harvest job takes the signer only when neither protection job wanted it (a dividend can wait a minute).
-  const vaultWanted = vault?.armed != null || (vault?.targets.some((t) => t.decision?.action === "protect") ?? false);
-  await harvestTick(env, signerBusy || vaultWanted);
+  // The harvest job takes the signer only when neither protection job wanted it and the market is open (a dividend
+  // can wait a minute); otherwise it reads nothing.
+  await harvestTick(env, protectionView(protect, vault, signerBusy));
   if (state) await eventsTick(env, state, protect, vault, cfg);
   await tick(env, hold);
   // Last, so it can never delay a protection or a mirror write: the API's webhook tick (its own cron does not fire).
