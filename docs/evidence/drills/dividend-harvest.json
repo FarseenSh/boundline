@@ -341,6 +341,236 @@
         "deployments/base-sepolia.json#harvest"
       ],
       "notes": "The Sepolia AAPLt feed was not moved: on mainnet a dividend raises Coinbase's total-return feed by the same step, so the collateral's value is unchanged and only the share count falls by the dividend. The multiplier step is the real one NVDAc took on 1 Oct 2026, replayed on the keeper-owned registry mirror while the keeper's mirror was held (KV) for the few minutes the step and the harvest took. The script's recorder stopped after the release (an eth_getLogs 400), so this record was assembled from the transactions' receipts and archive reads at the block named on each observation; the two keeper API readings (block null) are copied from the run's log. The fork proof on the real NVDAc dividend and the real Aerodrome pool is contracts/test/harvest/HarvestFork.t.sol."
+    },
+    {
+      "ranAt": 1791531426,
+      "chainId": 84532,
+      "label": "Fri 9 Oct 2026, OVERNIGHT session: the same replayed dividend step on line 1, with no operator: the keeper Worker's harvest job finds the target READY and harvests it, then re-bases on the step down after the release",
+      "txs": [
+        {
+          "hash": "0x73a3fd0e744cda2e444b4650a5251093fb69c775e00fdc4367e020da50248048",
+          "block": 47881643,
+          "label": "MirrorOracleRegistry.setMultiplier(AAPLt, 1.000537939576369481) by the mirror key: the replayed step again",
+          "gasUsed": 32801
+        },
+        {
+          "hash": "0xb1312b5f7844d1ae1cc2c38e001552f611a457bd605ffb634ffe2d24b1124616",
+          "block": 47881646,
+          "gasUsed": 521771,
+          "label": "keeper Worker harvest job (0x40668755c993a551db05e844ff9150a0c00a0373): DividendHarvester.harvest(borrower, AAPLt market), unprompted"
+        },
+        {
+          "hash": "0x70a96355425a1f652d65dcfeba913704b0abc9cd520f2136ed71853b24702dad",
+          "block": 47881706,
+          "gasUsed": 34559,
+          "label": "keeper Worker mirror (0x28a50eb7c2db2b04638d3b226c724a1cfe999894): MirrorOracleRegistry AAPLt multiplier back to mainnet's 1.0"
+        },
+        {
+          "hash": "0x3827eb336f540895113f3f0d2f66dc3e155fdc3309f32c01c386e0025e47cf2d",
+          "block": 47881736,
+          "gasUsed": 169952,
+          "label": "keeper Worker harvest job (0x40668755c993a551db05e844ff9150a0c00a0373): harvest again on STEP_DOWN, a re-base without a sale"
+        }
+      ],
+      "observations": [
+        {
+          "what": "harvester keeper (the keeper Worker's protection signer)",
+          "value": "0x40668755c993A551dB05E844fF9150A0C00a0373",
+          "block": 47881569
+        },
+        {
+          "what": "line 1 before",
+          "value": {
+            "collateralRaw": "1998934",
+            "borrowShares": "3206358655341",
+            "debt": "3206726",
+            "drawnPrincipal": "3206418",
+            "quoteReason": "NONE",
+            "collateralValue": "6730210"
+          },
+          "block": 47881570
+        },
+        {
+          "what": "enrollment before",
+          "value": {
+            "baseMultiplier": "1000000000000000000",
+            "enrolledAt": "1791530296",
+            "lastHarvestAt": "1791530538",
+            "mode": "1",
+            "lineId": "1"
+          },
+          "block": 47881571
+        },
+        {
+          "what": "preview before",
+          "value": {
+            "standing": "2",
+            "baseMultiplier": "1000000000000000000",
+            "multiplier": "1000000000000000000",
+            "collateral": "1998934",
+            "debt": "3206726",
+            "price8": "33669000000",
+            "dividendRaw": "0",
+            "dividendValue": "0",
+            "repayAssets": "0",
+            "fullRepay": "false",
+            "standingName": "NO_CHANGE"
+          },
+          "block": 47881571
+        },
+        {
+          "what": "keeper /v1/config hold (all three symbols, KV)",
+          "value": {
+            "hold": {
+              "feed": [
+                "AAPLt",
+                "NVDAt",
+                "TSLAt"
+              ],
+              "registry": [
+                "AAPLt",
+                "NVDAt",
+                "TSLAt"
+              ]
+            },
+            "holdSource": "kv"
+          },
+          "block": 47881572
+        },
+        {
+          "what": "mirror key nonce stable (latest = pending) across the settle window",
+          "value": {
+            "nonce": 121,
+            "settleSeconds": 70
+          },
+          "block": 47881641
+        },
+        {
+          "what": "preview after the step",
+          "value": {
+            "standing": "9",
+            "baseMultiplier": "1000000000000000000",
+            "multiplier": "1000537939576369481",
+            "collateral": "1998934",
+            "debt": "3206726",
+            "price8": "33669000000",
+            "dividendRaw": "1074",
+            "dividendValue": "3616",
+            "repayAssets": "3579",
+            "fullRepay": "false",
+            "standingName": "READY"
+          },
+          "block": 47881643
+        },
+        {
+          "what": "Harvested",
+          "value": [
+            {
+              "event": "Harvested",
+              "lineId": "1",
+              "baseMultiplier": "1000000000000000000",
+              "multiplier": "1000537939576369481",
+              "dividendRaw": "1074",
+              "collateralSold": "1065",
+              "repaid": "3579",
+              "collateralReturned": "9",
+              "price8": "33669000000",
+              "decisionHash": "0x84d51cc880605351cdef28f61f4d38e54d9f6a7da27323cfa5003135b0b3e7e4",
+              "decision": "2"
+            }
+          ],
+          "block": 47881646
+        },
+        {
+          "what": "line 1 after the keeper's harvest",
+          "value": {
+            "collateralRaw": "1997869",
+            "borrowShares": "3202780065209",
+            "debt": "3203147",
+            "drawnPrincipal": "3202839",
+            "quoteReason": "NONE",
+            "collateralValue": "6726625"
+          },
+          "block": 47881646
+        },
+        {
+          "what": "enrollment after the keeper's harvest",
+          "value": {
+            "baseMultiplier": "1000537939576369481",
+            "enrolledAt": "1791530296",
+            "lastHarvestAt": "1791531580",
+            "mode": "1",
+            "lineId": "1"
+          },
+          "block": 47881646
+        },
+        {
+          "what": "keeper /v1/config after release",
+          "value": {
+            "hold": {
+              "feed": [],
+              "registry": []
+            },
+            "holdSource": "none"
+          },
+          "block": 47881652
+        },
+        {
+          "what": "AAPLt MirrorOracleRegistry after the release (the keeper mirrored mainnet AAPLc's 1.0 back)",
+          "value": {
+            "multiplier": "1000000000000000000",
+            "paused": "false"
+          },
+          "block": 47881707
+        },
+        {
+          "what": "Rebased",
+          "value": [
+            {
+              "event": "Rebased",
+              "fromMultiplier": "1000537939576369481",
+              "toMultiplier": "1000000000000000000",
+              "reason": "STEP_DOWN"
+            }
+          ],
+          "block": 47881736
+        },
+        {
+          "what": "enrollment at the end",
+          "value": {
+            "baseMultiplier": "1000000000000000000",
+            "enrolledAt": "1791530296",
+            "lastHarvestAt": "1791531580",
+            "mode": "1",
+            "lineId": "1"
+          },
+          "block": 47881742
+        },
+        {
+          "what": "preview at the end",
+          "value": {
+            "standing": "2",
+            "baseMultiplier": "1000000000000000000",
+            "multiplier": "1000000000000000000",
+            "collateral": "1997869",
+            "debt": "3203147",
+            "price8": "33669000000",
+            "dividendRaw": "0",
+            "dividendValue": "0",
+            "repayAssets": "0",
+            "fullRepay": "false",
+            "standingName": "NO_CHANGE"
+          },
+          "block": 47881742
+        }
+      ],
+      "outcome": "no operator: within a tick of the step the keeper Worker harvested dividendRaw 1074 raw AAPLt, sold 1065 for 3579 raw USDC repaid through desk.repay (9 returned); line 1 debt 3206726 -> 3203147; after the release it re-based (['STEP_DOWN']) on its own",
+      "evidence": [
+        "scripts/sepolia/harvest.py --by-keeper",
+        "apps/keeper/src/harvest-job.ts",
+        "https://boundline-keeper.papermind-ai.workers.dev/v1/harvest"
+      ],
+      "notes": "Same replayed step as the operator run above (NVDAc's real 1 Oct step on the AAPLt registry mirror, the keeper's mirror held for the few minutes it took); the Sepolia feed was not moved. The harvest job reads the harvester's own preview each tick, simulates from its signer at latest and pending, and signs a plain transaction only in an OPEN session (the contract refuses otherwise); it yields the shared signer to the Protector and the vault."
     }
   ]
 }

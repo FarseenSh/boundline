@@ -175,8 +175,8 @@ export const DRILL_DEFINITIONS: readonly DrillDefinition[] = [
     steps: [
       step(1, "Opt in", "Morpho.setAuthorization(harvester, true) and enroll(market, line, HARVEST) by the borrower: the base multiplier m0 is the registry's value now."),
       step(2, "The multiplier steps", "On Sepolia the keeper-owned MirrorOracleRegistry replays NVDAc's real 1 Oct 2026 step (1.0 → 1.000537939576369481), with the mirror held for the run."),
-      step(3, "Harvest", "The operator's harvest(): a Morpho flash loan repays through desk.repay first, the dividend collateral is withdrawn and sold on the stock's pool above a 1% floor under the gate's price, the rest is supplied back; LTV may not rise; Harvested with a decision hash."),
-      step(4, "Re-base on a fall", "The mirror restores mainnet's multiplier; the step down re-bases m0 and sells nothing (Rebased STEP_DOWN)."),
+      step(3, "Harvest", "harvest() by the keeper Worker's harvest job within a tick of the step (or by the operator): a Morpho flash loan repays through desk.repay first, the dividend collateral is withdrawn and sold on the stock's pool above a 1% floor under the gate's price, the rest is supplied back; LTV may not rise; Harvested with a decision hash."),
+      step(4, "Re-base on a fall", "The mirror restores mainnet's multiplier; the next harvest re-bases m0 on the step down and sells nothing (Rebased STEP_DOWN)."),
     ],
   },
 ];

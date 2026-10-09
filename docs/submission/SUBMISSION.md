@@ -122,8 +122,10 @@ evidence index below):
   borrower keeps their share count and the debt falls. Live on a desk line, with NVDAc's real 1 Oct step replayed on the
   test stock's registry mirror: a Morpho flash loan repaid 0.003582 USDC through the desk first, the 1,075 raw AAPLt of
   dividend collateral were withdrawn and sold on the pool and the rest supplied back, LTV not higher
-  (`0xa44b7867…f680`); when the step was removed the next harvest re-based without selling (`0xaa136601…ae66`). Base's
-  Tokenized Stocks request asks for "self-repaying structures".
+  (`0xa44b7867…f680`); when the step was removed the next harvest re-based without selling (`0xaa136601…ae66`). Then
+  with no operator: the keeper Worker found the replayed step and harvested it three blocks later (`0xb1312b5f…4616`),
+  and re-based on its own when the step was removed (`0x3827eb33…cf2d`). Base's Tokenized Stocks request asks for
+  "self-repaying structures".
 - `[pending: mainnet — SessionGuard, the session-safe AAPLc market and the pre-liquidations on the Steakhouse markets, deployed as soon as a funded mainnet key exists]`
 
 **Built in the window:** 53 commits from Sat 3 Oct to Thu 8 Oct 2026 in a new repository; 240 Foundry tests (unit,
@@ -328,4 +330,5 @@ Every row can be checked by a stranger: open the link or run the command. Base S
 | Fork drills: the Aave V4 hub halt replayed; bad debt at a −45% reopen, raw 853.92 USDC, protected 0.00 | `docs/evidence/drills/venue-halt.json` (71 of 71 checks), `docs/evidence/drills/bad-debt-probe.json` (75 of 75); `contracts/test/drills/` |
 | Webhooks delivered HMAC-signed, 84 s and 170 s after the block | `0x5dd9d8df6cac14096e4b0ae3e6eafe6553a0de8a760b271bf0e3438fe91e42b7`, `0xd1687fdf25da3e4aeed84fde4d731431d35ccd4304ac02d9564111eb33202514`; `deployments/base-sepolia.json` (`proofs`) |
 | A dividend harvested into a desk line's loan; the step removed, re-based without a sale | `0xa44b786744d8246b9352914d843ee96723314d5fd74e2fcaecdafcf85624f680`, `0xaa136601955d0db9b78243f2e6ee24cc609c0c53ba3bf5013c060466e7efae66`; `docs/evidence/drills/dividend-harvest.json` |
+| …and by the keeper Worker with no operator, harvest then re-base | `0xb1312b5f7844d1ae1cc2c38e001552f611a457bd605ffb634ffe2d24b1124616`, `0x3827eb336f540895113f3f0d2f66dc3e155fdc3309f32c01c386e0025e47cf2d`; live at `https://boundline-keeper.papermind-ai.workers.dev/v1/harvest` |
 | `[pending]` | Saturday rescue; mainnet deploys; Sunday reopen capture (`/v1/captures`, run `1791763200`) |

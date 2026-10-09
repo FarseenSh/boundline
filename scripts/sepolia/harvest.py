@@ -112,10 +112,76 @@ def wait_mirrored_back(run, since_block):
     raise RuntimeError("the registry was not mirrored back to 1.0 within 6 minutes")
 
 
+def wait_for(what, pred, tries=30, every=10):
+    for _ in range(tries):
+        v = pred()
+        if v:
+            return v
+        time.sleep(every)
+    raise RuntimeError(f"timed out waiting for {what}")
+
+
+def by_keeper():
+    """The same step, but nobody calls harvest: the keeper Worker's harvest job (PROTECT_KEY, the harvester's keeper since
+    9 Oct) sees READY within a tick and harvests; after the release it sees STEP_DOWN and re-bases."""
+    run = drills.Run("dividend-harvest", "Fri 9 Oct 2026, OVERNIGHT session: the same replayed dividend step on line 1, with no "
+                     "operator: the keeper Worker's harvest job finds the target READY and harvests it, then re-bases on the "
+                     "step down after the release")
+    run.run["evidence"] = ["scripts/sepolia/harvest.py --by-keeper", "apps/keeper/src/harvest-job.ts",
+                           "https://boundline-keeper.papermind-ai.workers.dev/v1/harvest"]
+    run.obs("harvester keeper (the keeper Worker's protection signer)", bl.call(HARVESTER, "keeper()(address)")[0])
+    run.obs("line 1 before", position())
+    e0 = run.obs("enrollment before", enrollment())
+    p0 = run.obs("preview before", preview())
+    if p0["standingName"] != "NO_CHANGE":
+        raise RuntimeError(f"expected NO_CHANGE, got {p0['standingName']}")
+    hold_mirror(run)
+    try:
+        st = run.tx(bl.send(bl.MIRROR_KEEPER, bl.REGISTRY, "setMultiplier(address,uint256)", TOKEN, STEP),
+                    "MirrorOracleRegistry.setMultiplier(AAPLt, 1.000537939576369481) by the mirror key: the replayed step again")
+        run.obs("preview after the step", preview(st["block"]), st["block"])
+        done = wait_for("the keeper's harvest", lambda: (lambda e: e if e["lastHarvestAt"] != e0["lastHarvestAt"] else None)(enrollment()), tries=36)
+        m = drills._find_mirror_tx(HARVESTER, st["block"])
+        if not m:
+            raise RuntimeError("no harvester log after the step")
+        run.run["txs"].append({"hash": m["hash"], "block": m["block"], "gasUsed": m["gasUsed"],
+                               "label": f"keeper Worker harvest job ({m['from']}): DividendHarvester.harvest(borrower, AAPLt market), unprompted"})
+        run.obs("Harvested", events({"hash": m["hash"]}), m["block"])
+        run.obs("line 1 after the keeper's harvest", position(m["block"]), m["block"])
+        run.obs("enrollment after the keeper's harvest", done, m["block"])
+    finally:
+        rel_block = bl.head()
+        drills.release_all(run)
+    wait_mirrored_back(run, rel_block)
+    back = wait_for("the keeper's re-base", lambda: (lambda e: e if int(e["baseMultiplier"]) == 10 ** 18 else None)(enrollment()), tries=36)
+    m2 = drills._find_mirror_tx(HARVESTER, rel_block)
+    if m2:
+        run.run["txs"].append({"hash": m2["hash"], "block": m2["block"], "gasUsed": m2["gasUsed"],
+                               "label": f"keeper Worker harvest job ({m2['from']}): harvest again on STEP_DOWN, a re-base without a sale"})
+        run.obs("Rebased", events({"hash": m2["hash"]}), m2["block"])
+    run.obs("enrollment at the end", back)
+    run.obs("preview at the end", preview())
+    o = {x["what"]: x["value"] for x in run.run["observations"]}
+    h = (o.get("Harvested") or [{}])[0]
+    run.save(
+        f"no operator: within a tick of the step the keeper Worker harvested dividendRaw {h.get('dividendRaw')} raw AAPLt, sold "
+        f"{h.get('collateralSold')} for {h.get('repaid')} raw USDC repaid through desk.repay ({h.get('collateralReturned')} returned); "
+        f"line 1 debt {o['line 1 before']['debt']} -> {o['line 1 after the keeper\'s harvest']['debt']}; after the release it re-based "
+        f"({[e.get('reason') for e in o.get('Rebased', [])]}) on its own",
+        "Same replayed step as the operator run above (NVDAc's real 1 Oct step on the AAPLt registry mirror, the keeper's mirror held "
+        "for the few minutes it took); the Sepolia feed was not moved. The harvest job reads the harvester's own preview each tick, "
+        "simulates from its signer at latest and pending, and signs a plain transaction only in an OPEN session (the contract refuses "
+        "otherwise); it yields the shared signer to the Protector and the vault.",
+    )
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--dry", action="store_true", help="reads and eth_call guards only")
+    ap.add_argument("--by-keeper", action="store_true", help="replay the step and let the keeper Worker harvest and re-base")
     a = ap.parse_args()
+    if a.by_keeper:
+        return by_keeper()
 
     run = drills.Run("dividend-harvest", "Fri 9 Oct 2026, OVERNIGHT session: desk line 1 opts into the DividendHarvester; "
                      "NVDAc's real 1 Oct dividend step (multiplier 1.0 -> 1.000537939576369481) is replayed on the AAPLt "

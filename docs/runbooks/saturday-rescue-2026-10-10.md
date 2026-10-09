@@ -59,13 +59,14 @@ recompute on the day with `python3 -I scripts/sepolia/twap.py show`.
 | sale venue / funding | MockSwapPool `0x5069…081b`: 1.805321 USDC, headroom +0.059867 over the debt | the vault's own USDC (user reserve, then the Reserve's allocation) |
 | 8 Oct staging txs | `Morpho.repay` 0.06 USDC: approve `0xa4c16a9152419bda10635d3d894dfd602455d568c90ddf079e1af3d1a94465bf`, repay `0x345aeea78f3e19955461de49b8f1f32845a17102d2c70eeeec00e042c9b7b939` | `withdrawCollateral` 9.98 AAPLt `0xbc42e1792a8dbb6172d3684c01667e4a0bef27a7c5bd4c65df8f0a86860fd5c5`; `draw` 1.62 USDC `0xd2de1e4727e9a3754b8cc9a3e56e090e8add6d092562ecd3fdf48f2d9e4426ce`; reserve `deposit` 0.4 USDC `0x070e87e80d92a37906396ffbfd3c37f30498452f7bd29defc0b81cf13f337928` |
 
-**9 Oct update (the live dividend harvest on line 1, `docs/evidence/drills/dividend-harvest.json`):** line 1 is now
-1,998,934 raw AAPLt against 3.206725 USDC (48.69% at the mirrored TWAP while held); the drill position's debt is 1.745526
-and the pool holds 1.801739 USDC (headroom +0.056213, still above +0.03). The same commands give the same ticks: step 1
+**9 Oct update (two live dividend harvests on line 1, `docs/evidence/drills/dividend-harvest.json`):** line 1 is now
+1,997,869 raw AAPLt against 3.203147 USDC (48.7% at the mirrored TWAP while held); the drill position's debt is 1.745526
+and the pool holds about 1.798 USDC (headroom about +0.053, still above +0.03). The same commands give the same ticks: step 1
 `--who drill --bps 5880` = tick −11695 (drill 58.80%, line 1 50.83%), step 2 `--who line1 --bps 5400` = tick −11096
 (54.00%). Step 2's repay to 45% is now ≈ **0.5347 USDC = 0.4 user reserve + ≈ 0.1347 advance** (fee ≈ 0.0013; Monday's
 settlement ≈ 0.1360). The borrower's Morpho authorisation of the harvester `0x5b1d…D58E` changes nothing on Saturday:
-`harvest` is operator-only and refuses outside an OPEN session.
+`harvest` refuses outside an OPEN session, and the keeper's harvest job (same signer, third in line after the Protector and
+the vault) reads `GATE_CLOSED` all weekend and signs nothing.
 
 **If beat 4 (the borrow) is recorded on the borrower wallet before the close**, it adds shares and draws on line 1
 (`docs/submission/demo-3min.md`): with 0.01 AAPLt and $1 line 1 becomes ≈ 2,998,934 raw against ≈ 4.2067 USDC (≈ 42.6%

@@ -336,6 +336,27 @@
       },
       "result": "line 1 debt 3.210307 -> 3.206725 USDC, collateral 2,000,000 -> 1,998,934 raw AAPLt, LTV not higher; harvester holds nothing after; the Sepolia feed was not moved (on mainnet the total-return feed rises by the same step, so value is unchanged and only the share count falls)",
       "evidence": "docs/evidence/drills/dividend-harvest.json"
+    },
+    {
+      "date": "2026-10-09",
+      "what": "the self-repaying leg with no operator: the same replayed step (1.0 -> 1.000537939576369481 on the AAPLt registry mirror, under a keeper hold); the keeper Worker's harvest job found line 1 READY and harvested it 3 blocks later from its protection signer; after the release the mirror restored 1.0 and the job re-based on STEP_DOWN by itself",
+      "txs": {
+        "setMultiplier": "0x73a3fd0e744cda2e444b4650a5251093fb69c775e00fdc4367e020da50248048",
+        "keeperHarvest": {
+          "tx": "0xb1312b5f7844d1ae1cc2c38e001552f611a457bd605ffb634ffe2d24b1124616",
+          "block": 47881646,
+          "from": "0x40668755c993A551dB05E844fF9150A0C00a0373",
+          "decisionHash": "0x84d51cc880605351cdef28f61f4d38e54d9f6a7da27323cfa5003135b0b3e7e4",
+          "dividendRaw": 1074,
+          "collateralSold": 1065,
+          "repaidUsdcRaw": 3579,
+          "collateralReturned": 9
+        },
+        "mirrorBack": "0x70a96355425a1f652d65dcfeba913704b0abc9cd520f2136ed71853b24702dad",
+        "keeperRebase": "0x3827eb336f540895113f3f0d2f66dc3e155fdc3309f32c01c386e0025e47cf2d"
+      },
+      "result": "line 1 debt 3.206726 -> 3.203147 USDC, collateral 1,998,934 -> 1,997,869 raw AAPLt; enrollment back at m0 = 1.0, preview NO_CHANGE",
+      "evidence": "docs/evidence/drills/dividend-harvest.json (run 2)"
     }
   ],
   "gas": {
@@ -974,7 +995,7 @@
       "block": 47880898,
       "setRouteTx": "0xbf7baa5a2f3ec3ced68635c9b74245c0fa52dd184ea5a1fbebffb0e5d1641141",
       "owner": "0x2f0d9B1f16CD702259C6cC259e8D5E5455282a4E",
-      "keeper": "0x2f0d9B1f16CD702259C6cC259e8D5E5455282a4E",
+      "keeper": "0x40668755c993A551dB05E844fF9150A0C00a0373",
       "gate": "0x92f59437d4ef5CDcEAe2CcDE89B03A7B4B1Ae427",
       "desk": "0x39aBaDc0aAa12D1F7e259b89536Aa1848997399a",
       "routes": {
@@ -988,7 +1009,9 @@
         "allowlistTx": "0x148561d2f442c8aad1f090d5177157facbf501ab9d1e8a03b9e387d0c3f9b59e",
         "seizeExemptTx": "0x523f9b8b3b870b6beadb4c1084513b499ceb1e2b7610bd6ca7bc9615df9e0ad4",
         "result": "admitted to AAPLt's holders allowlist 72057594037928092 and seize-exempt list 72057594037928099 (contracts/script/wire-protection-sepolia.sh)"
-      }
+      },
+      "setKeeperTx": "0xd70432405d34ffb1ea3dc6ed7214121d1ef64d0c3b554cf6eaf024d8500e473b",
+      "keeperNote": "the keeper Worker's protection signer (PROTECT_KEY) since 9 Oct block 47,881,549; the deployer stays an operator as owner"
     },
     "enrolled": [
       {
@@ -1000,6 +1023,12 @@
         "enrollTx": "0x329962dd07d36e2816c10f1877696dde8a0ee5a63c2ea4566d725040c60e88a9"
       }
     ],
-    "liveRun": "docs/evidence/drills/dividend-harvest.json (scripts/sepolia/harvest.py)"
+    "liveRun": "docs/evidence/drills/dividend-harvest.json (scripts/sepolia/harvest.py)",
+    "keeperJob": {
+      "worker": "boundline-keeper",
+      "source": "apps/keeper/src/harvest-job.ts",
+      "liveView": "https://boundline-keeper.papermind-ai.workers.dev/v1/harvest",
+      "targets": "HARVEST_TARGETS = borrower:AAPLt market (apps/keeper/wrangler.jsonc)"
+    }
   }
 }
