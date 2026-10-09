@@ -27,6 +27,12 @@ IST). So:
       holders allowlist and send it a few AAPLt plus Sepolia ETH (deployer-signed, Lane K1's tooling), or use the
       borrower test wallet `0xB789aD318945B37566E2549F65526Cc269a482Fc` in an injected wallet (its key is test-only).
 - [ ] The market has liquidity for the draw: `https://boundline-app.papermind-ai.workers.dev/borrow` shows capacity > 0.
+- [ ] **Beat 4 on the borrower test wallet draws on line 1, which is Saturday's vault target.** Line 1 has about $0.16 of
+      capacity and the partner policy's smallest draw is $1, so the batch must add shares. Enter exactly **0.01 AAPLt and
+      $1, receive EURCt**: line 1 goes to about 42.6% at the held TWAP and Saturday's step 2 still works (the script picks
+      the tick, about −21%). Do not add more than ~0.013 AAPLt: step 2 would then need the TWAP more than 30% under the
+      held feed, where the ShadowGuard stops pricing and the vault cannot act. After recording, run
+      `python3 -I scripts/sepolia/twap.py show` and check line 1 is below 52% (runbook, Friday step 1).
 - [ ] Browser: a clean profile, 1440 × 900, zoom 110%, dark mode; close other tabs; notifications off.
 - [ ] Terminal: large font; `foundry` installed (`cast`); commands for beat 3 pasted in a scratch file.
 - [ ] Paymaster: off until the CDP project exists (`TODO-HUMAN`), so the wallet pays Sepolia gas. Do not claim sponsored

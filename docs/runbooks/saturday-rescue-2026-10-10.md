@@ -67,6 +67,13 @@ and the pool holds 1.801739 USDC (headroom +0.056213, still above +0.03). The sa
 settlement ≈ 0.1360). The borrower's Morpho authorisation of the harvester `0x5b1d…D58E` changes nothing on Saturday:
 `harvest` is operator-only and refuses outside an OPEN session.
 
+**If beat 4 (the borrow) is recorded on the borrower wallet before the close**, it adds shares and draws on line 1
+(`docs/submission/demo-3min.md`): with 0.01 AAPLt and $1 line 1 becomes ≈ 2,998,934 raw against ≈ 4.2067 USDC (≈ 42.6%
+held), step 2's `--bps 5400` lands near TWAP 265 (−21%, inside the 30% guard) and the vault repays ≈ 0.70 USDC (0.4 user +
+≈ 0.30 advance, within the 1.0 liquidity and the 2.0 cap). Re-run `twap.py show` and `ltv --who line1 --bps 5400 --dry`
+after the recording; if the dry run's TWAP is more than 30% under the feed, too much collateral went in: withdraw the
+excess in session before the close.
+
 The two positions are the same Morpho market, so one TWAP moves both. The vault's grace (52%) sits below the band (58%), so
 on line 1 the repay always comes first; the drill position has no vault target and is the Protector's case.
 
