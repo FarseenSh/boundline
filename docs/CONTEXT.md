@@ -3,7 +3,7 @@
 Living record of everything built so far, where it lives, how it is verified, and what is open.
 **Start here** in any new session (human or Claude), then `docs/BUILD.md` for the schedule.
 Update this file at the end of every session together with the ledger in `docs/BUILD.md`.
-Last update: **Thu 8 Oct 2026, afternoon IST** (morning cross-check, then eight lanes G–M; see sections 8–12).
+Last update: **Fri 9 Oct 2026, afternoon IST** (cross-check, the self-repaying leg live, the keeper's harvest job; see sections 8–12).
 
 ## 1. What Boundline is, in one paragraph
 
@@ -40,6 +40,11 @@ USDC of bad debt and the protected path none); the keeper **simulates every acti
 into a repayment (fork-tested on NVDAc's real 1 Oct dividend); the **mainnet deploy is one command**, rehearsed on forks
 (50 transactions, about $0.80 of gas); the partner API gained **route plans, webhooks and Saturday mode**; the indexer
 stopped dying on the CPU cap and gained **seize watch**; the submission package (portal text, scripts, deck) exists.
+On 9 Oct 2026 the **self-repaying leg went live on Sepolia**: the `DividendHarvester` deployed, desk line 1 opted in,
+and NVDAc's real 1 Oct dividend step, replayed on the AAPLt registry mirror, was swept into the loan, first by the
+operator and then by the **keeper Worker's new harvest job on its own, three blocks after the step**, each followed by a
+re-base when the step was removed; the partner API's stored policy version now follows the desk; the submission's
+pending slots for the drills, webhooks, route plans and the harvester carry hashes.
 
 ## 2. Frame
 
@@ -297,8 +302,10 @@ the identical `eth_call`, because base-forge's local simulation runs Beryl preco
   the unsold rest back, and checks LTV did not rise. Rises above `maxStepBps` (splits), falls, `HEADROOM` mode and no-debt
   re-base without selling. The desk's `Line` holds no collateral amount (it reads Morpho), so the direct withdrawal cannot
   desync it. Fork proof: real Steakhouse borrower `0xcBFB…f2E6` (4.888 NVDAc, 425.11 USDC debt): 259,715 raw NVDAc sold on
-  the real Aerodrome pool, 0.599048 USDC repaid, 3,086 raw back on the position. Not deployed yet (Sepolia needs the
-  harvester admitted to AAPLt's allowlist and a simulated multiplier; the reserve-yield source is not built).
+  the real Aerodrome pool, 0.599048 USDC repaid, 3,086 raw back on the position. **Live on Sepolia since 9 Oct**
+  (`0x5b1d1975929d764f41BAb9DA32C696ba137BD58E`, verified; section 6.1): routed to the AAPLt pool, admitted to AAPLt's
+  allowlist and seize-exempt list, line 1 enrolled (HARVEST), keeper = the protection signer; four live harvest calls
+  recorded in `docs/evidence/drills/dividend-harvest.json`. The reserve-yield source is still not built.
 - **Aave hub halt:** the real 24 Sep 2026 halt was hub-level (`SpokeConfig.halted` through the Safe → executor → payload
   → `HubConfigurator.updateSpokeHalted` for all 8 assets; halt tx `0x86de199821582541271107b04751115aafeec608901a6260b0a27af52c0eed8f`),
   which `AaveDesk` did not read: during the replayed halt it quoted `NONE` with 991.48 USDC available and recorded `OPEN`.
@@ -468,6 +475,27 @@ the identical `eth_call`, because base-forge's local simulation runs Beryl preco
   "Observatory unreachable" in every browser: no CORS headers) and lists twelve proofs re-checked on chain. Base Pay not
   built: it sends a plain transfer and the vault credits only `deposit`/`repayAdvance`.
 
+**9 Oct 2026 (Friday):**
+
+- **Keeper harvest job** (`apps/keeper/src/harvest-job.ts`, vars `HARVESTER`, `HARVEST_TARGETS` = `user:marketId`): each
+  tick one batch (head, a Multicall3 of `keeper()` and every target's `preview`, the signer's nonces, the gas price);
+  `READY` → `harvest(user, market, now + 600)`, `STEP_DOWN`/`STEP_TOO_LARGE`/`HEADROOM`/`NO_DEBT` → the same call
+  re-bases; simulated from the signer at latest and pending first, a plain transaction (the contract refuses outside
+  OPEN, so no validity predicate), gas limit 900k (live: 535,346 harvest, 167,821 re-base). Shares `PROTECT_KEY`, third
+  after the Protector and the vault, yields whenever either wanted the signer, never while a transaction is in flight;
+  watches (`not-keeper`) until `harvester.keeper()` is the signer. `GET /v1/harvest` is the live view; `/v1/config`
+  lists the job. Ticks measured at 3–4 ms CPU with it. 10 tests.
+- **Keeper RPC:** a batch whose answer has any rate-limited entry (`-32007 25/second request limit reached` from
+  sepolia.base.org, inside an otherwise good array) is re-sent to the next URL; the last URL's answer stands; a revert is
+  never re-sent. 1 test (keeper 129).
+- **Partner API:** `GET /v1/whoami` reads the desk's partner version and stores it when it moved (it said 1 while the desk
+  was at 4: policies applied on chain without `POST …/applied`); `GET /v1/policy` stores what it reads; whoami answers
+  `policyVersionSource: desk | stored`. The drills registry has 13 drills (`dividend-harvest` added). 3 tests (API 121).
+- **Scripts:** `scripts/sepolia/harvest.py` (the operator run; `--by-keeper` lets the Worker act), `scripts/sepolia/friday.py`
+  (the runbook's Friday steps as one guarded command); `drills.py` no longer reads a session scratchpad file (the hold
+  switch's namespace id is the keeper's `KEEPER_STATE`) and retries a KV write once after `wrangler whoami` when the OAuth
+  token expired (`Authentication error [code: 10000]`, seen 8 and 9 Oct); `errors.json` has the harvester's errors.
+
 ## 6. Deployments and live state
 
 ### 6.1 Base Sepolia (chain 84532), deployed 3 Oct 2026, all verified on sepolia.basescan.org
@@ -583,6 +611,27 @@ fee (`0x14c4ffbd…db9a`); the Reserve harvested the fee (`0xf2574764…da67`): 
   user reserve); pool 1.805321 USDC; Reserve 1.002 USDC idle. The borrower EOA is EIP-7702-delegated to MetaMask's
   verified `EIP7702StatelessDeleGator` (`0x63c0…e32b`); it still signs normally.
 
+**9 Oct 2026 (main session; `deployments/base-sepolia.json` → `harvest` and two new `proofs`):**
+
+- **DividendHarvester** `0x5b1d1975929d764f41BAb9DA32C696ba137BD58E` (verified): deploy
+  `0x15ac4ee1613150727a773d1b89336be26469379fe5e775209b4fd2dd5b2ae347` (block 47,880,898), route AAPLt → pool
+  `0xbf7baa5a2f3ec3ced68635c9b74245c0fa52dd184ea5a1fbebffb0e5d1641141`; admitted to AAPLt's allowlist
+  `0x148561d2f442c8aad1f090d5177157facbf501ab9d1e8a03b9e387d0c3f9b59e` and seize-exempt list
+  `0x523f9b8b3b870b6beadb4c1084513b499ceb1e2b7610bd6ca7bc9615df9e0ad4`; keeper → the protection signer
+  `0xd70432405d34ffb1ea3dc6ed7214121d1ef64d0c3b554cf6eaf024d8500e473b`. Borrower opt-in: `setAuthorization`
+  `0x68e31e0c9fc047085719b61268865800a174412549c6d3fb33e1f69dccc75f0d`, `enroll(AAPLt market, 1, HARVEST)`
+  `0x329962dd07d36e2816c10f1877696dde8a0ee5a63c2ea4566d725040c60e88a9`.
+- **Operator run:** step `0x8ee7e75e…59b5`; harvest `0xa44b786744d8246b9352914d843ee96723314d5fd74e2fcaecdafcf85624f680`
+  (block 47,881,125: 1,075 raw AAPLt dividend collateral, 1,066 sold, 0.003582 USDC repaid through `desk.repay`, 9 back;
+  decision hash `0x12aeea9d…f0aa`); keeper mirror back `0x9f12f40d…22ae`; re-base
+  `0xaa136601955d0db9b78243f2e6ee24cc609c0c53ba3bf5013c060466e7efae66` (`STEP_DOWN`).
+- **Keeper run (no operator):** step `0x73a3fd0e…8048` (block 47,881,643); the Worker harvested
+  `0xb1312b5f7844d1ae1cc2c38e001552f611a457bd605ffb634ffe2d24b1124616` at block 47,881,646 from `0x4066…0373` (1,074 raw,
+  0.003579 USDC repaid, decision #2 `0x84d51cc8…e7e4`); mirror back `0x70a96355…2dad`; the Worker re-based
+  `0x3827eb336f540895113f3f0d2f66dc3e155fdc3309f32c01c386e0025e47cf2d`. The Sepolia feed was not moved in either run.
+- Line 1 after: 1,997,869 raw AAPLt, 3.203147 USDC debt (48.7% at the mirrored TWAP while held); pool about 1.798 USDC
+  (headroom over the drill debt about +0.053).
+
 ### 6.2 Base mainnet (chain 8453)
 
 Nothing deployed: there is no mainnet deployer key yet. **Since 8 Oct the whole footprint is one command**
@@ -626,9 +675,9 @@ cron drives the API's webhook `tick()` because **the API's own cron never fires*
 Observatory's kick is de-duplicated by a 20 s lease; the API has migration 0003 (route plans, webhooks), a cron trigger that
 does not fire, the `Events` entrypoint and `/health` `features: ["route","webhooks","events-entrypoint","saturday-mode"]`;
 the site has a bridge Worker (`apps/site/worker/`) with service bindings to the Observatory and the API. Deploy a router
-change with `pnpm --filter @boundline/router build` first (`dist/` is gitignored). Last deploys 8 Oct: keeper
-`74212fbb`, indexer `aba6ef13`, Observatory `326a3f30`, API `b0264d18`, agent `f6ec84db`, app `75aa8695`, console
-`1bfb9a5b`, site `b15a91fe`.
+change with `pnpm --filter @boundline/router build` first (`dist/` is gitignored). Last deploys: 9 Oct keeper
+`364d93a7` (vars `HARVESTER`, `HARVEST_TARGETS`), API `6dd36100`; 8 Oct indexer `aba6ef13`, Observatory `326a3f30`,
+agent `f6ec84db`, app `75aa8695`, console `1bfb9a5b`, site `b15a91fe`.
 
 ## 7. Keys, accounts and secrets (locations only, never values)
 
@@ -704,6 +753,14 @@ reverts), cNGN/USDC is Uniswap v4; the x402.org facilitator lists v2 `eip155:845
 and settles from its own signer; the Observatory's workers.dev origin sends no CORS headers (browser pages read it through a
 service binding); a freshly deployed Worker can answer empty bodies for its first seconds (retry once).
 
+**9 Oct facts:** this session's scratchpad (`/private/tmp/…`) was wiped overnight: nothing the repo needs may live there.
+The wrangler OAuth token expires within a day and a KV write then fails `Authentication error [code: 10000]`;
+`wrangler whoami` refreshes it. Alchemy's Sepolia endpoint answered an `eth_getLogs` range with HTTP 400; the Basescan v2
+logs API (`drills._find_mirror_tx`) works. sepolia.base.org rate-limits **per entry inside a batch** (`-32007`). Line 1
+has about $0.16 of capacity and the policy's smallest draw is $1, so the demo's beat 4 must add shares; more than ~0.013
+AAPLt would push Saturday's step 2 past the ShadowGuard's 30% guard (demo checklist and runbook). The Claude-in-Chrome
+extension was not connected, so the front ends were checked over HTTP only (all 200).
+
 **8 Oct facts:** the Free plan's 10 ms cap kills heavy cron ticks (`exceededCpu` at exactly `cpuTime 10`) while light
 ones and some 16–19 ms fetches pass: never rely on leniency, measure with a tail. Hono's default SmartRouter compiles a
 regular expression over every route on the first request of a cold isolate (24–26 ms CPU); `PatternRouter` costs 0.2–0.3
@@ -733,12 +790,12 @@ disagree on the head for a few seconds, so run one broadcaster per key at a time
 retry a `nonce too low`; `mainnet.base.org` rate-limits Cloudflare egress, hence the RPC fallback
 list; KV on the free tier allows 1,000 writes a day, hence the throttle; macOS has no `timeout`.
 
-## 9. Verification state (8 Oct 2026, afternoon IST)
+## 9. Verification state (9 Oct 2026, afternoon IST)
 
 ```sh
 forge test --root contracts     # 264 passed, 0 failed, 8 skipped (fork suites without BASE_RPC_URL), 29 suites
-pnpm test                       # 871 vitest: calendar 106, chain 19, ledger 10, router 15, agent 19, api 118, indexer 108,
-                                #   keeper 118, observatory 217, sdk 95, console 46
+pnpm test                       # 885 vitest: calendar 106, chain 19, ledger 10, router 15, agent 19, api 121, indexer 108,
+                                #   keeper 129, observatory 217, sdk 95, console 46
 pnpm typecheck                  # clean (every package and app)
 BASE_RPC_URL=<alchemy archive> FOUNDRY_BASE=true ~/.foundry/bin/base-forge test --root contracts --match-path 'test/fork/*'
                                 # + test/drills and test/harvest: 9 fork suites, 42 passed (8 Oct)
@@ -788,6 +845,12 @@ chain by the lane that wrote it (K1: 123 transactions, all status 1).
   the router is pure and dependency-free; the keeper's mirror can hold a symbol (`MIRROR_HOLD_*`) so Thursday's drills
   are not reverted a minute later; the payout router has no owner and refunds unfilled input; cNGN is not routed
   (Uniswap v4 pool); the Reserve, vault, router and agent keep the deployer as their operator until a keeper job exists.
+- **9 Oct**: the harvester runs from the keeper Worker with the shared protection signer, third in line (no new key could
+  be written); the harvest job sends plain transactions because the contract itself refuses outside an open session; the
+  live harvests replay NVDAc's real 1 Oct multiplier step on the AAPLt registry mirror and do not move the feed (said in
+  every record); the Friday mirror is applied only when no position would act at the close, so Saturday's rescues happen
+  while recorded; the demo's borrow is sized (0.01 AAPLt, $1) so the vault rescue stays possible; the API's stored policy
+  version follows the desk on read.
 - **8 Oct**: the drill position is pre-positioned below the band at the close (a 0.06 USDC repay) instead of leaving the
   pool short, because the keeper then had no pre-arm simulation; the keeper now simulates every action and re-signs every
   re-arm; line 1 (not a new line) is the vault drill's subject; the vault job shares the protect signer (one signature per
@@ -807,28 +870,28 @@ chain by the lane that wrote it (K1: 123 transactions, all status 1).
 ## 11. Open items
 
 **Clocked** (the runbook `docs/runbooks/saturday-rescue-2026-10-10.md` has every command and number)
-- **Fri 9 Oct, before 20:00 ET (before Sat 05:15 IST):** `python3 -I scripts/sepolia/twap.py mirror`, then `show`:
+- **Fri 9 Oct, before 20:00 ET (before Sat 05:15 IST):** `python3 -I scripts/sepolia/friday.py` (dry run passed at 13:30
+  IST; a one-shot in the 9 Oct Claude session runs it at 04:43 IST if that session is still open). By hand: `twap.py mirror`, then `show`:
   drill position below 58% and line 1 below 52% at the mirrored TWAP while held, pool USDC ≥ drill debt + 0.03 (top up
   first if not); keeper `/v1/status`, `/v1/protect`, `/v1/vault` healthy, `/v1/config` hold empty; record the "before"
   state. If the DEX gaps more than ~2.7% under the feed into the close, the keeper closes the drill position out at once:
   record it as Saturday's step 1.
 - **Sat 10 Oct, after 05:30 IST, screen recording on:** step 1 `twap.py ltv --who drill --bps 5880` → the keeper closes
   the drill position out (validity transaction, held predicate) + the refused raw `Morpho.liquidate` call; step 2 (only
-  after step 1 landed) `twap.py ltv --who line1 --bps 5400` → the vault job repays line 1 ≈ 0.535 USDC (0.4 user reserve
-  + ≈ 0.135 Reserve advance); step 3 `twap.py mirror`; record both. Top the pool up before moving the TWAP, never after
+  after step 1 landed) `twap.py ltv --who line1 --bps 5400` → the vault job repays line 1 ≈ 0.534 USDC (0.4 user reserve
+  + ≈ 0.134 Reserve advance; ≈ 0.70 if the demo's beat 4 drew on line 1 first); step 3 `twap.py mirror`; record both. Top the pool up before moving the TWAP, never after
   (a simulated revert backs a target off ~5 min).
 - **Mon 12 Oct after 05:30 IST:** `/v1/captures` run `1791763200` (Sun 11 Oct 20:00 ET); first-print hashes into the
-  submission; the borrower settles the advance (`repayAdvance(1, …)` ≈ 0.136 USDC) and the Reserve harvests; deadline
+  submission; the borrower settles the advance (`repayAdvance(1, …)` ≈ 0.135 USDC, ≈ 0.30 after a beat-4 draw) and the Reserve harvests; deadline
   Tue 13 Oct 12:29 IST.
 
-**Next build items:** the Sepolia `DividendHarvester` deploy and one live harvest (admit it to AAPLt's allowlist, a
-simulated dividend multiplier under a KV registry hold, the borrower's opt-in); re-root Sepolia 2026-10-06/07 once the
-human approves the D1 delete; the console mock's old 10-06 root; the reserve-yield source of the self-repaying leg;
-`/v1/whoami` reports the API's stored policy version (1) while the desk is at 4; mainnet deploy with
-`deploy-mainnet.sh broadcast` the moment a funded key exists, then point the agent, router and Observatory at it;
-Robinhood Chain and Arbitrum (only with a real deployment and position each); the CreditDesk freeze redeploy (with
-`setProtectionVault`; the Cobalt allowlists must admit the vault) is optional now: the live desk carries every live flow
-except the vault's `recover`.
+**Next build items:** re-root Sepolia 2026-10-06/07 once the human approves the D1 delete (then refresh the console
+mock's 10-06 root); the reserve-yield source of the self-repaying leg; mainnet deploy with `deploy-mainnet.sh broadcast`
+the moment a funded key exists (it includes the harvester), then point the agent, router, Observatory and the keeper's
+`HARVEST_TARGETS` at it; Robinhood Chain and Arbitrum (only with a real deployment and position each); the CreditDesk
+freeze redeploy (with `setProtectionVault`; the Cobalt allowlists must admit the vault) is optional: the live desk carries
+every live flow except the vault's `recover`. Done 9 Oct: the Sepolia harvester and live harvests (operator and keeper),
+`/v1/whoami`'s policy version.
 
 **Human-only**:
 - **Workers Paid ($5/month)**: the 10 ms cap is enforced inconsistently (section 2); Saturday's keeper fits today
@@ -908,6 +971,12 @@ except the vault's `recover`.
 | `12c9392` | Runbook order rule (top up before moving the TWAP) |
 | `9154059`, `af446a3`, `862c31e` | Router shared candidates; agent x402; partner API route plans, Saturday mode, webhooks, drills registry |
 | `f18311e`, `453dea0` | Indexer CPU diet, protection events, seize watch; Observatory seize-watch panel |
+| `88075ce`, `76fe8ca`, `3f33761` | Keeper drives the API's webhook tick; PatternRouter everywhere; 8 Oct context, webhook proof |
+| `3362abf`, `77270df` | 9 Oct: the API's stored policy version follows the desk; Sepolia scripts off the scratchpad, KV token refresh |
+| `de42ab2` | The self-repaying leg live on Sepolia: harvester deployed, one dividend harvested into line 1 |
+| `ae4057a`, `2c84d51` | Submission, README and deck filled from the evidence; demo beat 4 sizing |
+| `f113c99`, `278dc05` | Keeper harvest job; the Worker harvested and re-based on its own |
+| `3d9d83d`, `f2a770a` | `friday.py`; keeper RPC re-sends a rate-limited batch to the next node |
 
 ## 13. How to keep this file true
 

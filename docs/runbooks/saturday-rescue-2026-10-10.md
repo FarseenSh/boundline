@@ -63,8 +63,8 @@ recompute on the day with `python3 -I scripts/sepolia/twap.py show`.
 1,997,869 raw AAPLt against 3.203147 USDC (48.7% at the mirrored TWAP while held); the drill position's debt is 1.745526
 and the pool holds about 1.798 USDC (headroom about +0.053, still above +0.03). The same commands give the same ticks: step 1
 `--who drill --bps 5880` = tick −11695 (drill 58.80%, line 1 50.83%), step 2 `--who line1 --bps 5400` = tick −11096
-(54.00%). Step 2's repay to 45% is now ≈ **0.5347 USDC = 0.4 user reserve + ≈ 0.1347 advance** (fee ≈ 0.0013; Monday's
-settlement ≈ 0.1360). The borrower's Morpho authorisation of the harvester `0x5b1d…D58E` changes nothing on Saturday:
+(54.00%). Step 2's repay to 45% is now ≈ **0.534 USDC = 0.4 user reserve + ≈ 0.134 advance** (fee ≈ 0.0013; Monday's
+settlement ≈ 0.135). The borrower's Morpho authorisation of the harvester `0x5b1d…D58E` changes nothing on Saturday:
 `harvest` refuses outside an OPEN session, and the keeper's harvest job (same signer, third in line after the Protector and
 the vault) reads `GATE_CLOSED` all weekend and signs nothing.
 
