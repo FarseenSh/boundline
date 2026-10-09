@@ -38,6 +38,9 @@ export interface Env {
   CREDIT_DESK?: string;
   /** `lineId:graceLtvBps:targetLtvBps:shadowOracle:feed:slot,...` (src/vault.ts parseVaultTargets); blank → the job only answers /v1/vault. */
   VAULT_TARGETS?: string;
+  /** Harvest job (src/harvest-job.ts): the DividendHarvester and its targets as <user>:<marketId>, comma-separated. */
+  HARVESTER?: string;
+  HARVEST_TARGETS?: string;
   /**
    * The partner API's event intake: an RPC binding to boundline-api, entrypoint `Events` (src/events.ts). Bound only
    * once the API serves it; absent → events are logged in the tick line and not sent.

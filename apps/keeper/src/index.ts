@@ -10,6 +10,7 @@ import { collectStatus } from "./status.js";
 import { runTick } from "./tick.js";
 import { encodeVaultProtect, parseVaultTargets, pct, usdc, type VaultTarget } from "./vault.js";
 import { runVault, simulateBatch, type VaultReport } from "./vault-job.js";
+import { parseHarvestTargets, runHarvest, type HarvestReport, type HarvestTarget } from "./harvest-job.js";
 import { warmUp } from "./warm.js";
 import type { Address } from "viem";
 
@@ -97,6 +98,15 @@ app.get("/v1/vault", async (c) => {
   );
 });
 
+/** Live view of the harvest job: every enrolled target's preview and what the job would send; nothing signed. */
+app.get("/v1/harvest", async (c) => {
+  const cfg = harvestConfig(c.env);
+  if (!cfg.harvester) return c.json({ enabled: false, note: "set HARVESTER and HARVEST_TARGETS to turn the harvest job on" });
+  const report = await runHarvest({ ...liveHarvestDeps(c.env, cfg), dryRun: true });
+  const keeperStatus = report.signer === null ? "no-key" : report.keeperIsSigner === true ? "keeper" : report.keeperIsSigner === false ? "not-keeper" : "unknown";
+  return c.body(jsonWithBigints({ enabled: true, keeperStatus, ...(cfg.error ? { targetsError: cfg.error } : {}), ...report }), 200, { "content-type": "application/json" });
+});
+
 /**
  * Proves the API_EVENTS binding end to end without side effects: it sends an event of a type the API does not accept,
  * so the API validates and refuses it (nothing is stored, nothing is delivered) and its refusal comes back here.
@@ -129,6 +139,12 @@ app.get("/v1/config", async (c) => {
       { name: "sepolia-registry-mirror", signer: "KEEPER_KEY", what: "copy the mainnet OracleRegistry params onto the MirrorOracleRegistry" },
       { name: "protection", signer: "PROTECT_KEY", what: "shadow pre-liquidation through the Protector, armed as a validity transaction", config: protection },
       { name: "vault", signer: "PROTECT_KEY", what: "any-hour protective repay of desk lines through the DeskProtectionVault ladder, armed as a validity transaction", config: vaultJob },
+      {
+        name: "harvest",
+        signer: "PROTECT_KEY",
+        what: "the self-repaying leg: each dividend (a registry multiplier step) swept into the enrolled loan through the DividendHarvester in an open session; a fall or a split-sized step re-bases",
+        config: { harvester: harvestConfig(c.env).harvester, targets: harvestConfig(c.env).targets, signer: "PROTECT_KEY (third after the Protector and the vault; one signature per tick)" },
+      },
       { name: "events", what: "grace, grace.cleared and protect events to the partner API", binding: "API_EVENTS", bound: c.env.API_EVENTS !== undefined },
     ],
     cron: "* * * * *",
@@ -275,6 +291,51 @@ export async function vaultTick(env: Env, cfg: VaultConfig, signerBusy: boolean,
   }
 }
 
+export interface HarvestConfig {
+  harvester: Address | null;
+  targets: HarvestTarget[];
+  error?: string;
+}
+
+export function harvestConfig(env: Pick<Env, "HARVESTER" | "HARVEST_TARGETS">): HarvestConfig {
+  const h = env.HARVESTER?.trim();
+  const cfg: HarvestConfig = { harvester: h && ADDRESS.test(h) ? (h as Address) : null, targets: [] };
+  try {
+    cfg.targets = parseHarvestTargets(env.HARVEST_TARGETS);
+  } catch (err) {
+    cfg.error = err instanceof Error ? err.message : String(err);
+  }
+  return cfg;
+}
+
+function liveHarvestDeps(env: Env, cfg: HarvestConfig) {
+  return { rpc: liveProtectRpc(sepoliaRpc(env), sequencerUrl(env)), harvester: cfg.harvester!, targets: cfg.targets, account: protectAccount(protectKey(env)), chainId: CHAINS.sepolia };
+}
+
+/** The harvest job: one batch, at most one plain transaction, only when neither protection job wanted the signer. Never throws. */
+export async function harvestTick(env: Env, signerBusy: boolean): Promise<HarvestReport | null> {
+  const cfg = harvestConfig(env);
+  if (!cfg.harvester || cfg.targets.length === 0) return null;
+  try {
+    const r = await runHarvest({ ...liveHarvestDeps(env, cfg), signerBusy });
+    console.log(
+      jsonWithBigints({
+        harvest: r.at,
+        ms: r.ms,
+        skipped: r.skipped,
+        keeperIsSigner: r.keeperIsSigner,
+        targets: r.targets.map((t) => `${t.user.slice(0, 8)}:${t.preview?.standing ?? t.error ?? "?"}:${t.decision?.action ?? "-"}`),
+        sent: r.sent,
+        errors: r.errors,
+      }),
+    );
+    return r;
+  } catch (err) {
+    console.error("harvest tick failed", err instanceof Error ? err.message : err);
+    return null;
+  }
+}
+
 /** After both protection jobs: look for executions, move the state, send the events. One KV write at most. Never throws. */
 export async function eventsTick(env: Env, state: KeeperState, protect: ProtectReport | null, vault: VaultReport | null, cfg: VaultConfig): Promise<void> {
   try {
@@ -334,8 +395,8 @@ export async function tick(env: Env, hold: HoldView): Promise<void> {
 
 /**
  * One cron run. Protection first (its action matters more than a feed mirror): the Protector job, then the vault job
- * (which yields the shared signer whenever the Protector wanted it), then the events, then the mirror. The hold
- * switch and the event state are one KV read each.
+ * (which yields the shared signer whenever the Protector wanted it), then the harvest job (which yields it to either),
+ * then the events, then the mirror. The hold switch and the event state are one KV read each.
  */
 export async function runCron(env: Env): Promise<void> {
   const cfg = vaultConfig(env);
@@ -346,6 +407,9 @@ export async function runCron(env: Env): Promise<void> {
   // The Protector keeps the shared signer whenever it wanted to act (a simulated revert or a backoff is not wanting).
   const signerBusy = protect?.targets.some((t) => t.decision !== null && t.decision.action !== "none") ?? false;
   const vault = await vaultTick(env, cfg, signerBusy, state);
+  // The harvest job takes the signer only when neither protection job wanted it (a dividend can wait a minute).
+  const vaultWanted = vault?.armed != null || (vault?.targets.some((t) => t.decision?.action === "protect") ?? false);
+  await harvestTick(env, signerBusy || vaultWanted);
   if (state) await eventsTick(env, state, protect, vault, cfg);
   await tick(env, hold);
   // Last, so it can never delay a protection or a mirror write: the API's webhook tick (its own cron does not fire).

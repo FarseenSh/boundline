@@ -31,7 +31,13 @@
     // signs once the vault's keeper() is that signer.
     "DESK_PROTECTION_VAULT": "0x87f600279F021ca859b9903DE884d3A7A169f38c",
     "CREDIT_DESK": "0x39aBaDc0aAa12D1F7e259b89536Aa1848997399a",
-    "VAULT_TARGETS": "1:5200:4500:0x7a53b459be6e5e9a12324cc3417bb027daf73f65:0xa652b75CA90084FA16D4F18Fd96B5dd7069ee52a:5"
+    "VAULT_TARGETS": "1:5200:4500:0x7a53b459be6e5e9a12324cc3417bb027daf73f65:0xa652b75CA90084FA16D4F18Fd96B5dd7069ee52a:5",
+    // Harvest job (src/harvest-job.ts, 9 Oct 2026): the DividendHarvester sweeps each dividend (a registry multiplier
+    // step) into the enrolled loan in an open session, and re-bases on a fall or a split-sized step. Targets are
+    // user:marketId; line 1's borrower on the AAPLt market (enrolled 9 Oct). Signs with PROTECT_KEY, third after the
+    // Protector and the vault, and only once the harvester's keeper() is that signer.
+    "HARVESTER": "0x5b1d1975929d764f41BAb9DA32C696ba137BD58E",
+    "HARVEST_TARGETS": "0xB789aD318945B37566E2549F65526Cc269a482Fc:0x4a03b124a170a913931f00ab87f7966d388370cf457c0a3c4fb6fcf4fbb88047"
   },
   // Runtime state (8 Oct 2026): key `hold` is the drill hold switch, merged with the two vars above, so a drill holds a
   // symbol without a redeploy: `wrangler kv key put --remote --namespace-id a648931723db46ca90aef102b0fe83bb hold
