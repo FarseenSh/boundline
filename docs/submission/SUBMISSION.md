@@ -128,8 +128,8 @@ evidence index below):
   "self-repaying structures".
 - `[pending: mainnet — SessionGuard, the session-safe AAPLc market and the pre-liquidations on the Steakhouse markets, deployed as soon as a funded mainnet key exists]`
 
-**Built in the window:** 53 commits from Sat 3 Oct to Thu 8 Oct 2026 in a new repository; 240 Foundry tests (unit,
-fuzz, invariant, differential) plus five mainnet-fork suites that run against an archive RPC; 691 TypeScript tests;
+**Built in the window:** 88 commits from Sat 3 Oct to Fri 9 Oct 2026 in a new repository; 264 Foundry tests (unit,
+fuzz, invariant, differential) plus nine mainnet-fork suites that run against an archive RPC; 887 TypeScript tests;
 eight Cloudflare Workers live.
 `TODO-HUMAN: refresh the counts on submission day (git log | wc -l, forge test, pnpm test).`
 
