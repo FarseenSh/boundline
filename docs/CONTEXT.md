@@ -484,10 +484,14 @@ the identical `eth_call`, because base-forge's local simulation runs Beryl preco
   OPEN, so no validity predicate), gas limit 900k (live: 535,346 harvest, 167,821 re-base). Shares `PROTECT_KEY`, third
   after the Protector and the vault, yields whenever either wanted the signer, never while a transaction is in flight;
   watches (`not-keeper`) until `harvester.keeper()` is the signer. `GET /v1/harvest` is the live view; `/v1/config`
-  lists the job. Ticks measured at 3–4 ms CPU with it. 10 tests.
+  lists the job. **It reads nothing while it could not act** (`harvestGate`): when the vault's quote says
+  `MARKET_CLOSED`/`WEEKEND`/`HOLIDAY` or the venue oracle is not live, and when the Protector or the vault wanted the
+  signer; a post-deploy tail had shown 6–8 ms CPU per tick with it reading every minute (3–6 ms on 8 Oct), so every
+  Saturday tick and every tick that signs a protection is the 8 Oct profile; in session, with it reading, ticks measured
+  4–5 ms (7 ms on the first cold one; 6 ticks, all `ok`, keeper `28fe170c`). 13 tests.
 - **Keeper RPC:** a batch whose answer has any rate-limited entry (`-32007 25/second request limit reached` from
   sepolia.base.org, inside an otherwise good array) is re-sent to the next URL; the last URL's answer stands; a revert is
-  never re-sent. 1 test (keeper 129).
+  never re-sent. 1 test (keeper 131 with the gate's tests).
 - **Partner API:** `GET /v1/whoami` reads the desk's partner version and stores it when it moved (it said 1 while the desk
   was at 4: policies applied on chain without `POST …/applied`); `GET /v1/policy` stores what it reads; whoami answers
   `policyVersionSource: desk | stored`. The drills registry has 13 drills (`dividend-harvest` added). 3 tests (API 121).
@@ -676,7 +680,7 @@ Observatory's kick is de-duplicated by a 20 s lease; the API has migration 0003 
 does not fire, the `Events` entrypoint and `/health` `features: ["route","webhooks","events-entrypoint","saturday-mode"]`;
 the site has a bridge Worker (`apps/site/worker/`) with service bindings to the Observatory and the API. Deploy a router
 change with `pnpm --filter @boundline/router build` first (`dist/` is gitignored). Last deploys: 9 Oct keeper
-`364d93a7` (vars `HARVESTER`, `HARVEST_TARGETS`), API `6dd36100`; 8 Oct indexer `aba6ef13`, Observatory `326a3f30`,
+`28fe170c` (vars `HARVESTER`, `HARVEST_TARGETS`), API `6dd36100`; 8 Oct indexer `aba6ef13`, Observatory `326a3f30`,
 agent `f6ec84db`, app `75aa8695`, console `1bfb9a5b`, site `b15a91fe`.
 
 ## 7. Keys, accounts and secrets (locations only, never values)
@@ -794,8 +798,8 @@ list; KV on the free tier allows 1,000 writes a day, hence the throttle; macOS h
 
 ```sh
 forge test --root contracts     # 264 passed, 0 failed, 8 skipped (fork suites without BASE_RPC_URL), 29 suites
-pnpm test                       # 885 vitest: calendar 106, chain 19, ledger 10, router 15, agent 19, api 121, indexer 108,
-                                #   keeper 129, observatory 217, sdk 95, console 46
+pnpm test                       # 887 vitest: calendar 106, chain 19, ledger 10, router 15, agent 19, api 121, indexer 108,
+                                #   keeper 131, observatory 217, sdk 95, console 46
 pnpm typecheck                  # clean (every package and app)
 BASE_RPC_URL=<alchemy archive> FOUNDRY_BASE=true ~/.foundry/bin/base-forge test --root contracts --match-path 'test/fork/*'
                                 # + test/drills and test/harvest: 9 fork suites, 42 passed (8 Oct)
@@ -977,6 +981,7 @@ every live flow except the vault's `recover`. Done 9 Oct: the Sepolia harvester 
 | `ae4057a`, `2c84d51` | Submission, README and deck filled from the evidence; demo beat 4 sizing |
 | `f113c99`, `278dc05` | Keeper harvest job; the Worker harvested and re-based on its own |
 | `3d9d83d`, `f2a770a` | `friday.py`; keeper RPC re-sends a rate-limited batch to the next node |
+| `95bd40d`, `bbd57ac` | 9 Oct context and ledger; the harvest job reads nothing while it could not act |
 
 ## 13. How to keep this file true
 
