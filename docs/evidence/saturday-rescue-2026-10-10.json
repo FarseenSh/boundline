@@ -283,8 +283,325 @@
       }
     }
   },
-  "friday": null,
-  "atClose": null,
+  "friday": {
+    "outcome": "mirror not applied; the live friday.py was not run",
+    "why": "The Friday step was a one-shot job in the build session, set for 04:43 IST. It was delivered at 04:55 IST, its first command ran at 05:12 IST and the dry run started at 05:40:36 IST, ten minutes after the 05:30 IST close (the session's machine was asleep through the gaps). By then the Observatory named the reopen, so the dry run's only fail is its close check. The live run is gated on a clean dry run, and a mirror after the close would move the held shadow price unrecorded, which only Saturday's recorded steps do. So the previous mirror (tick -12125) stayed.",
+    "materiality": "The mock's TWAP tick -12125 (336.1675 USD) sat 6 ticks under the mainnet AAPLc/USDC 1h TWAP at the dry run (-12131, 336.3693 USD), about 0.06%. Applying the mirror would have moved the drill position from 56.3294% to 56.2956% and line 1 from 48.6663% to 48.6371% while held: both well clear of the band (58%) and grace (52%) either way.",
+    "timeline": {
+      "scheduledIst": "Sat 10 Oct 2026 04:43",
+      "deliveredUtc": "2026-10-09T23:25:40Z",
+      "firstCommandUtc": "2026-10-09T23:42:27Z",
+      "dryRunStartedUnix": 1791591036,
+      "closeUnix": 1791590400
+    },
+    "dryRun": {
+      "at": 1791591036,
+      "block": 47911374,
+      "checks": {
+        "poolHeadroomRaw": 52633,
+        "mirrorKeyEth": 0.009954470326467098,
+        "pairs": {
+          "AAPLt": [
+            "in-sync",
+            "in-sync"
+          ],
+          "NVDAt": [
+            "in-sync",
+            "in-sync"
+          ],
+          "TSLAt": [
+            "in-sync",
+            "in-sync"
+          ]
+        },
+        "protectSignerEth": 0.004838640569525978,
+        "hold": {
+          "hold": {
+            "feed": [],
+            "registry": []
+          },
+          "source": "none"
+        },
+        "protectTargets": [
+          "0xB789aD:BELOW_BAND",
+          "0x2f0d9B:BELOW_BAND"
+        ],
+        "vault": {
+          "keeperStatus": "keeper",
+          "line1": [
+            "1:BELOW_GRACE:48.66%"
+          ]
+        },
+        "harvest": {
+          "keeperStatus": "keeper",
+          "standing": [
+            "GATE_CLOSED"
+          ]
+        },
+        "nextFeedTransition": {
+          "at": 1791763200,
+          "from": "WEEKEND",
+          "to": "OVERNIGHT",
+          "kind": "reopen"
+        }
+      },
+      "mirror": {
+        "applied": false,
+        "tick": -12131,
+        "price36": "3363692567770275504791151868384098120",
+        "usd": 336.36926,
+        "sqrtPriceX96": "43198775433167251645504022028",
+        "why": "Friday mirror of the mainnet AAPLc/USDC 1h TWAP (tick -12131, 336.3693 USD; feed 336.844)",
+        "positionsWhileHeld": {
+          "drill (deployer, Protector band 58%-62.5%)": {
+            "collateralRaw": 940611,
+            "debtRaw": 1745527,
+            "shadowUsd": 329.64187,
+            "shadowLtvPct": 56.2956
+          },
+          "line1 (borrower, vault grace 52%)": {
+            "collateralRaw": 1997869,
+            "debtRaw": 3203147,
+            "shadowUsd": 329.64187,
+            "shadowLtvPct": 48.6371
+          }
+        }
+      },
+      "topUp": null,
+      "mainnetTwap": {
+        "tick": -12131,
+        "price36": 3363692567770275504791151868384098120,
+        "usd": 336.3692567770276,
+        "spotTick": -12127,
+        "feedUsd": 336.844,
+        "feedUpdatedAt": 1791574133,
+        "dexVsFeedBps": -14.1
+      },
+      "mockBefore": {
+        "tick": -12125,
+        "twapUsd": 336.16750584167283,
+        "price36": 3361675058416728161502400149334752128,
+        "swapUsd": 336.16750584167283,
+        "slot0Tick": -12125,
+        "shadowGuardTwap36": 3361675058416728161502400149334752128,
+        "poolUsdc": 1.79816
+      },
+      "positionsIfHeldAtMainnetTwap": {
+        "drill (deployer, Protector band 58%-62.5%)": {
+          "collateralRaw": 940611,
+          "debtRaw": 1745527,
+          "shadowUsd": 329.64187,
+          "shadowLtvPct": 56.2956
+        },
+        "line1 (borrower, vault grace 52%)": {
+          "collateralRaw": 1997869,
+          "debtRaw": 3203147,
+          "shadowUsd": 329.64187,
+          "shadowLtvPct": 48.6371
+        }
+      },
+      "mockAfter": {
+        "tick": -12125,
+        "twapUsd": 336.16750584167283,
+        "price36": 3361675058416728161502400149334752128,
+        "swapUsd": 336.16750584167283,
+        "slot0Tick": -12125,
+        "shadowGuardTwap36": 3361675058416728161502400149334752128,
+        "poolUsdc": 1.79816
+      },
+      "positionsIfHeldAtMockTwap": {
+        "drill (deployer, Protector band 58%-62.5%)": {
+          "collateralRaw": 940611,
+          "debtRaw": 1745527,
+          "shadowUsd": 329.44416,
+          "shadowLtvPct": 56.3294
+        },
+        "line1 (borrower, vault grace 52%)": {
+          "collateralRaw": 1997869,
+          "debtRaw": 3203147,
+          "shadowUsd": 329.44416,
+          "shadowLtvPct": 48.6663
+        }
+      },
+      "fails": [
+        "Observatory nextFeedTransition {'at': 1791763200, 'from': 'WEEKEND', 'to': 'OVERNIGHT', 'kind': 'reopen'}"
+      ],
+      "ok": false,
+      "mode": "dry (sends nothing, writes nothing)"
+    },
+    "verify": {
+      "at": "Sat 10 Oct 2026 19:06 IST",
+      "command": "python3 -I scripts/sepolia/twap.py show",
+      "mockTick": -12125,
+      "mainnetTick": -12132,
+      "positionsIfHeldAtMockTwap": {
+        "drill (deployer, Protector band 58%-62.5%)": {
+          "collateralRaw": 940611,
+          "debtRaw": 1745527,
+          "shadowUsd": 329.44416,
+          "shadowLtvPct": 56.3294
+        },
+        "line1 (borrower, vault grace 52%)": {
+          "collateralRaw": 1997869,
+          "debtRaw": 3203147,
+          "shadowUsd": 329.44416,
+          "shadowLtvPct": 48.6663
+        }
+      },
+      "poolUsdc": 1.79816,
+      "ok": true
+    }
+  },
+  "atClose": {
+    "note": "Nothing acted at the close: both protection targets below band with the venue oracle off, line 1 below grace, nothing armed, and the protection signer's balance unchanged from the dry run (no transaction signed). Read twice, after the close and again late Saturday.",
+    "reads": [
+      {
+        "atIst": "Sat 10 Oct 2026 06:41",
+        "head": 47913212,
+        "observatory": {
+          "takenAt": 1791594698,
+          "state": "WEEKEND",
+          "isFeedLive": false,
+          "lastFeedUpdateAt": 1791575741,
+          "nextFeedTransition": {
+            "at": 1791763200,
+            "from": "WEEKEND",
+            "to": "OVERNIGHT",
+            "kind": "reopen"
+          }
+        },
+        "protect": {
+          "targets": [
+            {
+              "borrower": "0xB789aD318945B37566E2549F65526Cc269a482Fc",
+              "standing": "BELOW_BAND",
+              "shadowLtvPct": 48.66767185334484,
+              "venueOracleLive": false,
+              "decision": {
+                "action": "none",
+                "reason": "below-band"
+              }
+            },
+            {
+              "borrower": "0x2f0d9B1f16CD702259C6cC259e8D5E5455282a4E",
+              "standing": "BELOW_BAND",
+              "shadowLtvPct": 56.330944979438726,
+              "venueOracleLive": false,
+              "decision": {
+                "action": "none",
+                "reason": "below-band"
+              }
+            }
+          ],
+          "armed": null,
+          "skipped": "nothing-to-do"
+        },
+        "vault": {
+          "line1": {
+            "standing": "BELOW_GRACE",
+            "shadowLtvPct": 48.66,
+            "quote": "MARKET_CLOSED WEEKEND",
+            "decision": {
+              "action": "none",
+              "reason": "below-grace"
+            }
+          },
+          "armed": null,
+          "skipped": "nothing-to-do"
+        },
+        "gate": {
+          "state": "MARKET_CLOSED",
+          "session": "WEEKEND",
+          "answer": 33684400000,
+          "updatedAt": 1791574133
+        }
+      },
+      {
+        "atIst": "Sat 10 Oct 2026 19:07",
+        "head": 47935587,
+        "observatory": {
+          "takenAt": 1791639098,
+          "state": "WEEKEND",
+          "isFeedLive": false,
+          "lastFeedUpdateAt": 1791575741,
+          "nextFeedTransition": {
+            "at": 1791763200,
+            "from": "WEEKEND",
+            "to": "OVERNIGHT",
+            "kind": "reopen"
+          }
+        },
+        "protect": {
+          "targets": [
+            {
+              "borrower": "0xB789aD318945B37566E2549F65526Cc269a482Fc",
+              "standing": "BELOW_BAND",
+              "shadowLtvPct": 48.66861383602391,
+              "venueOracleLive": false,
+              "decision": {
+                "action": "none",
+                "reason": "below-band"
+              }
+            },
+            {
+              "borrower": "0x2f0d9B1f16CD702259C6cC259e8D5E5455282a4E",
+              "standing": "BELOW_BAND",
+              "shadowLtvPct": 56.332042182957395,
+              "venueOracleLive": false,
+              "decision": {
+                "action": "none",
+                "reason": "below-band"
+              }
+            }
+          ],
+          "armed": null,
+          "skipped": "nothing-to-do"
+        },
+        "vault": {
+          "line1": {
+            "standing": "BELOW_GRACE",
+            "shadowLtvPct": 48.66,
+            "quote": "MARKET_CLOSED WEEKEND",
+            "decision": {
+              "action": "none",
+              "reason": "below-grace"
+            }
+          },
+          "armed": null,
+          "skipped": "nothing-to-do"
+        },
+        "gate": {
+          "state": "MARKET_CLOSED",
+          "session": "WEEKEND",
+          "answer": 33684400000,
+          "updatedAt": 1791574133
+        },
+        "keeper": {
+          "hold": {
+            "feed": [],
+            "registry": []
+          },
+          "holdSource": "none",
+          "mirrorKeyEth": 0.009954470326467098,
+          "pairs": {
+            "AAPLt": [
+              "in-sync",
+              "in-sync"
+            ],
+            "NVDAt": [
+              "in-sync",
+              "in-sync"
+            ],
+            "TSLAt": [
+              "in-sync",
+              "in-sync"
+            ]
+          },
+          "protectSignerEth": 0.004838640569525978
+        }
+      }
+    ]
+  },
   "saturday": null,
   "monday": null
 }
