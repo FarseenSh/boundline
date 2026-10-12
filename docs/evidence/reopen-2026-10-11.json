@@ -1,0 +1,818 @@
+{
+  "chainId": 8453,
+  "close": 1791590400,
+  "reopen": 1791763200,
+  "generatedAt": 1791822920,
+  "feeds": [
+    {
+      "symbol": "AAPLc",
+      "feed": "0x787f13dEa48Db0897CbCDD985de77809D837F988",
+      "phase": 2,
+      "held": {
+        "roundId": 36893488147419103547,
+        "answer": 33684400000,
+        "startedAt": 1791574119,
+        "updatedAt": 1791574133,
+        "answeredInRound": 36893488147419103547
+      },
+      "roundsInsideClosedWindow": [],
+      "firstAfterReopen": {
+        "roundId": 36893488147419103548,
+        "answer": 33665000000,
+        "startedAt": 1791763236,
+        "updatedAt": 1791763251,
+        "answeredInRound": 36893488147419103548
+      },
+      "lagSeconds": 51,
+      "gapBps": -5.759342603697855,
+      "heldAgeAtReopenSeconds": 189067,
+      "aggregator": "0xc37b6f754e90d4cca1f533f5a08f7d532b3d0d9d",
+      "heldEt": "Fri 09 Oct 2026 15:28:53 ET",
+      "firstAfterReopenEt": "Sun 11 Oct 2026 20:00:51 ET",
+      "heldTx": {
+        "txHash": "0x9d6a58e7b99c0d952168b112d106ffdcab33cd3702af749563d3d1f360c7df5e",
+        "block": 52392393,
+        "blockTimestamp": 1791574133,
+        "logIndex": 420,
+        "aggregator": "0xc37b6f754e90d4cca1f533f5a08f7d532b3d0d9d",
+        "aggregatorRoundId": 315,
+        "transmitter": "0x02e9137940be6803d333eb1451c3834c96ca9c2d",
+        "status": 1,
+        "gasUsed": 117510,
+        "matchesRound": true
+      },
+      "firstPrintTx": {
+        "txHash": "0x3be1174f22e542c01b640815c9950f9f9913e5ea0bfab7fb4c635e35ecd32533",
+        "block": 52486952,
+        "blockTimestamp": 1791763251,
+        "logIndex": 350,
+        "aggregator": "0xc37b6f754e90d4cca1f533f5a08f7d532b3d0d9d",
+        "aggregatorRoundId": 316,
+        "transmitter": "0xabfa05c981f49f8d42d9a3361d53924df2c64966",
+        "status": 1,
+        "gasUsed": 117570,
+        "matchesRound": true
+      }
+    },
+    {
+      "symbol": "AMZNc",
+      "feed": "0x06A8E4b3aBB3B7543d8396FB2B763d22820cB295",
+      "phase": 2,
+      "held": {
+        "roundId": 36893488147419103593,
+        "answer": 26180000000,
+        "startedAt": 1791573630,
+        "updatedAt": 1791573645,
+        "answeredInRound": 36893488147419103593
+      },
+      "roundsInsideClosedWindow": [],
+      "firstAfterReopen": {
+        "roundId": 36893488147419103594,
+        "answer": 26315999999,
+        "startedAt": 1791763227,
+        "updatedAt": 1791763241,
+        "answeredInRound": 36893488147419103594
+      },
+      "lagSeconds": 41,
+      "gapBps": 51.94805156608098,
+      "heldAgeAtReopenSeconds": 189555,
+      "aggregator": "0x4816cb7ee43ee12c0bc9d3c597246f34d5cfdb7c",
+      "heldEt": "Fri 09 Oct 2026 15:20:45 ET",
+      "firstAfterReopenEt": "Sun 11 Oct 2026 20:00:41 ET",
+      "heldTx": {
+        "txHash": "0xa048d7e4bb7acabbb1ebdde01fb38d6b09ae4ba05f5f36bfd1014ad56c8125ce",
+        "block": 52392149,
+        "blockTimestamp": 1791573645,
+        "logIndex": 53,
+        "aggregator": "0x4816cb7ee43ee12c0bc9d3c597246f34d5cfdb7c",
+        "aggregatorRoundId": 361,
+        "transmitter": "0x02e9137940be6803d333eb1451c3834c96ca9c2d",
+        "status": 1,
+        "gasUsed": 117510,
+        "matchesRound": true
+      },
+      "firstPrintTx": {
+        "txHash": "0x29a33e322d9ab390bd18724070d19e5ed140dd69d24cd182f61dcb0b70abab82",
+        "block": 52486947,
+        "blockTimestamp": 1791763241,
+        "logIndex": 478,
+        "aggregator": "0x4816cb7ee43ee12c0bc9d3c597246f34d5cfdb7c",
+        "aggregatorRoundId": 362,
+        "transmitter": "0xd91d63bf68554eb34ee9df51b24c622e81e57e77",
+        "status": 1,
+        "gasUsed": 117570,
+        "matchesRound": true
+      }
+    },
+    {
+      "symbol": "GOOGLc",
+      "feed": "0x5bF49E0ffA937CE2FfF033c739aD7C634c4D34F2",
+      "phase": 2,
+      "held": {
+        "roundId": 36893488147419103608,
+        "answer": 35263293433,
+        "startedAt": 1791566091,
+        "updatedAt": 1791566105,
+        "answeredInRound": 36893488147419103608
+      },
+      "roundsInsideClosedWindow": [],
+      "firstAfterReopen": {
+        "roundId": 36893488147419103609,
+        "answer": 35279799654,
+        "startedAt": 1791763216,
+        "updatedAt": 1791763231,
+        "answeredInRound": 36893488147419103609
+      },
+      "lagSeconds": 31,
+      "gapBps": 4.68085065036869,
+      "heldAgeAtReopenSeconds": 197095,
+      "aggregator": "0x6bf33b7855eb8047dde206d9f6321d7d02cfb308",
+      "heldEt": "Fri 09 Oct 2026 13:15:05 ET",
+      "firstAfterReopenEt": "Sun 11 Oct 2026 20:00:31 ET",
+      "heldTx": {
+        "txHash": "0x6b314ee9b177de28805aac1bd633bff144b3abff8708bf159338d1f6a1a19abc",
+        "block": 52388379,
+        "blockTimestamp": 1791566105,
+        "logIndex": 535,
+        "aggregator": "0x6bf33b7855eb8047dde206d9f6321d7d02cfb308",
+        "aggregatorRoundId": 376,
+        "transmitter": "0xabfa05c981f49f8d42d9a3361d53924df2c64966",
+        "status": 1,
+        "gasUsed": 117594,
+        "matchesRound": true
+      },
+      "firstPrintTx": {
+        "txHash": "0xbe0e56e7b096f80a865931fa5cb74d541147fc2626e7e0108bf93226f685dc98",
+        "block": 52486942,
+        "blockTimestamp": 1791763231,
+        "logIndex": 793,
+        "aggregator": "0x6bf33b7855eb8047dde206d9f6321d7d02cfb308",
+        "aggregatorRoundId": 377,
+        "transmitter": "0xabfa05c981f49f8d42d9a3361d53924df2c64966",
+        "status": 1,
+        "gasUsed": 117582,
+        "matchesRound": true
+      }
+    },
+    {
+      "symbol": "METAc",
+      "feed": "0x6526aE6797A76123638b863AeE4dD27Ba4E4b27D",
+      "phase": 2,
+      "held": {
+        "roundId": 36893488147419103991,
+        "answer": 71991583317,
+        "startedAt": 1791567368,
+        "updatedAt": 1791567383,
+        "answeredInRound": 36893488147419103991
+      },
+      "roundsInsideClosedWindow": [],
+      "firstAfterReopen": {
+        "roundId": 36893488147419103992,
+        "answer": 72097116422,
+        "startedAt": 1791763238,
+        "updatedAt": 1791763253,
+        "answeredInRound": 36893488147419103992
+      },
+      "lagSeconds": 53,
+      "gapBps": 14.659089318164717,
+      "heldAgeAtReopenSeconds": 195817,
+      "aggregator": "0xa7155928bee40052efb3094a046c5498202fd3ee",
+      "heldEt": "Fri 09 Oct 2026 13:36:23 ET",
+      "firstAfterReopenEt": "Sun 11 Oct 2026 20:00:53 ET",
+      "heldTx": {
+        "txHash": "0xa65a31d8561df6f573b5e7fcf0c7bee5a6a1de76fb4261f03fde8468697b1da8",
+        "block": 52389018,
+        "blockTimestamp": 1791567383,
+        "logIndex": 140,
+        "aggregator": "0xa7155928bee40052efb3094a046c5498202fd3ee",
+        "aggregatorRoundId": 759,
+        "transmitter": "0xd91d63bf68554eb34ee9df51b24c622e81e57e77",
+        "status": 1,
+        "gasUsed": 117570,
+        "matchesRound": true
+      },
+      "firstPrintTx": {
+        "txHash": "0x0fe75ee5e83e0a014afb220ab17221b42ce6b437c34704a0ff1b6a6bed01cef6",
+        "block": 52486953,
+        "blockTimestamp": 1791763253,
+        "logIndex": 79,
+        "aggregator": "0xa7155928bee40052efb3094a046c5498202fd3ee",
+        "aggregatorRoundId": 760,
+        "transmitter": "0xc04a3c4abf8995da051140f552cb4eb086185836",
+        "status": 1,
+        "gasUsed": 117570,
+        "matchesRound": true
+      }
+    },
+    {
+      "symbol": "MSFTc",
+      "feed": "0xeB10A6c9aa7E537aEd766C08c35Dae35B321b18c",
+      "phase": 2,
+      "held": {
+        "roundId": 36893488147419103593,
+        "answer": 53607770000,
+        "startedAt": 1791571365,
+        "updatedAt": 1791571379,
+        "answeredInRound": 36893488147419103593
+      },
+      "roundsInsideClosedWindow": [],
+      "firstAfterReopen": {
+        "roundId": 36893488147419103594,
+        "answer": 53599500000,
+        "startedAt": 1791763208,
+        "updatedAt": 1791763223,
+        "answeredInRound": 36893488147419103594
+      },
+      "lagSeconds": 23,
+      "gapBps": -1.5426868157358533,
+      "heldAgeAtReopenSeconds": 191821,
+      "aggregator": "0xd72b34be6c2180ad0d28dbb415aefde8a55f3ed3",
+      "heldEt": "Fri 09 Oct 2026 14:42:59 ET",
+      "firstAfterReopenEt": "Sun 11 Oct 2026 20:00:23 ET",
+      "heldTx": {
+        "txHash": "0xf6c5f2e022f4bbdcfcc58cb4df2357a07e19bd929ca8e9fd5eb5777bd32ecda8",
+        "block": 52391016,
+        "blockTimestamp": 1791571379,
+        "logIndex": 243,
+        "aggregator": "0xd72b34be6c2180ad0d28dbb415aefde8a55f3ed3",
+        "aggregatorRoundId": 361,
+        "transmitter": "0x34816bc1f605e0d58d46c43f1584c3a84f811e85",
+        "status": 1,
+        "gasUsed": 117594,
+        "matchesRound": true
+      },
+      "firstPrintTx": {
+        "txHash": "0x328ed25dbe57b8e27d1914d9a875d0ecbcc297b7f9d03442ef3eda3354f6cd27",
+        "block": 52486938,
+        "blockTimestamp": 1791763223,
+        "logIndex": 79,
+        "aggregator": "0xd72b34be6c2180ad0d28dbb415aefde8a55f3ed3",
+        "aggregatorRoundId": 362,
+        "transmitter": "0x58f7b80be97d031bd1067a2acdcf3ce100790019",
+        "status": 1,
+        "gasUsed": 117582,
+        "matchesRound": true
+      }
+    },
+    {
+      "symbol": "MSTRc",
+      "feed": "0xB3cE282CD188b35DA0E38D8Bc7d58e33173D202a",
+      "phase": 2,
+      "held": {
+        "roundId": 36893488147419105792,
+        "answer": 15461300000,
+        "startedAt": 1791571814,
+        "updatedAt": 1791571829,
+        "answeredInRound": 36893488147419105792
+      },
+      "roundsInsideClosedWindow": [],
+      "firstAfterReopen": {
+        "roundId": 36893488147419105793,
+        "answer": 15772000000,
+        "startedAt": 1791763208,
+        "updatedAt": 1791763221,
+        "answeredInRound": 36893488147419105793
+      },
+      "lagSeconds": 21,
+      "gapBps": 200.95334803671102,
+      "heldAgeAtReopenSeconds": 191371,
+      "aggregator": "0xbc94b7ba3a8941fb7aee8bd10538f79f39185edb",
+      "heldEt": "Fri 09 Oct 2026 14:50:29 ET",
+      "firstAfterReopenEt": "Sun 11 Oct 2026 20:00:21 ET",
+      "heldTx": {
+        "txHash": "0x190e51fb0a18f45006128dea2e6c8742aaa1bb23d13469d6c3779e6196f1b56f",
+        "block": 52391241,
+        "blockTimestamp": 1791571829,
+        "logIndex": 439,
+        "aggregator": "0xbc94b7ba3a8941fb7aee8bd10538f79f39185edb",
+        "aggregatorRoundId": 2560,
+        "transmitter": "0xd6f8632e7cdca416cd64f3ac4f286887165e1d74",
+        "status": 1,
+        "gasUsed": 117606,
+        "matchesRound": true
+      },
+      "firstPrintTx": {
+        "txHash": "0x2b7135d1290998e2d666013fe12eb6099a14bbf45b0812b273c92058cc0a2aa0",
+        "block": 52486937,
+        "blockTimestamp": 1791763221,
+        "logIndex": 2023,
+        "aggregator": "0xbc94b7ba3a8941fb7aee8bd10538f79f39185edb",
+        "aggregatorRoundId": 2561,
+        "transmitter": "0x87b49edbbc2cce9237276c0d9f03d59d278dd1eb",
+        "status": 1,
+        "gasUsed": 117546,
+        "matchesRound": true
+      }
+    },
+    {
+      "symbol": "NVDAc",
+      "feed": "0x04689a41629776563E6822F76f2e57D148d28513",
+      "phase": 2,
+      "held": {
+        "roundId": 36893488147419103764,
+        "answer": 23026390146,
+        "startedAt": 1791559058,
+        "updatedAt": 1791559073,
+        "answeredInRound": 36893488147419103764
+      },
+      "roundsInsideClosedWindow": [],
+      "firstAfterReopen": {
+        "roundId": 36893488147419103765,
+        "answer": 23028881486,
+        "startedAt": 1791763208,
+        "updatedAt": 1791763223,
+        "answeredInRound": 36893488147419103765
+      },
+      "lagSeconds": 23,
+      "gapBps": 1.0819498775984997,
+      "heldAgeAtReopenSeconds": 204127,
+      "aggregator": "0xf72b1eb5932800f3d2a5eec5f99e6cd586479675",
+      "heldEt": "Fri 09 Oct 2026 11:17:53 ET",
+      "firstAfterReopenEt": "Sun 11 Oct 2026 20:00:23 ET",
+      "heldTx": {
+        "txHash": "0xabbaf41d7c024f5aa065c2d235ec47b40374d33116a40852c103bc463e6c24db",
+        "block": 52384863,
+        "blockTimestamp": 1791559073,
+        "logIndex": 164,
+        "aggregator": "0xf72b1eb5932800f3d2a5eec5f99e6cd586479675",
+        "aggregatorRoundId": 532,
+        "transmitter": "0x34816bc1f605e0d58d46c43f1584c3a84f811e85",
+        "status": 1,
+        "gasUsed": 117570,
+        "matchesRound": true
+      },
+      "firstPrintTx": {
+        "txHash": "0x5ce160ab94e980bd0104fb48911992813fb0303f98fad4da06f3ef179232da5c",
+        "block": 52486938,
+        "blockTimestamp": 1791763223,
+        "logIndex": 76,
+        "aggregator": "0xf72b1eb5932800f3d2a5eec5f99e6cd586479675",
+        "aggregatorRoundId": 533,
+        "transmitter": "0xd6f8632e7cdca416cd64f3ac4f286887165e1d74",
+        "status": 1,
+        "gasUsed": 117594,
+        "matchesRound": true
+      }
+    },
+    {
+      "symbol": "SNDKc",
+      "feed": "0x388b0dC46C0Fb05A74BeE0994fa5b02c6Fcca2eA",
+      "phase": 2,
+      "held": {
+        "roundId": 36893488147419105705,
+        "answer": 158177000000,
+        "startedAt": 1791574528,
+        "updatedAt": 1791574541,
+        "answeredInRound": 36893488147419105705
+      },
+      "roundsInsideClosedWindow": [],
+      "firstAfterReopen": {
+        "roundId": 36893488147419105706,
+        "answer": 160465500000,
+        "startedAt": 1791763207,
+        "updatedAt": 1791763221,
+        "answeredInRound": 36893488147419105706
+      },
+      "lagSeconds": 21,
+      "gapBps": 144.6796942665495,
+      "heldAgeAtReopenSeconds": 188659,
+      "aggregator": "0x767b5c02af56c2621d66c8596aac32de7374b55b",
+      "heldEt": "Fri 09 Oct 2026 15:35:41 ET",
+      "firstAfterReopenEt": "Sun 11 Oct 2026 20:00:21 ET",
+      "heldTx": {
+        "txHash": "0x2dd90056fc6ee8c8978dad6a5ce3f7aff0152f016a3e509ae33de75ba3492a7a",
+        "block": 52392597,
+        "blockTimestamp": 1791574541,
+        "logIndex": 425,
+        "aggregator": "0x767b5c02af56c2621d66c8596aac32de7374b55b",
+        "aggregatorRoundId": 2473,
+        "transmitter": "0x87b49edbbc2cce9237276c0d9f03d59d278dd1eb",
+        "status": 1,
+        "gasUsed": 117570,
+        "matchesRound": true
+      },
+      "firstPrintTx": {
+        "txHash": "0x93883ba705a4086fedd48de76e3bf8f565c3f921bd2ce5e6dd66cccf926a5944",
+        "block": 52486937,
+        "blockTimestamp": 1791763221,
+        "logIndex": 470,
+        "aggregator": "0x767b5c02af56c2621d66c8596aac32de7374b55b",
+        "aggregatorRoundId": 2474,
+        "transmitter": "0x58f7b80be97d031bd1067a2acdcf3ce100790019",
+        "status": 1,
+        "gasUsed": 117594,
+        "matchesRound": true
+      }
+    },
+    {
+      "symbol": "SPCXc",
+      "feed": "0x6A634B235903C4ad6376892180d6fF8612e3Fa68",
+      "phase": 2,
+      "held": {
+        "roundId": 36893488147419104756,
+        "answer": 16261647500,
+        "startedAt": 1791575727,
+        "updatedAt": 1791575741,
+        "answeredInRound": 36893488147419104756
+      },
+      "roundsInsideClosedWindow": [],
+      "firstAfterReopen": {
+        "roundId": 36893488147419104757,
+        "answer": 16416000000,
+        "startedAt": 1791763223,
+        "updatedAt": 1791763237,
+        "answeredInRound": 36893488147419104757
+      },
+      "lagSeconds": 37,
+      "gapBps": 94.91811945868338,
+      "heldAgeAtReopenSeconds": 187459,
+      "aggregator": "0xa994b7fc3123ae0ef4ee53ab5e3545f2639187a7",
+      "heldEt": "Fri 09 Oct 2026 15:55:41 ET",
+      "firstAfterReopenEt": "Sun 11 Oct 2026 20:00:37 ET",
+      "heldTx": {
+        "txHash": "0xe81320d6822f0596af31d1bfe11b669363f8fb0d71ea907a99dc7c87f501ea3e",
+        "block": 52393197,
+        "blockTimestamp": 1791575741,
+        "logIndex": 387,
+        "aggregator": "0xa994b7fc3123ae0ef4ee53ab5e3545f2639187a7",
+        "aggregatorRoundId": 1524,
+        "transmitter": "0xd6f8632e7cdca416cd64f3ac4f286887165e1d74",
+        "status": 1,
+        "gasUsed": 117594,
+        "matchesRound": true
+      },
+      "firstPrintTx": {
+        "txHash": "0x8aa8c95d31cd7ddbe99587db07107900091b16c893caab23eada79c79395bc80",
+        "block": 52486945,
+        "blockTimestamp": 1791763237,
+        "logIndex": 1008,
+        "aggregator": "0xa994b7fc3123ae0ef4ee53ab5e3545f2639187a7",
+        "aggregatorRoundId": 1525,
+        "transmitter": "0xb9e44696b045ab005ea956253d8676f656eebc60",
+        "status": 1,
+        "gasUsed": 117546,
+        "matchesRound": true
+      }
+    },
+    {
+      "symbol": "TSLAc",
+      "feed": "0xFaf869185383a24F8cb00e27BdA6b63B9905DCb4",
+      "phase": 2,
+      "held": {
+        "roundId": 36893488147419103974,
+        "answer": 38396500000,
+        "startedAt": 1791561911,
+        "updatedAt": 1791561925,
+        "answeredInRound": 36893488147419103974
+      },
+      "roundsInsideClosedWindow": [],
+      "firstAfterReopen": {
+        "roundId": 36893488147419103975,
+        "answer": 38460000000,
+        "startedAt": 1791763209,
+        "updatedAt": 1791763223,
+        "answeredInRound": 36893488147419103975
+      },
+      "lagSeconds": 23,
+      "gapBps": 16.537965699998697,
+      "heldAgeAtReopenSeconds": 201275,
+      "aggregator": "0x0288234d9311c33be6c3a34b051bff8a799daa82",
+      "heldEt": "Fri 09 Oct 2026 12:05:25 ET",
+      "firstAfterReopenEt": "Sun 11 Oct 2026 20:00:23 ET",
+      "heldTx": {
+        "txHash": "0xee03bbc0f57c08b8eb3f68527c33b69fd6be7c078072134f4e211915acdaaaf2",
+        "block": 52386289,
+        "blockTimestamp": 1791561925,
+        "logIndex": 438,
+        "aggregator": "0x0288234d9311c33be6c3a34b051bff8a799daa82",
+        "aggregatorRoundId": 742,
+        "transmitter": "0xd91d63bf68554eb34ee9df51b24c622e81e57e77",
+        "status": 1,
+        "gasUsed": 117594,
+        "matchesRound": true
+      },
+      "firstPrintTx": {
+        "txHash": "0x2d20d3a9d9aaaecd87c1e803d5b55ec340c81631465691a9bf1580b0ad3ccc0f",
+        "block": 52486938,
+        "blockTimestamp": 1791763223,
+        "logIndex": 1181,
+        "aggregator": "0x0288234d9311c33be6c3a34b051bff8a799daa82",
+        "aggregatorRoundId": 743,
+        "transmitter": "0xabfa05c981f49f8d42d9a3361d53924df2c64966",
+        "status": 1,
+        "gasUsed": 117486,
+        "matchesRound": true
+      }
+    }
+  ],
+  "blockBeforeReopen": 52486926,
+  "dex": {
+    "AAPLc": {
+      "spot": 337.05332098222044,
+      "twap1h": 336.8067992750386,
+      "tick": -12152,
+      "heldFeed": 336.844,
+      "spotVsHeldBps": 6.2141817048974355,
+      "twapVsHeldBps": -1.1043903100959012,
+      "shadowPrice": 330.07066328953783,
+      "shadowVsHeldBps": -201.0823025038938,
+      "firstPrint": 336.65,
+      "twapVsFirstPrintBps": 4.657634785047452
+    },
+    "NVDAc": {
+      "spot": 231.2471433876432,
+      "twap1h": 231.23355810588004,
+      "tick": -8384,
+      "heldFeed": 230.26390146,
+      "spotVsHeldBps": 42.700654397363664,
+      "twapVsHeldBps": 42.11066692312077,
+      "shadowPrice": 226.60888694376243,
+      "shadowVsHeldBps": -158.73154641534194,
+      "firstPrint": 230.28881486,
+      "twapVsFirstPrintBps": 41.02427842422019
+    }
+  },
+  "blockBeforeReopenTimestamp": 1791763199,
+  "dexNote": "tick corrected from the script's output (slot0's int24 is sign-extended to 256 bits); shadowPrice = 1h TWAP less the ShadowGuard's default 200 bps haircut, the price Boundline's protection uses while the feed is held",
+  "observatoryCapture": {
+    "source": "GET https://boundline-observatory.papermind-ai.workers.dev/v1/captures, read 2026-10-12 16:38:32 UTC (asOf 1791822638)",
+    "runs": {
+      "1791590400": {
+        "transitionAt": 1791590400,
+        "fromSession": "POST",
+        "toSession": "WEEKEND",
+        "kind": "close",
+        "armedAt": 1791590444,
+        "firstUpdateAt": null,
+        "completedAt": null,
+        "ticks": 90,
+        "lastTickAt": 1791595778,
+        "missedTicks": 0,
+        "gaps": [],
+        "armedAfterTransitionSeconds": 44
+      },
+      "1791763200": {
+        "transitionAt": 1791763200,
+        "fromSession": "WEEKEND",
+        "toSession": "OVERNIGHT",
+        "kind": "reopen",
+        "armedAt": 1791763240,
+        "firstUpdateAt": 1791763221,
+        "completedAt": null,
+        "ticks": 90,
+        "lastTickAt": 1791768578,
+        "missedTicks": 0,
+        "gaps": [],
+        "armedAfterTransitionSeconds": 40
+      }
+    },
+    "phases": "each run recorded 1 'at' tick and 89 'after' ticks (90 in total, 10 rows per tick) and no 'before' tick",
+    "missingBeforePhase": "Both runs armed 40-44 s after the transition instead of at transition - 900 s. Replayed offline, the capture's arming logic (apps/observatory/src/capture.ts activeTransition) arms at transition - 900 s for both instants, so the job did not run in those 15 minutes. Cause: the Cloudflare account's D1 free tier was over its daily row-read limit, which resets at 00:00 UTC; both transitions (Fri 20:00 ET and Sun 20:00 ET under US daylight time) fall exactly at 00:00 UTC, so the last 15 minutes of each UTC day had no D1 and the run started on the first tick after the reset. D1 answered 'Your account has exceeded D1's free tier daily row read limit ... wait until tomorrow (midnight UTC)' on 2026-10-12 16:25 UTC; one unindexed positions query accounted for about 4.2M of the 5M daily reads.",
+    "completedAtNull": "completed_at stayed null on both runs although each recorded the full 90-minute window with no missed tick: a run is marked complete only by a tick at exactly transition + 5400 s, and the window closes at that second (a window-boundary bug, fixed separately). The summaries are complete.",
+    "crossCheck": {
+      "verdict": "agree",
+      "mismatches": 0,
+      "what": "per feed: held answer and updatedAt, first post-reopen round id, answer and updatedAt, lag, gap (reopen run) and the held print (close run), chain reconstruction vs the live capture",
+      "note": "the capture's 'block' is the block of the Observatory snapshot that first saw the print (seenAt), not the block that printed it; the print blocks are under feeds[].firstPrintTx",
+      "perFeed": [
+        {
+          "symbol": "AAPLc",
+          "reopenRunFieldsCompared": [
+            "heldAnswer",
+            "heldUpdatedAt",
+            "firstRoundId",
+            "firstAnswer",
+            "firstUpdatedAt",
+            "lagSeconds",
+            "gapBps"
+          ],
+          "reopenRunMismatches": [],
+          "closeRunHeldPrintAgrees": true,
+          "observatorySeenAt": 1791763298,
+          "observatorySnapshotBlock": 52486975,
+          "printBlock": 52486952,
+          "seenAfterPrintSeconds": 47
+        },
+        {
+          "symbol": "AMZNc",
+          "reopenRunFieldsCompared": [
+            "heldAnswer",
+            "heldUpdatedAt",
+            "firstRoundId",
+            "firstAnswer",
+            "firstUpdatedAt",
+            "lagSeconds",
+            "gapBps"
+          ],
+          "reopenRunMismatches": [],
+          "closeRunHeldPrintAgrees": true,
+          "observatorySeenAt": 1791763298,
+          "observatorySnapshotBlock": 52486975,
+          "printBlock": 52486947,
+          "seenAfterPrintSeconds": 57
+        },
+        {
+          "symbol": "GOOGLc",
+          "reopenRunFieldsCompared": [
+            "heldAnswer",
+            "heldUpdatedAt",
+            "firstRoundId",
+            "firstAnswer",
+            "firstUpdatedAt",
+            "lagSeconds",
+            "gapBps"
+          ],
+          "reopenRunMismatches": [],
+          "closeRunHeldPrintAgrees": true,
+          "observatorySeenAt": 1791763240,
+          "observatorySnapshotBlock": 52486946,
+          "printBlock": 52486942,
+          "seenAfterPrintSeconds": 9
+        },
+        {
+          "symbol": "METAc",
+          "reopenRunFieldsCompared": [
+            "heldAnswer",
+            "heldUpdatedAt",
+            "firstRoundId",
+            "firstAnswer",
+            "firstUpdatedAt",
+            "lagSeconds",
+            "gapBps"
+          ],
+          "reopenRunMismatches": [],
+          "closeRunHeldPrintAgrees": true,
+          "observatorySeenAt": 1791763298,
+          "observatorySnapshotBlock": 52486975,
+          "printBlock": 52486953,
+          "seenAfterPrintSeconds": 45
+        },
+        {
+          "symbol": "MSFTc",
+          "reopenRunFieldsCompared": [
+            "heldAnswer",
+            "heldUpdatedAt",
+            "firstRoundId",
+            "firstAnswer",
+            "firstUpdatedAt",
+            "lagSeconds",
+            "gapBps"
+          ],
+          "reopenRunMismatches": [],
+          "closeRunHeldPrintAgrees": true,
+          "observatorySeenAt": 1791763240,
+          "observatorySnapshotBlock": 52486946,
+          "printBlock": 52486938,
+          "seenAfterPrintSeconds": 17
+        },
+        {
+          "symbol": "MSTRc",
+          "reopenRunFieldsCompared": [
+            "heldAnswer",
+            "heldUpdatedAt",
+            "firstRoundId",
+            "firstAnswer",
+            "firstUpdatedAt",
+            "lagSeconds",
+            "gapBps"
+          ],
+          "reopenRunMismatches": [],
+          "closeRunHeldPrintAgrees": true,
+          "observatorySeenAt": 1791763240,
+          "observatorySnapshotBlock": 52486946,
+          "printBlock": 52486937,
+          "seenAfterPrintSeconds": 19
+        },
+        {
+          "symbol": "NVDAc",
+          "reopenRunFieldsCompared": [
+            "heldAnswer",
+            "heldUpdatedAt",
+            "firstRoundId",
+            "firstAnswer",
+            "firstUpdatedAt",
+            "lagSeconds",
+            "gapBps"
+          ],
+          "reopenRunMismatches": [],
+          "closeRunHeldPrintAgrees": true,
+          "observatorySeenAt": 1791763240,
+          "observatorySnapshotBlock": 52486946,
+          "printBlock": 52486938,
+          "seenAfterPrintSeconds": 17
+        },
+        {
+          "symbol": "SNDKc",
+          "reopenRunFieldsCompared": [
+            "heldAnswer",
+            "heldUpdatedAt",
+            "firstRoundId",
+            "firstAnswer",
+            "firstUpdatedAt",
+            "lagSeconds",
+            "gapBps"
+          ],
+          "reopenRunMismatches": [],
+          "closeRunHeldPrintAgrees": true,
+          "observatorySeenAt": 1791763240,
+          "observatorySnapshotBlock": 52486946,
+          "printBlock": 52486937,
+          "seenAfterPrintSeconds": 19
+        },
+        {
+          "symbol": "SPCXc",
+          "reopenRunFieldsCompared": [
+            "heldAnswer",
+            "heldUpdatedAt",
+            "firstRoundId",
+            "firstAnswer",
+            "firstUpdatedAt",
+            "lagSeconds",
+            "gapBps"
+          ],
+          "reopenRunMismatches": [],
+          "closeRunHeldPrintAgrees": true,
+          "observatorySeenAt": 1791763240,
+          "observatorySnapshotBlock": 52486946,
+          "printBlock": 52486945,
+          "seenAfterPrintSeconds": 3
+        },
+        {
+          "symbol": "TSLAc",
+          "reopenRunFieldsCompared": [
+            "heldAnswer",
+            "heldUpdatedAt",
+            "firstRoundId",
+            "firstAnswer",
+            "firstUpdatedAt",
+            "lagSeconds",
+            "gapBps"
+          ],
+          "reopenRunMismatches": [],
+          "closeRunHeldPrintAgrees": true,
+          "observatorySeenAt": 1791763240,
+          "observatorySnapshotBlock": 52486946,
+          "printBlock": 52486938,
+          "seenAfterPrintSeconds": 17
+        }
+      ]
+    }
+  },
+  "sepoliaMirror": {
+    "what": "the keeper Worker's first write of each mirrored mainnet round onto the Base Sepolia test feeds after the reopen (AnswerUpdated on the TestPriceFeed, Basescan v2 logs API, receipts re-read over RPC)",
+    "signer": "0x28A50Eb7C2Db2B04638D3b226c724A1Cfe999894",
+    "chainId": 84532,
+    "writes": [
+      {
+        "symbol": "NVDAt",
+        "feed": "0x097dCec820dCF11b5e8d0fA698b86714f96dB0e2",
+        "txHash": "0xf821cd414c14b778c596e7201a7d6caf403e9a10752f72f7e06d0f881ae7ba3f",
+        "block": 47997477,
+        "blockTimestamp": 1791763242,
+        "roundId": 36893488147419103765,
+        "answer": 23028881486,
+        "updatedAt": 1791763223,
+        "afterReopenSeconds": 42,
+        "behindMainnetPrintSeconds": 19
+      },
+      {
+        "symbol": "AAPLt",
+        "feed": "0xa652b75CA90084FA16D4F18Fd96B5dd7069ee52a",
+        "txHash": "0xdc69fd45842948d33732530a37de97bc96a81008c6df457271c9ccfe89e93c45",
+        "block": 47997596,
+        "blockTimestamp": 1791763480,
+        "roundId": 36893488147419103548,
+        "answer": 33665000000,
+        "updatedAt": 1791763251,
+        "afterReopenSeconds": 280,
+        "behindMainnetPrintSeconds": 229
+      },
+      {
+        "symbol": "TSLAt",
+        "feed": "0x5CB94874E3a54F36Bc8DD9c85405ea300e5b43a1",
+        "txHash": "0x8c4c98a7d13b76506c1badac10365c9f716970e87305c7ebe013db178f733b4a",
+        "block": 47997626,
+        "blockTimestamp": 1791763540,
+        "roundId": 36893488147419103975,
+        "answer": 38460000000,
+        "updatedAt": 1791763223,
+        "afterReopenSeconds": 340,
+        "behindMainnetPrintSeconds": 317
+      }
+    ],
+    "aapltReceipt": {
+      "hash": "0xdc69fd45842948d33732530a37de97bc96a81008c6df457271c9ccfe89e93c45",
+      "block": 47997596,
+      "blockTimestamp": 1791763480,
+      "status": 1,
+      "from": "0x28a50eb7c2db2b04638d3b226c724a1cfe999894",
+      "to": "0xa652b75ca90084fa16d4f18fd96b5dd7069ee52a",
+      "gasUsed": 51542,
+      "loggedAnswer": 33665000000,
+      "loggedRoundId": 36893488147419103548,
+      "loggedUpdatedAt": 1791763251,
+      "delayBehindMainnetPrintSeconds": 229
+    },
+    "note": "the mirror copies the mainnet round verbatim (same round id, answer and updatedAt) and sends at most one transaction per tick, none while one is pending, so the three feeds were written one after another"
+  }
+}
