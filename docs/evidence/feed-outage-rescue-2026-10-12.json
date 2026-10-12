@@ -1,0 +1,1805 @@
+{
+  "title": "Feed-outage rescue on Base Sepolia, Mon 12 Oct 2026 (the Saturday rescue's two actions under a staged frozen feed)",
+  "script": "scripts/sepolia/outage_rescue.py",
+  "runbook": "docs/runbooks/saturday-rescue-2026-10-10.md",
+  "why": "Why in session: the 9-11 Oct weekend passed without the two recorded rescues (docs/evidence/saturday-rescue-2026-10-10.md). The ShadowGuard treats FEED_STALE exactly like MARKET_CLOSED (`heldFeed` in ShadowGuard.shadowPrice), so a feed that stops printing in an open session takes the same protection path as a weekend: the venue oracle (SessionGuard) refuses to price, the shadow price is the pool TWAP less 200 bps, the keeper may close out on the Protector and repay down the vault's ladder, each armed as a validity transaction on the feed's updatedAt slot. The staging is the 8 Oct stale-feed drill's: the keeper's mirror of AAPLt is held (KV), and the AAPLt test feed is rewritten to the same round and answer with an updatedAt 27 h old (heartbeat 24 h + tolerance 2 h). Nothing here claims a weekend.",
+  "steps": {
+    "before": {
+      "snapshot": {
+        "label": "before",
+        "block": 48027437,
+        "blockTime": 1791823162,
+        "gate": {
+          "state": "OPEN",
+          "session": "REGULAR",
+          "answer": "34074500000",
+          "updatedAt": "1791816167"
+        },
+        "feed": {
+          "roundId": "36893488147419103552",
+          "answer": "34074500000",
+          "updatedAt": "1791816167",
+          "slot5": 1791816167
+        },
+        "shadow": {
+          "price36": "3407450000000000000000000000000000000",
+          "usd": 340.745,
+          "source": "FEED",
+          "gate": "OPEN",
+          "session": "REGULAR"
+        },
+        "venueOracle": {
+          "ok": true,
+          "value": [
+            "3407450000000000000000000000000000000"
+          ]
+        },
+        "mock": {
+          "tick": -12125,
+          "twapUsd": 336.16750584167283,
+          "price36": 3361675058416728161502400149334752128,
+          "swapUsd": 336.16750584167283,
+          "slot0Tick": -12125,
+          "shadowGuardTwap36": 3361675058416728161502400149334752128,
+          "poolUsdc": 1.79816
+        },
+        "drill": {
+          "borrowShares": 1745326212175,
+          "collateralRaw": 940611,
+          "debtRaw": 1745527,
+          "sizing": {
+            "standing": "BELOW_BAND",
+            "collateral": "940611",
+            "borrowShares": "1745326212175",
+            "debtAssets": "1745740",
+            "shadowPrice36": "3407450000000000000000000000000000000",
+            "venuePrice36": "3407450000000000000000000000000000000",
+            "venueOracleLive": "true",
+            "shadowLtvWad": "544678392204385283",
+            "venueLtvWad": "544678392204385283",
+            "preLifWad": "0",
+            "preLcfWad": "0",
+            "targetLtvWad": "580000000000000000",
+            "maxSeizedAssets": "0",
+            "maxRepaidShares": "0",
+            "maxRepaidAssets": "0",
+            "fullCloseAllowed": "false",
+            "fullCloseSeizedAssets": "0",
+            "fullCloseRepaidAssets": "0"
+          },
+          "shadowLtvPct": 54.4678,
+          "standing": "BELOW_BAND"
+        },
+        "line1": {
+          "borrowShares": 3202780065209,
+          "collateralRaw": 1997869,
+          "debtRaw": 3203147,
+          "quote": "NONE",
+          "obligation": "OPEN",
+          "sizing": {
+            "standing": "BELOW_BAND",
+            "collateral": "1997869",
+            "borrowShares": "3202780065209",
+            "debtAssets": "3203538",
+            "shadowPrice36": "3407450000000000000000000000000000000",
+            "venuePrice36": "3407450000000000000000000000000000000",
+            "venueOracleLive": "true",
+            "shadowLtvWad": "470579957394914360",
+            "venueLtvWad": "470579957394914360",
+            "preLifWad": "0",
+            "preLcfWad": "0",
+            "targetLtvWad": "580000000000000000",
+            "maxSeizedAssets": "0",
+            "maxRepaidShares": "0",
+            "maxRepaidAssets": "0",
+            "fullCloseAllowed": "false",
+            "fullCloseSeizedAssets": "0",
+            "fullCloseRepaidAssets": "0"
+          },
+          "shadowLtvPct": 47.058,
+          "standing": "BELOW_BAND"
+        },
+        "vault": {
+          "userBalance": 400000,
+          "advanceLiquidity": 1000000,
+          "advance": {
+            "outstanding": 0,
+            "feeOutstanding": 0,
+            "totalAdvanced": 200000,
+            "totalSettled": 200000
+          },
+          "feesCollected": 0,
+          "vaultUsdc": 1400000
+        },
+        "reserve": {
+          "totalAssets": 2002000,
+          "totalSupply": 2000000,
+          "idleUsdc": 1002000
+        },
+        "poolUsdc": 1798160,
+        "balancesEth": {
+          "protectSigner": 0.004838640569525978,
+          "mirrorKey": 0.009949324011387694,
+          "deployer": 0.03953230058279009,
+          "borrower": 0.6169399301124344
+        }
+      },
+      "keeper": {
+        "hold": {
+          "feed": [],
+          "registry": []
+        },
+        "holdSource": "none",
+        "protect": {
+          "armed": null,
+          "skipped": "nothing-to-do",
+          "errors": [],
+          "targets": [
+            {
+              "borrower": "0xB789aD318945B37566E2549F65526Cc269a482Fc",
+              "standing": "BELOW_BAND",
+              "venueOracleLive": true,
+              "decision": {
+                "action": "none",
+                "reason": "below-band"
+              }
+            },
+            {
+              "borrower": "0x2f0d9B1f16CD702259C6cC259e8D5E5455282a4E",
+              "standing": "BELOW_BAND",
+              "venueOracleLive": true,
+              "decision": {
+                "action": "none",
+                "reason": "below-band"
+              }
+            }
+          ]
+        },
+        "vault": {
+          "armed": null,
+          "skipped": "nothing-to-do",
+          "errors": [],
+          "state": {
+            "grace": {},
+            "armed": {},
+            "backoff": {}
+          },
+          "targets": [
+            {
+              "lineId": "1",
+              "standing": "BELOW_GRACE",
+              "shadowLtvPct": "47.05",
+              "amountUsdc": "0.000000",
+              "ladder": {
+                "fromUser": "400000",
+                "fromPartner": "0",
+                "fromAdvance": "1000000",
+                "shortfall": "340282366920938463463374607431766811455"
+              },
+              "decision": {
+                "action": "none",
+                "reason": "below-grace"
+              }
+            }
+          ]
+        }
+      },
+      "fails": []
+    },
+    "stale": {
+      "plan": {
+        "round": [
+          "36893488147419103552",
+          "34074500000",
+          "1791816153",
+          "1791816167",
+          "36893488147419103552"
+        ],
+        "staleUpdatedAt": 1791726186,
+        "ageAtWrite": 97200
+      },
+      "tx": {
+        "hash": "0x9d1e1d550847b754de0de3e6257966becd9e6817ecb9adc486c049f4ff81b00b",
+        "block": 48027552,
+        "status": 1,
+        "gasUsed": 43142,
+        "from": "0x28A50Eb7C2Db2B04638D3b226c724A1Cfe999894",
+        "to": "0xa652b75CA90084FA16D4F18Fd96B5dd7069ee52a",
+        "call": "setRoundData(uint80,int256,uint256,uint256,uint80)",
+        "label": "TestPriceFeed(AAPLt).setRoundData(round 36893488147419103552, answer 34074500000, updatedAt 1791726186 = 27 h before block time) by the mirror key, inside a KV hold"
+      },
+      "holdObservations": [
+        {
+          "what": "keeper /v1/config hold (all three symbols, KV)",
+          "value": {
+            "hold": {
+              "feed": [
+                "AAPLt",
+                "NVDAt",
+                "TSLAt"
+              ],
+              "registry": [
+                "AAPLt",
+                "NVDAt",
+                "TSLAt"
+              ]
+            },
+            "holdSource": "kv"
+          },
+          "block": 48027481
+        },
+        {
+          "what": "mirror key nonce stable (latest = pending) across the settle window",
+          "value": {
+            "nonce": 162,
+            "settleSeconds": 70
+          },
+          "block": 48027549
+        },
+        {
+          "what": "keeper /v1/config hold narrowed to AAPLt",
+          "value": {
+            "hold": {
+              "feed": [
+                "AAPLt"
+              ],
+              "registry": [
+                "AAPLt"
+              ]
+            },
+            "holdSource": "kv"
+          },
+          "block": 48027565
+        }
+      ],
+      "after": {
+        "label": "stale",
+        "block": 48027552,
+        "blockTime": 1791823392,
+        "gate": {
+          "state": "FEED_STALE",
+          "session": "REGULAR",
+          "answer": "34074500000",
+          "updatedAt": "1791726186"
+        },
+        "feed": {
+          "roundId": "36893488147419103552",
+          "answer": "34074500000",
+          "updatedAt": "1791726186",
+          "slot5": 1791726186
+        },
+        "shadow": {
+          "price36": "3294441557248393598272352146348057085",
+          "usd": 329.44415572483933,
+          "source": "TWAP",
+          "gate": "FEED_STALE",
+          "session": "REGULAR"
+        },
+        "venueOracle": {
+          "ok": false,
+          "revert": "FeedStale(0xB2000000000000000000000E063E65377cA34141, 1791726186, 93600)"
+        },
+        "mock": {
+          "tick": -12125,
+          "twapUsd": 336.16750584167283,
+          "price36": 3361675058416728161502400149334752128,
+          "swapUsd": 336.16750584167283,
+          "slot0Tick": -12125,
+          "shadowGuardTwap36": 3361675058416728161502400149334752128,
+          "poolUsdc": 1.79816
+        },
+        "drill": {
+          "borrowShares": 1745326212175,
+          "collateralRaw": 940611,
+          "debtRaw": 1745527,
+          "sizing": {
+            "standing": "BELOW_BAND",
+            "collateral": "940611",
+            "borrowShares": "1745326212175",
+            "debtAssets": "1745740",
+            "shadowPrice36": "3294441557248393598272352146348057085",
+            "venuePrice36": "3407450000000000000000000000000000000",
+            "venueOracleLive": "false",
+            "shadowLtvWad": "563362373728817115",
+            "venueLtvWad": "544678392204385283",
+            "preLifWad": "0",
+            "preLcfWad": "0",
+            "targetLtvWad": "580000000000000000",
+            "maxSeizedAssets": "0",
+            "maxRepaidShares": "0",
+            "maxRepaidAssets": "0",
+            "fullCloseAllowed": "false",
+            "fullCloseSeizedAssets": "0",
+            "fullCloseRepaidAssets": "0"
+          },
+          "shadowLtvPct": 56.3362,
+          "standing": "BELOW_BAND"
+        },
+        "line1": {
+          "borrowShares": 3202780065209,
+          "collateralRaw": 1997869,
+          "debtRaw": 3203147,
+          "quote": "FEED_STALE",
+          "obligation": "HOLD_FEED",
+          "sizing": {
+            "standing": "BELOW_BAND",
+            "collateral": "1997869",
+            "borrowShares": "3202780065209",
+            "debtAssets": "3203538",
+            "shadowPrice36": "3294441557248393598272352146348057085",
+            "venuePrice36": "3407450000000000000000000000000000000",
+            "venueOracleLive": "false",
+            "shadowLtvWad": "486722146407809827",
+            "venueLtvWad": "470579957394914360",
+            "preLifWad": "0",
+            "preLcfWad": "0",
+            "targetLtvWad": "580000000000000000",
+            "maxSeizedAssets": "0",
+            "maxRepaidShares": "0",
+            "maxRepaidAssets": "0",
+            "fullCloseAllowed": "false",
+            "fullCloseSeizedAssets": "0",
+            "fullCloseRepaidAssets": "0"
+          },
+          "shadowLtvPct": 48.6722,
+          "standing": "BELOW_BAND"
+        },
+        "vault": {
+          "userBalance": 400000,
+          "advanceLiquidity": 1000000,
+          "advance": {
+            "outstanding": 0,
+            "feeOutstanding": 0,
+            "totalAdvanced": 200000,
+            "totalSettled": 200000
+          },
+          "feesCollected": 0,
+          "vaultUsdc": 1400000
+        },
+        "reserve": {
+          "totalAssets": 2002000,
+          "totalSupply": 2000000,
+          "idleUsdc": 1002000
+        },
+        "poolUsdc": 1798160,
+        "balancesEth": {
+          "protectSigner": 0.004838640569525978,
+          "mirrorKey": 0.00994906515844366,
+          "deployer": 0.03953230058279009,
+          "borrower": 0.6169399301124344
+        }
+      },
+      "rawLiquidateWhileStale": {
+        "ok": false,
+        "result": "FeedStale(0xB2000000000000000000000E063E65377cA34141, 1791726186, 93600)"
+      },
+      "keeper": {
+        "hold": {
+          "feed": [
+            "AAPLt"
+          ],
+          "registry": [
+            "AAPLt"
+          ]
+        },
+        "holdSource": "kv",
+        "protect": {
+          "armed": null,
+          "skipped": "nothing-to-do",
+          "errors": [],
+          "targets": [
+            {
+              "borrower": "0xB789aD318945B37566E2549F65526Cc269a482Fc",
+              "standing": "BELOW_BAND",
+              "venueOracleLive": false,
+              "decision": {
+                "action": "none",
+                "reason": "below-band"
+              }
+            },
+            {
+              "borrower": "0x2f0d9B1f16CD702259C6cC259e8D5E5455282a4E",
+              "standing": "BELOW_BAND",
+              "venueOracleLive": false,
+              "decision": {
+                "action": "none",
+                "reason": "below-band"
+              }
+            }
+          ]
+        },
+        "vault": {
+          "armed": null,
+          "skipped": "nothing-to-do",
+          "errors": [],
+          "state": {
+            "grace": {},
+            "armed": {},
+            "backoff": {}
+          },
+          "targets": [
+            {
+              "lineId": "1",
+              "standing": "BELOW_GRACE",
+              "shadowLtvPct": "48.67",
+              "amountUsdc": "0.000000",
+              "ladder": {
+                "fromUser": "400000",
+                "fromPartner": "0",
+                "fromAdvance": "1000000",
+                "shortfall": "340282366920938463463374607431766811455"
+              },
+              "decision": {
+                "action": "none",
+                "reason": "below-grace"
+              }
+            }
+          ]
+        }
+      }
+    },
+    "step1": {
+      "twap": {
+        "tick": -11695,
+        "price36": "3220193751109231319536972054848981116",
+        "usd": 322.01938,
+        "sqrtPriceX96": "44150800509296816708450550089",
+        "why": "drill (deployer) to shadow LTV 58.80% while the feed is held (stale)",
+        "positionsWhileHeld": {
+          "drill (deployer, Protector band 58%-62.5%)": {
+            "collateralRaw": 940611,
+            "debtRaw": 1745527,
+            "shadowUsd": 315.57899,
+            "shadowLtvPct": 58.8042
+          },
+          "line1 (borrower, vault grace 52%)": {
+            "collateralRaw": 1997869,
+            "debtRaw": 3203147,
+            "shadowUsd": 315.57899,
+            "shadowLtvPct": 50.8045
+          }
+        },
+        "txs": [
+          {
+            "hash": "0x5f52ff5d97816268f8afc177e56862ba3dda3af6ed17dba470a8b59348b676ad",
+            "block": 48027589,
+            "call": "setAverageTick(uint32,int24)"
+          },
+          {
+            "hash": "0x3152874ba6f2fc020a072287b2c2795771c440e1e6ba499ac32fdf008efc2d30",
+            "block": 48027591,
+            "call": "setSlot0(uint160,int24)"
+          },
+          {
+            "hash": "0x3ed88979691062f5c968640f7d8d55b7f6014b3984508c62c4c5c7bb499ea71f",
+            "block": 48027593,
+            "call": "setPrice36(uint256)"
+          }
+        ],
+        "shadowGuardTwap36": "3220193751109231319536972054848981116"
+      },
+      "moved": {
+        "label": "step1 TWAP moved",
+        "block": 48027594,
+        "blockTime": 1791823476,
+        "gate": {
+          "state": "FEED_STALE",
+          "session": "REGULAR",
+          "answer": "34074500000",
+          "updatedAt": "1791726186"
+        },
+        "feed": {
+          "roundId": "36893488147419103552",
+          "answer": "34074500000",
+          "updatedAt": "1791726186",
+          "slot5": 1791726186
+        },
+        "shadow": {
+          "price36": "3155789876087046693146232613752001493",
+          "usd": 315.5789876087047,
+          "source": "TWAP",
+          "gate": "FEED_STALE",
+          "session": "REGULAR"
+        },
+        "venueOracle": {
+          "ok": false,
+          "revert": "FeedStale(0xB2000000000000000000000E063E65377cA34141, 1791726186, 93600)"
+        },
+        "mock": {
+          "tick": -11695,
+          "twapUsd": 322.01937511092314,
+          "price36": 3220193751109231319536972054848981116,
+          "swapUsd": 322.01937511092314,
+          "slot0Tick": -11695,
+          "shadowGuardTwap36": 3220193751109231319536972054848981116,
+          "poolUsdc": 0.05242
+        },
+        "drill": {
+          "borrowShares": 1745326212175,
+          "collateralRaw": 940611,
+          "debtRaw": 1745527,
+          "sizing": {
+            "standing": "IN_BAND",
+            "collateral": "940611",
+            "borrowShares": "1745326212175",
+            "debtAssets": "1745740",
+            "shadowPrice36": "3155789876087046693146232613752001493",
+            "venuePrice36": "3407450000000000000000000000000000000",
+            "venueOracleLive": "false",
+            "shadowLtvWad": "588114015436081082",
+            "venueLtvWad": "544678392204385283",
+            "preLifWad": "1011803114541351351",
+            "preLcfWad": "1000000000000000000",
+            "targetLtvWad": "580000000000000000",
+            "maxSeizedAssets": "0",
+            "maxRepaidShares": "0",
+            "maxRepaidAssets": "0",
+            "fullCloseAllowed": "true",
+            "fullCloseSeizedAssets": "559715",
+            "fullCloseRepaidAssets": "1745740"
+          },
+          "shadowLtvPct": 58.8114,
+          "standing": "IN_BAND"
+        },
+        "line1": {
+          "borrowShares": 3202780065209,
+          "collateralRaw": 1997869,
+          "debtRaw": 3203147,
+          "quote": "FEED_STALE",
+          "obligation": "HOLD_FEED",
+          "sizing": {
+            "standing": "BELOW_BAND",
+            "collateral": "1997869",
+            "borrowShares": "3202780065209",
+            "debtAssets": "3203538",
+            "shadowPrice36": "3155789876087046693146232613752001493",
+            "venuePrice36": "3407450000000000000000000000000000000",
+            "venueOracleLive": "false",
+            "shadowLtvWad": "508106611191948299",
+            "venueLtvWad": "470579957394914360",
+            "preLifWad": "0",
+            "preLcfWad": "0",
+            "targetLtvWad": "580000000000000000",
+            "maxSeizedAssets": "0",
+            "maxRepaidShares": "0",
+            "maxRepaidAssets": "0",
+            "fullCloseAllowed": "false",
+            "fullCloseSeizedAssets": "0",
+            "fullCloseRepaidAssets": "0"
+          },
+          "shadowLtvPct": 50.8107,
+          "standing": "BELOW_BAND"
+        },
+        "vault": {
+          "userBalance": 400000,
+          "advanceLiquidity": 1000000,
+          "advance": {
+            "outstanding": 0,
+            "feeOutstanding": 0,
+            "totalAdvanced": 200000,
+            "totalSettled": 200000
+          },
+          "feesCollected": 0,
+          "vaultUsdc": 1400000
+        },
+        "reserve": {
+          "totalAssets": 2002000,
+          "totalSupply": 2000000,
+          "idleUsdc": 1002000
+        },
+        "poolUsdc": 1798160,
+        "balancesEth": {
+          "protectSigner": 0.004838640569525978,
+          "mirrorKey": 0.00994906515844366,
+          "deployer": 0.039531751765349024,
+          "borrower": 0.6169399301124344
+        }
+      },
+      "protectTx": {
+        "hash": "0x9774913eecd620da53019d701f10c8e90400cb6497030785a2e374360d280352",
+        "block": 48027596,
+        "status": 1,
+        "from": "0x40668755c993a551db05e844ff9150a0c00a0373",
+        "to": "0x5c546946c909718040dd686f63df6cb5e4df442c",
+        "nonce": 67,
+        "gasUsed": 468917
+      },
+      "run": {
+        "ranAt": 1791823480,
+        "chainId": 84532,
+        "label": "Mon 12 Oct 2026, REGULAR session, AAPLt feed held stale by the operator (the Saturday rescue's step 1, run in session): the keeper closed out the drill position at the TWAP shadow price as a validity transaction",
+        "txs": [
+          {
+            "hash": "0x9774913eecd620da53019d701f10c8e90400cb6497030785a2e374360d280352",
+            "block": 48027596,
+            "label": "keeper Worker (signer 0x40668755c993a551db05e844ff9150a0c00a0373, nonce 67): Protector.protect armed as a validity transaction (predicate: AAPLt feed slot 5 = 1791726186, the round the decision was made on); Morpho Repay 1745740 raw USDC + WithdrawCollateral 559715 raw AAPLt, 542123 raw AAPLt sold on the pool, PreLiquidate and Protected emitted; 468,917 gas"
+          }
+        ],
+        "outcome": "full close-out: shadow LTV 58.8114% -> 0.0000% (IN_BAND -> NO_POSITION); seized 559,715 raw AAPLt, repaid 1.745740 USDC, sold 542,123 raw, kept 17,592 raw as the incentive; venue price 340.74500 and shadow price 315.57899 USD; position after: 380,896 raw AAPLt, 0.000000 USDC debt; decision #3 0x8e37f401efd376e635a1eed57f083dd0fa80f1a92efe1976af83fc70e3968aea; gate FEED_STALE (REGULAR)",
+        "evidence": [
+          "deployments/base-sepolia.json#protection",
+          "apps/keeper/src/protect-job.ts",
+          "scripts/sepolia/record_protect.py"
+        ],
+        "sizingBefore": {
+          "standing": "IN_BAND",
+          "collateral": "940611",
+          "borrowShares": "1745326212175",
+          "debtAssets": "1745740",
+          "shadowPrice36": "3155789876087046693146232613752001493",
+          "venuePrice36": "3407450000000000000000000000000000000",
+          "venueOracleLive": "false",
+          "shadowLtvWad": "588114015436081082",
+          "venueLtvWad": "544678392204385283",
+          "preLifWad": "1011803114541351351",
+          "preLcfWad": "1000000000000000000",
+          "targetLtvWad": "580000000000000000",
+          "maxSeizedAssets": "0",
+          "maxRepaidShares": "0",
+          "maxRepaidAssets": "0",
+          "fullCloseAllowed": "true",
+          "fullCloseSeizedAssets": "559715",
+          "fullCloseRepaidAssets": "1745740"
+        },
+        "sizingAfter": {
+          "standing": "NO_POSITION",
+          "collateral": "380896",
+          "borrowShares": "0",
+          "debtAssets": "0",
+          "shadowPrice36": "3155789876087046693146232613752001493",
+          "venuePrice36": "3407450000000000000000000000000000000",
+          "venueOracleLive": "false",
+          "shadowLtvWad": "0",
+          "venueLtvWad": "0",
+          "preLifWad": "0",
+          "preLcfWad": "0",
+          "targetLtvWad": "580000000000000000",
+          "maxSeizedAssets": "0",
+          "maxRepaidShares": "0",
+          "maxRepaidAssets": "0",
+          "fullCloseAllowed": "false",
+          "fullCloseSeizedAssets": "0",
+          "fullCloseRepaidAssets": "0"
+        },
+        "events": {
+          "morphoRepay": {
+            "assets": 1745740,
+            "shares": 1745326212175
+          },
+          "morphoWithdrawCollateral": {
+            "assets": 559715
+          },
+          "preLiquidate": {
+            "repaidAssets": 1745740,
+            "repaidShares": 1745326212175,
+            "seizedAssets": 559715
+          },
+          "protected": {
+            "decision": 3,
+            "borrower": "0x2f0d9b1f16cd702259c6cc259e8d5e5455282a4e",
+            "seizedAssets": 559715,
+            "repaidAssets": 1745740,
+            "collateralSold": 542123,
+            "venuePrice36": "3407450000000000000000000000000000000",
+            "shadowPrice36": "3155789876087046693146232613752001493",
+            "decisionHash": "0x8e37f401efd376e635a1eed57f083dd0fa80f1a92efe1976af83fc70e3968aea"
+          }
+        },
+        "predicate": {
+          "feed": "0xa652b75CA90084FA16D4F18Fd96B5dd7069ee52a",
+          "slot": 5,
+          "valueBefore": 1791726186,
+          "valueAtInclusion": 1791726186,
+          "held": true
+        },
+        "gate": {
+          "state": "FEED_STALE",
+          "session": "REGULAR",
+          "answer": "34074500000",
+          "updatedAt": "1791726186"
+        },
+        "signer": {
+          "address": "0x40668755c993a551db05e844ff9150a0c00a0373",
+          "nonce": 67,
+          "gasLimit": 900000,
+          "gasUsed": 468917,
+          "maxPriorityFeePerGas": 1000000
+        }
+      },
+      "after": {
+        "label": "step1 after",
+        "block": 48027609,
+        "blockTime": 1791823506,
+        "gate": {
+          "state": "FEED_STALE",
+          "session": "REGULAR",
+          "answer": "34074500000",
+          "updatedAt": "1791726186"
+        },
+        "feed": {
+          "roundId": "36893488147419103552",
+          "answer": "34074500000",
+          "updatedAt": "1791726186",
+          "slot5": 1791726186
+        },
+        "shadow": {
+          "price36": "3155789876087046693146232613752001493",
+          "usd": 315.5789876087047,
+          "source": "TWAP",
+          "gate": "FEED_STALE",
+          "session": "REGULAR"
+        },
+        "venueOracle": {
+          "ok": false,
+          "revert": "FeedStale(0xB2000000000000000000000E063E65377cA34141, 1791726186, 93600)"
+        },
+        "mock": {
+          "tick": -11695,
+          "twapUsd": 322.01937511092314,
+          "price36": 3220193751109231319536972054848981116,
+          "swapUsd": 322.01937511092314,
+          "slot0Tick": -11695,
+          "shadowGuardTwap36": 3220193751109231319536972054848981116,
+          "poolUsdc": 0.05242
+        },
+        "drill": {
+          "borrowShares": 0,
+          "collateralRaw": 380896,
+          "debtRaw": 0,
+          "sizing": {
+            "standing": "NO_POSITION",
+            "collateral": "380896",
+            "borrowShares": "0",
+            "debtAssets": "0",
+            "shadowPrice36": "3155789876087046693146232613752001493",
+            "venuePrice36": "3407450000000000000000000000000000000",
+            "venueOracleLive": "false",
+            "shadowLtvWad": "0",
+            "venueLtvWad": "0",
+            "preLifWad": "0",
+            "preLcfWad": "0",
+            "targetLtvWad": "580000000000000000",
+            "maxSeizedAssets": "0",
+            "maxRepaidShares": "0",
+            "maxRepaidAssets": "0",
+            "fullCloseAllowed": "false",
+            "fullCloseSeizedAssets": "0",
+            "fullCloseRepaidAssets": "0"
+          },
+          "shadowLtvPct": 0.0,
+          "standing": "NO_POSITION"
+        },
+        "line1": {
+          "borrowShares": 3202780065209,
+          "collateralRaw": 1997869,
+          "debtRaw": 3203537,
+          "quote": "FEED_STALE",
+          "obligation": "HOLD_FEED",
+          "sizing": {
+            "standing": "BELOW_BAND",
+            "collateral": "1997869",
+            "borrowShares": "3202780065209",
+            "debtAssets": "3203537",
+            "shadowPrice36": "3155789876087046693146232613752001493",
+            "venuePrice36": "3407450000000000000000000000000000000",
+            "venueOracleLive": "false",
+            "shadowLtvWad": "508106452583993222",
+            "venueLtvWad": "470579810501087162",
+            "preLifWad": "0",
+            "preLcfWad": "0",
+            "targetLtvWad": "580000000000000000",
+            "maxSeizedAssets": "0",
+            "maxRepaidShares": "0",
+            "maxRepaidAssets": "0",
+            "fullCloseAllowed": "false",
+            "fullCloseSeizedAssets": "0",
+            "fullCloseRepaidAssets": "0"
+          },
+          "shadowLtvPct": 50.8106,
+          "standing": "BELOW_BAND"
+        },
+        "vault": {
+          "userBalance": 400000,
+          "advanceLiquidity": 1000000,
+          "advance": {
+            "outstanding": 0,
+            "feeOutstanding": 0,
+            "totalAdvanced": 200000,
+            "totalSettled": 200000
+          },
+          "feesCollected": 0,
+          "vaultUsdc": 1400000
+        },
+        "reserve": {
+          "totalAssets": 2002000,
+          "totalSupply": 2000000,
+          "idleUsdc": 1002000
+        },
+        "poolUsdc": 52420,
+        "balancesEth": {
+          "protectSigner": 0.004835827066203856,
+          "mirrorKey": 0.00994906515844366,
+          "deployer": 0.039531751765349024,
+          "borrower": 0.6169399301124344
+        }
+      },
+      "rawLiquidateSameMoment": {
+        "call": "Morpho.liquidate(AAPLt market, borrower 0xB789..82Fc, seizedAssets 1, 0, 0x) from the deployer (eth_call)",
+        "ok": false,
+        "result": "FeedStale(0xB2000000000000000000000E063E65377cA34141, 1791726186, 93600)"
+      },
+      "keeper": {
+        "hold": {
+          "feed": [
+            "AAPLt"
+          ],
+          "registry": [
+            "AAPLt"
+          ]
+        },
+        "holdSource": "kv",
+        "protect": {
+          "armed": null,
+          "skipped": "nothing-to-do",
+          "errors": [],
+          "targets": [
+            {
+              "borrower": "0xB789aD318945B37566E2549F65526Cc269a482Fc",
+              "standing": "BELOW_BAND",
+              "venueOracleLive": false,
+              "decision": {
+                "action": "none",
+                "reason": "below-band"
+              }
+            },
+            {
+              "borrower": "0x2f0d9B1f16CD702259C6cC259e8D5E5455282a4E",
+              "standing": "NO_POSITION",
+              "venueOracleLive": false,
+              "decision": {
+                "action": "none",
+                "reason": "no-position"
+              }
+            }
+          ]
+        },
+        "vault": {
+          "armed": null,
+          "skipped": "nothing-to-do",
+          "errors": [],
+          "state": {
+            "grace": {
+              "borrower:0x2f0d9b1f16cd702259c6cc259e8d5e5455282a4e": 1791823478
+            },
+            "armed": {
+              "borrower:0x2f0d9b1f16cd702259c6cc259e8d5e5455282a4e": {
+                "kind": "pre-liquidation",
+                "head": 48027595,
+                "nonce": 67,
+                "at": 1791823478,
+                "borrower": "0x2f0d9B1f16CD702259C6cC259e8D5E5455282a4E",
+                "firstHash": "0x9774913eecd620da53019d701f10c8e90400cb6497030785a2e374360d280352"
+              }
+            },
+            "backoff": {}
+          },
+          "targets": [
+            {
+              "lineId": "1",
+              "standing": "BELOW_GRACE",
+              "shadowLtvPct": "50.81",
+              "amountUsdc": "0.000000",
+              "ladder": {
+                "fromUser": "400000",
+                "fromPartner": "0",
+                "fromAdvance": "1000000",
+                "shortfall": "340282366920938463463374607431766811455"
+              },
+              "decision": {
+                "action": "none",
+                "reason": "below-grace"
+              }
+            }
+          ]
+        }
+      }
+    },
+    "step2": {
+      "twap": {
+        "tick": -11086,
+        "price36": "3029945321639908222708561949931058080",
+        "usd": 302.99453,
+        "sqrtPriceX96": "45515800802994837637120041719",
+        "why": "line 1 (borrower) to shadow LTV 54.00% while the feed is held (stale)",
+        "positionsWhileHeld": {
+          "drill (deployer, Protector band 58%-62.5%)": {
+            "collateralRaw": 380896,
+            "debtRaw": 0,
+            "shadowUsd": 296.93464,
+            "shadowLtvPct": 0.0
+          },
+          "line1 (borrower, vault grace 52%)": {
+            "collateralRaw": 1997869,
+            "debtRaw": 3203537,
+            "shadowUsd": 296.93464,
+            "shadowLtvPct": 54.001
+          }
+        },
+        "txs": [
+          {
+            "hash": "0x38ac7a73874d9c7a0c49daada52908d546a53c2038b4bcf99e4efe2ddb3310f2",
+            "block": 48027642,
+            "call": "setAverageTick(uint32,int24)"
+          },
+          {
+            "hash": "0x70b29c528c05772643ea6913188a12c0ef893d6191806864dfd87a96c30e4fd9",
+            "block": 48027644,
+            "call": "setSlot0(uint160,int24)"
+          },
+          {
+            "hash": "0x4ce6a33ce5b619fac03eb9fad4a38908d71803a12cdd11201e956b69967b5f46",
+            "block": 48027646,
+            "call": "setPrice36(uint256)"
+          }
+        ],
+        "shadowGuardTwap36": "3029945321639908222708561949931058080"
+      },
+      "moved": {
+        "label": "step2 TWAP moved",
+        "block": 48027647,
+        "blockTime": 1791823582,
+        "gate": {
+          "state": "FEED_STALE",
+          "session": "REGULAR",
+          "answer": "34074500000",
+          "updatedAt": "1791726186"
+        },
+        "feed": {
+          "roundId": "36893488147419103552",
+          "answer": "34074500000",
+          "updatedAt": "1791726186",
+          "slot5": 1791726186
+        },
+        "shadow": {
+          "price36": "2969346415207110058254390710932436918",
+          "usd": 296.93464152071107,
+          "source": "TWAP",
+          "gate": "FEED_STALE",
+          "session": "REGULAR"
+        },
+        "venueOracle": {
+          "ok": false,
+          "revert": "FeedStale(0xB2000000000000000000000E063E65377cA34141, 1791726186, 93600)"
+        },
+        "mock": {
+          "tick": -11086,
+          "twapUsd": 302.99453216399087,
+          "price36": 3029945321639908222708561949931058080,
+          "swapUsd": 302.99453216399087,
+          "slot0Tick": -11086,
+          "shadowGuardTwap36": 3029945321639908222708561949931058080,
+          "poolUsdc": 0.05242
+        },
+        "drill": {
+          "borrowShares": 0,
+          "collateralRaw": 380896,
+          "debtRaw": 0,
+          "sizing": {
+            "standing": "NO_POSITION",
+            "collateral": "380896",
+            "borrowShares": "0",
+            "debtAssets": "0",
+            "shadowPrice36": "2969346415207110058254390710932436918",
+            "venuePrice36": "3407450000000000000000000000000000000",
+            "venueOracleLive": "false",
+            "shadowLtvWad": "0",
+            "venueLtvWad": "0",
+            "preLifWad": "0",
+            "preLcfWad": "0",
+            "targetLtvWad": "580000000000000000",
+            "maxSeizedAssets": "0",
+            "maxRepaidShares": "0",
+            "maxRepaidAssets": "0",
+            "fullCloseAllowed": "false",
+            "fullCloseSeizedAssets": "0",
+            "fullCloseRepaidAssets": "0"
+          },
+          "shadowLtvPct": 0.0,
+          "standing": "NO_POSITION"
+        },
+        "line1": {
+          "borrowShares": 3202780065209,
+          "collateralRaw": 1997869,
+          "debtRaw": 3203537,
+          "quote": "FEED_STALE",
+          "obligation": "HOLD_FEED",
+          "sizing": {
+            "standing": "BELOW_BAND",
+            "collateral": "1997869",
+            "borrowShares": "3202780065209",
+            "debtAssets": "3203537",
+            "shadowPrice36": "2969346415207110058254390710932436918",
+            "venuePrice36": "3407450000000000000000000000000000000",
+            "venueOracleLive": "false",
+            "shadowLtvWad": "540010097153496119",
+            "venueLtvWad": "470579810501087162",
+            "preLifWad": "0",
+            "preLcfWad": "0",
+            "targetLtvWad": "580000000000000000",
+            "maxSeizedAssets": "0",
+            "maxRepaidShares": "0",
+            "maxRepaidAssets": "0",
+            "fullCloseAllowed": "false",
+            "fullCloseSeizedAssets": "0",
+            "fullCloseRepaidAssets": "0"
+          },
+          "shadowLtvPct": 54.001,
+          "standing": "BELOW_BAND"
+        },
+        "vault": {
+          "userBalance": 400000,
+          "advanceLiquidity": 1000000,
+          "advance": {
+            "outstanding": 0,
+            "feeOutstanding": 0,
+            "totalAdvanced": 200000,
+            "totalSettled": 200000
+          },
+          "feesCollected": 0,
+          "vaultUsdc": 1400000
+        },
+        "reserve": {
+          "totalAssets": 2002000,
+          "totalSupply": 2000000,
+          "idleUsdc": 1002000
+        },
+        "poolUsdc": 52420,
+        "balancesEth": {
+          "protectSigner": 0.004835827066203856,
+          "mirrorKey": 0.00994906515844366,
+          "deployer": 0.039531202947828574,
+          "borrower": 0.6169399301124344
+        }
+      },
+      "vaultTx": {
+        "hash": "0x47ac5279c4804e73d05f1e8d813775514e4f8b8b09c6ffc7b014fac1956e1d24",
+        "block": 48027656,
+        "status": 1,
+        "from": "0x40668755c993a551db05e844ff9150a0c00a0373",
+        "to": "0x87f600279f021ca859b9903de884d3a7a169f38c",
+        "nonce": 68,
+        "gasUsed": 315168
+      },
+      "vaultProtected": {
+        "lineId": 1,
+        "user": "0xb789ad318945b37566e2549f65526cc269a482fc",
+        "partnerId": "0x626f756e646c696e652d61707000000000000000000000000000000000000000",
+        "repaid": 540000,
+        "fromUser": 400000,
+        "fromPartner": 0,
+        "fromAdvance": 140000,
+        "debtBefore": 3203537,
+        "debtAfter": 2663537,
+        "decisionHash": "0xcacc2f5793921b5aff4cbf0a587f50472f05ade4235a2b1552fc57838cb112ab"
+      },
+      "predicate": {
+        "feed": "0xa652b75CA90084FA16D4F18Fd96B5dd7069ee52a",
+        "slot": 5,
+        "valueBefore": 1791726186,
+        "valueAtInclusion": 1791726186,
+        "held": true
+      },
+      "deskLogsInTx": 2,
+      "after": {
+        "label": "step2 after",
+        "block": 48027660,
+        "blockTime": 1791823608,
+        "gate": {
+          "state": "FEED_STALE",
+          "session": "REGULAR",
+          "answer": "34074500000",
+          "updatedAt": "1791726186"
+        },
+        "feed": {
+          "roundId": "36893488147419103552",
+          "answer": "34074500000",
+          "updatedAt": "1791726186",
+          "slot5": 1791726186
+        },
+        "shadow": {
+          "price36": "2969346415207110058254390710932436918",
+          "usd": 296.93464152071107,
+          "source": "TWAP",
+          "gate": "FEED_STALE",
+          "session": "REGULAR"
+        },
+        "venueOracle": {
+          "ok": false,
+          "revert": "FeedStale(0xB2000000000000000000000E063E65377cA34141, 1791726186, 93600)"
+        },
+        "mock": {
+          "tick": -11086,
+          "twapUsd": 302.99453216399087,
+          "price36": 3029945321639908222708561949931058080,
+          "swapUsd": 302.99453216399087,
+          "slot0Tick": -11086,
+          "shadowGuardTwap36": 3029945321639908222708561949931058080,
+          "poolUsdc": 0.05242
+        },
+        "drill": {
+          "borrowShares": 0,
+          "collateralRaw": 380896,
+          "debtRaw": 0,
+          "sizing": {
+            "standing": "NO_POSITION",
+            "collateral": "380896",
+            "borrowShares": "0",
+            "debtAssets": "0",
+            "shadowPrice36": "2969346415207110058254390710932436918",
+            "venuePrice36": "3407450000000000000000000000000000000",
+            "venueOracleLive": "false",
+            "shadowLtvWad": "0",
+            "venueLtvWad": "0",
+            "preLifWad": "0",
+            "preLcfWad": "0",
+            "targetLtvWad": "580000000000000000",
+            "maxSeizedAssets": "0",
+            "maxRepaidShares": "0",
+            "maxRepaidAssets": "0",
+            "fullCloseAllowed": "false",
+            "fullCloseSeizedAssets": "0",
+            "fullCloseRepaidAssets": "0"
+          },
+          "shadowLtvPct": 0.0,
+          "standing": "NO_POSITION"
+        },
+        "line1": {
+          "borrowShares": 2662907656887,
+          "collateralRaw": 1997869,
+          "debtRaw": 2663537,
+          "quote": "FEED_STALE",
+          "obligation": "HOLD_FEED",
+          "sizing": {
+            "standing": "BELOW_BAND",
+            "collateral": "1997869",
+            "borrowShares": "2662907656887",
+            "debtAssets": "2663537",
+            "shadowPrice36": "2969346415207110058254390710932436918",
+            "venuePrice36": "3407450000000000000000000000000000000",
+            "venueOracleLive": "false",
+            "shadowLtvWad": "448984005535734906",
+            "venueLtvWad": "391257143814051218",
+            "preLifWad": "0",
+            "preLcfWad": "0",
+            "targetLtvWad": "580000000000000000",
+            "maxSeizedAssets": "0",
+            "maxRepaidShares": "0",
+            "maxRepaidAssets": "0",
+            "fullCloseAllowed": "false",
+            "fullCloseSeizedAssets": "0",
+            "fullCloseRepaidAssets": "0"
+          },
+          "shadowLtvPct": 44.8984,
+          "standing": "BELOW_BAND"
+        },
+        "vault": {
+          "userBalance": 0,
+          "advanceLiquidity": 860000,
+          "advance": {
+            "outstanding": 140000,
+            "feeOutstanding": 1400,
+            "totalAdvanced": 340000,
+            "totalSettled": 200000
+          },
+          "feesCollected": 0,
+          "vaultUsdc": 860000
+        },
+        "reserve": {
+          "totalAssets": 2002000,
+          "totalSupply": 2000000,
+          "idleUsdc": 1002000
+        },
+        "poolUsdc": 52420,
+        "balancesEth": {
+          "protectSigner": 0.004833936056896908,
+          "mirrorKey": 0.00994906515844366,
+          "deployer": 0.039531202947828574,
+          "borrower": 0.6169399301124344
+        }
+      },
+      "keeper": {
+        "hold": {
+          "feed": [
+            "AAPLt"
+          ],
+          "registry": [
+            "AAPLt"
+          ]
+        },
+        "holdSource": "kv",
+        "protect": {
+          "armed": null,
+          "skipped": "nothing-to-do",
+          "errors": [],
+          "targets": [
+            {
+              "borrower": "0xB789aD318945B37566E2549F65526Cc269a482Fc",
+              "standing": "BELOW_BAND",
+              "venueOracleLive": false,
+              "decision": {
+                "action": "none",
+                "reason": "below-band"
+              }
+            },
+            {
+              "borrower": "0x2f0d9B1f16CD702259C6cC259e8D5E5455282a4E",
+              "standing": "NO_POSITION",
+              "venueOracleLive": false,
+              "decision": {
+                "action": "none",
+                "reason": "no-position"
+              }
+            }
+          ]
+        },
+        "vault": {
+          "armed": null,
+          "skipped": "nothing-to-do",
+          "errors": [],
+          "state": {
+            "grace": {
+              "line:1": 1791823598
+            },
+            "armed": {
+              "line:1": {
+                "kind": "vault-repay",
+                "head": 48027655,
+                "nonce": 68,
+                "at": 1791823598,
+                "lineId": "1",
+                "amountUsdc": "0.540000",
+                "firstHash": "0x47ac5279c4804e73d05f1e8d813775514e4f8b8b09c6ffc7b014fac1956e1d24"
+              }
+            },
+            "backoff": {}
+          },
+          "targets": [
+            {
+              "lineId": "1",
+              "standing": "BELOW_GRACE",
+              "shadowLtvPct": "44.89",
+              "amountUsdc": "0.000000",
+              "ladder": {
+                "fromUser": "0",
+                "fromPartner": "0",
+                "fromAdvance": "860000",
+                "shortfall": "340282366920938463463374607431767351455"
+              },
+              "decision": {
+                "action": "none",
+                "reason": "below-grace"
+              }
+            }
+          ]
+        }
+      }
+    },
+    "restore": {
+      "twap": {
+        "tick": -12242,
+        "price36": "3401235656840090713242401966979678076",
+        "usd": 340.12357,
+        "sqrtPriceX96": "42959698236046102947897161935",
+        "why": "restore: mirror of the mainnet AAPLc/USDC 1h TWAP",
+        "positionsWhileHeld": {
+          "drill (deployer, Protector band 58%-62.5%)": {
+            "collateralRaw": 380896,
+            "debtRaw": 0,
+            "shadowUsd": 333.32109,
+            "shadowLtvPct": 0.0
+          },
+          "line1 (borrower, vault grace 52%)": {
+            "collateralRaw": 1997869,
+            "debtRaw": 2663537,
+            "shadowUsd": 333.32109,
+            "shadowLtvPct": 39.9971
+          }
+        },
+        "txs": [
+          {
+            "hash": "0xb57cfd4727f92127b9931313ac61cf78e755c0e1b691da1c008d99a72a9e04ef",
+            "block": 48027688,
+            "call": "setAverageTick(uint32,int24)"
+          },
+          {
+            "hash": "0x74e4a8c1b780e6e5fc6847c2a199bf0f5238e32952d013a86fa6353602c53b78",
+            "block": 48027691,
+            "call": "setSlot0(uint160,int24)"
+          },
+          {
+            "hash": "0xdba402b2009bce5fb00ea475348125dac6bc7bba6a3482ce2c0346ee683088db",
+            "block": 48027694,
+            "call": "setPrice36(uint256)"
+          }
+        ],
+        "shadowGuardTwap36": "3401235656840090713242401966979678076"
+      },
+      "holdObservations": [
+        {
+          "what": "keeper /v1/config after release",
+          "value": {
+            "hold": {
+              "feed": [],
+              "registry": []
+            },
+            "holdSource": "none"
+          },
+          "block": 48027702
+        }
+      ],
+      "restoredRound": [
+        "36893488147419103552",
+        "34074500000",
+        "1791816153",
+        "1791816167",
+        "36893488147419103552"
+      ],
+      "mirrorTx": {
+        "hash": "0xd532f47f5671b7955bb69e3f4748ee84ade58ce7920a80e7619a50b21e47d8b4",
+        "block": 48027746,
+        "gasUsed": 43142,
+        "from": "0x28a50eb7c2db2b04638d3b226c724a1cfe999894"
+      },
+      "after": {
+        "label": "restored",
+        "block": 48027747,
+        "blockTime": 1791823782,
+        "gate": {
+          "state": "OPEN",
+          "session": "REGULAR",
+          "answer": "34074500000",
+          "updatedAt": "1791816167"
+        },
+        "feed": {
+          "roundId": "36893488147419103552",
+          "answer": "34074500000",
+          "updatedAt": "1791816167",
+          "slot5": 1791816167
+        },
+        "shadow": {
+          "price36": "3407450000000000000000000000000000000",
+          "usd": 340.745,
+          "source": "FEED",
+          "gate": "OPEN",
+          "session": "REGULAR"
+        },
+        "venueOracle": {
+          "ok": true,
+          "value": [
+            "3407450000000000000000000000000000000"
+          ]
+        },
+        "mock": {
+          "tick": -12242,
+          "twapUsd": 340.12356568400907,
+          "price36": 3401235656840090713242401966979678076,
+          "swapUsd": 340.12356568400907,
+          "slot0Tick": -12242,
+          "shadowGuardTwap36": 3401235656840090713242401966979678076,
+          "poolUsdc": 0.05242
+        },
+        "drill": {
+          "borrowShares": 0,
+          "collateralRaw": 380896,
+          "debtRaw": 0,
+          "sizing": {
+            "standing": "NO_POSITION",
+            "collateral": "380896",
+            "borrowShares": "0",
+            "debtAssets": "0",
+            "shadowPrice36": "3407450000000000000000000000000000000",
+            "venuePrice36": "3407450000000000000000000000000000000",
+            "venueOracleLive": "true",
+            "shadowLtvWad": "0",
+            "venueLtvWad": "0",
+            "preLifWad": "0",
+            "preLcfWad": "0",
+            "targetLtvWad": "580000000000000000",
+            "maxSeizedAssets": "0",
+            "maxRepaidShares": "0",
+            "maxRepaidAssets": "0",
+            "fullCloseAllowed": "false",
+            "fullCloseSeizedAssets": "0",
+            "fullCloseRepaidAssets": "0"
+          },
+          "shadowLtvPct": 0.0,
+          "standing": "NO_POSITION"
+        },
+        "line1": {
+          "borrowShares": 2662907656887,
+          "collateralRaw": 1997869,
+          "debtRaw": 2663537,
+          "quote": "NONE",
+          "obligation": "OPEN",
+          "sizing": {
+            "standing": "BELOW_BAND",
+            "collateral": "1997869",
+            "borrowShares": "2662907656887",
+            "debtAssets": "2663537",
+            "shadowPrice36": "3407450000000000000000000000000000000",
+            "venuePrice36": "3407450000000000000000000000000000000",
+            "venueOracleLive": "true",
+            "shadowLtvWad": "391257143814051218",
+            "venueLtvWad": "391257143814051218",
+            "preLifWad": "0",
+            "preLcfWad": "0",
+            "targetLtvWad": "580000000000000000",
+            "maxSeizedAssets": "0",
+            "maxRepaidShares": "0",
+            "maxRepaidAssets": "0",
+            "fullCloseAllowed": "false",
+            "fullCloseSeizedAssets": "0",
+            "fullCloseRepaidAssets": "0"
+          },
+          "shadowLtvPct": 39.1257,
+          "standing": "BELOW_BAND"
+        },
+        "vault": {
+          "userBalance": 0,
+          "advanceLiquidity": 860000,
+          "advance": {
+            "outstanding": 140000,
+            "feeOutstanding": 1400,
+            "totalAdvanced": 340000,
+            "totalSettled": 200000
+          },
+          "feesCollected": 0,
+          "vaultUsdc": 860000
+        },
+        "reserve": {
+          "totalAssets": 2002000,
+          "totalSupply": 2000000,
+          "idleUsdc": 1002000
+        },
+        "poolUsdc": 52420,
+        "balancesEth": {
+          "protectSigner": 0.004833936056896908,
+          "mirrorKey": 0.009948806305270091,
+          "deployer": 0.03953065420234984,
+          "borrower": 0.6169399301124344
+        }
+      },
+      "keeper": {
+        "hold": {
+          "feed": [],
+          "registry": []
+        },
+        "holdSource": "none",
+        "protect": {
+          "armed": null,
+          "skipped": "nothing-to-do",
+          "errors": [],
+          "targets": [
+            {
+              "borrower": "0xB789aD318945B37566E2549F65526Cc269a482Fc",
+              "standing": "BELOW_BAND",
+              "venueOracleLive": true,
+              "decision": {
+                "action": "none",
+                "reason": "below-band"
+              }
+            },
+            {
+              "borrower": "0x2f0d9B1f16CD702259C6cC259e8D5E5455282a4E",
+              "standing": "NO_POSITION",
+              "venueOracleLive": true,
+              "decision": {
+                "action": "none",
+                "reason": "no-position"
+              }
+            }
+          ]
+        },
+        "vault": {
+          "armed": null,
+          "skipped": "nothing-to-do",
+          "errors": [],
+          "state": {
+            "grace": {},
+            "armed": {},
+            "backoff": {}
+          },
+          "targets": [
+            {
+              "lineId": "1",
+              "standing": "BELOW_GRACE",
+              "shadowLtvPct": "39.12",
+              "amountUsdc": "0.000000",
+              "ladder": {
+                "fromUser": "0",
+                "fromPartner": "0",
+                "fromAdvance": "860000",
+                "shortfall": "340282366920938463463374607431767351455"
+              },
+              "decision": {
+                "action": "none",
+                "reason": "below-grace"
+              }
+            }
+          ]
+        }
+      }
+    },
+    "settle": {
+      "amount": 141400,
+      "txs": [
+        {
+          "hash": "0x4c8cd0ac62e1ce6788eda6daed06643f1df6d20370bd71f1fe7a27fa7fbb756d",
+          "block": 48027776,
+          "status": 1,
+          "gasUsed": 55425,
+          "from": "0xB789aD318945B37566E2549F65526Cc269a482Fc",
+          "to": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+          "call": "approve(address,uint256)"
+        },
+        {
+          "hash": "0x7b71e812afff01285f20eb4af568a334834dda6b463e5242cd8da7fc8636df9f",
+          "block": 48027778,
+          "status": 1,
+          "gasUsed": 107149,
+          "from": "0xB789aD318945B37566E2549F65526Cc269a482Fc",
+          "to": "0x87f600279F021ca859b9903DE884d3A7A169f38c",
+          "call": "repayAdvance(uint256,uint256)"
+        },
+        {
+          "hash": "0x5b6874d4c3b9bf415e453c0f1d199a5b406c1b163b5a5e4404815602e8ab11c3",
+          "block": 48027791,
+          "status": 1,
+          "gasUsed": 76447,
+          "from": "0x2f0d9B1f16CD702259C6cC259e8D5E5455282a4E",
+          "to": "0x7AcE5c9ca94d5B67feC97348Ff41778D092a6B6E",
+          "call": "harvest(address)"
+        }
+      ],
+      "afterSettle": {
+        "label": "settled",
+        "block": 48027778,
+        "blockTime": 1791823844,
+        "gate": {
+          "state": "OPEN",
+          "session": "REGULAR",
+          "answer": "34074500000",
+          "updatedAt": "1791816167"
+        },
+        "feed": {
+          "roundId": "36893488147419103552",
+          "answer": "34074500000",
+          "updatedAt": "1791816167",
+          "slot5": 1791816167
+        },
+        "shadow": {
+          "price36": "3407450000000000000000000000000000000",
+          "usd": 340.745,
+          "source": "FEED",
+          "gate": "OPEN",
+          "session": "REGULAR"
+        },
+        "venueOracle": {
+          "ok": true,
+          "value": [
+            "3407450000000000000000000000000000000"
+          ]
+        },
+        "mock": {
+          "tick": -12242,
+          "twapUsd": 340.12356568400907,
+          "price36": 3401235656840090713242401966979678076,
+          "swapUsd": 340.12356568400907,
+          "slot0Tick": -12242,
+          "shadowGuardTwap36": 3401235656840090713242401966979678076,
+          "poolUsdc": 0.05242
+        },
+        "drill": {
+          "borrowShares": 0,
+          "collateralRaw": 380896,
+          "debtRaw": 0,
+          "sizing": {
+            "standing": "NO_POSITION",
+            "collateral": "380896",
+            "borrowShares": "0",
+            "debtAssets": "0",
+            "shadowPrice36": "3407450000000000000000000000000000000",
+            "venuePrice36": "3407450000000000000000000000000000000",
+            "venueOracleLive": "true",
+            "shadowLtvWad": "0",
+            "venueLtvWad": "0",
+            "preLifWad": "0",
+            "preLcfWad": "0",
+            "targetLtvWad": "580000000000000000",
+            "maxSeizedAssets": "0",
+            "maxRepaidShares": "0",
+            "maxRepaidAssets": "0",
+            "fullCloseAllowed": "false",
+            "fullCloseSeizedAssets": "0",
+            "fullCloseRepaidAssets": "0"
+          },
+          "shadowLtvPct": 0.0,
+          "standing": "NO_POSITION"
+        },
+        "line1": {
+          "borrowShares": 2662907656887,
+          "collateralRaw": 1997869,
+          "debtRaw": 2663537,
+          "quote": "NONE",
+          "obligation": "OPEN",
+          "sizing": {
+            "standing": "BELOW_BAND",
+            "collateral": "1997869",
+            "borrowShares": "2662907656887",
+            "debtAssets": "2663537",
+            "shadowPrice36": "3407450000000000000000000000000000000",
+            "venuePrice36": "3407450000000000000000000000000000000",
+            "venueOracleLive": "true",
+            "shadowLtvWad": "391257143814051218",
+            "venueLtvWad": "391257143814051218",
+            "preLifWad": "0",
+            "preLcfWad": "0",
+            "targetLtvWad": "580000000000000000",
+            "maxSeizedAssets": "0",
+            "maxRepaidShares": "0",
+            "maxRepaidAssets": "0",
+            "fullCloseAllowed": "false",
+            "fullCloseSeizedAssets": "0",
+            "fullCloseRepaidAssets": "0"
+          },
+          "shadowLtvPct": 39.1257,
+          "standing": "BELOW_BAND"
+        },
+        "vault": {
+          "userBalance": 0,
+          "advanceLiquidity": 1000000,
+          "advance": {
+            "outstanding": 0,
+            "feeOutstanding": 0,
+            "totalAdvanced": 340000,
+            "totalSettled": 340000
+          },
+          "feesCollected": 1400,
+          "vaultUsdc": 1001400
+        },
+        "reserve": {
+          "totalAssets": 2002000,
+          "totalSupply": 2000000,
+          "idleUsdc": 1002000
+        },
+        "poolUsdc": 52420,
+        "balancesEth": {
+          "protectSigner": 0.004833936056896908,
+          "mirrorKey": 0.009948806305270091,
+          "deployer": 0.03953065420234984,
+          "borrower": 0.6169389546663339
+        }
+      },
+      "after": {
+        "label": "harvested",
+        "block": 48027791,
+        "blockTime": 1791823870,
+        "gate": {
+          "state": "OPEN",
+          "session": "REGULAR",
+          "answer": "34074500000",
+          "updatedAt": "1791816167"
+        },
+        "feed": {
+          "roundId": "36893488147419103552",
+          "answer": "34074500000",
+          "updatedAt": "1791816167",
+          "slot5": 1791816167
+        },
+        "shadow": {
+          "price36": "3407450000000000000000000000000000000",
+          "usd": 340.745,
+          "source": "FEED",
+          "gate": "OPEN",
+          "session": "REGULAR"
+        },
+        "venueOracle": {
+          "ok": true,
+          "value": [
+            "3407450000000000000000000000000000000"
+          ]
+        },
+        "mock": {
+          "tick": -12242,
+          "twapUsd": 340.12356568400907,
+          "price36": 3401235656840090713242401966979678076,
+          "swapUsd": 340.12356568400907,
+          "slot0Tick": -12242,
+          "shadowGuardTwap36": 3401235656840090713242401966979678076,
+          "poolUsdc": 0.05242
+        },
+        "drill": {
+          "borrowShares": 0,
+          "collateralRaw": 380896,
+          "debtRaw": 0,
+          "sizing": {
+            "standing": "NO_POSITION",
+            "collateral": "380896",
+            "borrowShares": "0",
+            "debtAssets": "0",
+            "shadowPrice36": "3407450000000000000000000000000000000",
+            "venuePrice36": "3407450000000000000000000000000000000",
+            "venueOracleLive": "true",
+            "shadowLtvWad": "0",
+            "venueLtvWad": "0",
+            "preLifWad": "0",
+            "preLcfWad": "0",
+            "targetLtvWad": "580000000000000000",
+            "maxSeizedAssets": "0",
+            "maxRepaidShares": "0",
+            "maxRepaidAssets": "0",
+            "fullCloseAllowed": "false",
+            "fullCloseSeizedAssets": "0",
+            "fullCloseRepaidAssets": "0"
+          },
+          "shadowLtvPct": 0.0,
+          "standing": "NO_POSITION"
+        },
+        "line1": {
+          "borrowShares": 2662907656887,
+          "collateralRaw": 1997869,
+          "debtRaw": 2663537,
+          "quote": "NONE",
+          "obligation": "OPEN",
+          "sizing": {
+            "standing": "BELOW_BAND",
+            "collateral": "1997869",
+            "borrowShares": "2662907656887",
+            "debtAssets": "2663537",
+            "shadowPrice36": "3407450000000000000000000000000000000",
+            "venuePrice36": "3407450000000000000000000000000000000",
+            "venueOracleLive": "true",
+            "shadowLtvWad": "391257143814051218",
+            "venueLtvWad": "391257143814051218",
+            "preLifWad": "0",
+            "preLcfWad": "0",
+            "targetLtvWad": "580000000000000000",
+            "maxSeizedAssets": "0",
+            "maxRepaidShares": "0",
+            "maxRepaidAssets": "0",
+            "fullCloseAllowed": "false",
+            "fullCloseSeizedAssets": "0",
+            "fullCloseRepaidAssets": "0"
+          },
+          "shadowLtvPct": 39.1257,
+          "standing": "BELOW_BAND"
+        },
+        "vault": {
+          "userBalance": 0,
+          "advanceLiquidity": 1000000,
+          "advance": {
+            "outstanding": 0,
+            "feeOutstanding": 0,
+            "totalAdvanced": 340000,
+            "totalSettled": 340000
+          },
+          "feesCollected": 0,
+          "vaultUsdc": 1000000
+        },
+        "reserve": {
+          "totalAssets": 2003400,
+          "totalSupply": 2000000,
+          "idleUsdc": 1003400
+        },
+        "poolUsdc": 52420,
+        "balancesEth": {
+          "protectSigner": 0.004833936056896908,
+          "mirrorKey": 0.009948806305270091,
+          "deployer": 0.03953019551930552,
+          "borrower": 0.6169389546663339
+        }
+      },
+      "reserveSharePrice": 1.0017
+    }
+  }
+}

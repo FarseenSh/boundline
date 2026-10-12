@@ -135,6 +135,117 @@
         "maxPriorityFeePerGas": 1000000
       },
       "notes": "found on 8 Oct 2026 in the Protector's logs (Basescan logs API), not recorded on the day; the keeper's validity transaction carried the round predicate (AAPLt feed slot 5 = 1791294899, unchanged at inclusion); a partial was allowed because the venue oracle was live (REGULAR session)"
+    },
+    {
+      "ranAt": 1791823480,
+      "chainId": 84532,
+      "label": "Mon 12 Oct 2026, REGULAR session, AAPLt feed held stale by the operator (the Saturday rescue's step 1, run in session): the keeper closed out the drill position at the TWAP shadow price as a validity transaction",
+      "txs": [
+        {
+          "hash": "0x9774913eecd620da53019d701f10c8e90400cb6497030785a2e374360d280352",
+          "block": 48027596,
+          "label": "keeper Worker (signer 0x40668755c993a551db05e844ff9150a0c00a0373, nonce 67): Protector.protect armed as a validity transaction (predicate: AAPLt feed slot 5 = 1791726186, the round the decision was made on); Morpho Repay 1745740 raw USDC + WithdrawCollateral 559715 raw AAPLt, 542123 raw AAPLt sold on the pool, PreLiquidate and Protected emitted; 468,917 gas"
+        }
+      ],
+      "outcome": "full close-out: shadow LTV 58.8114% -> 0.0000% (IN_BAND -> NO_POSITION); seized 559,715 raw AAPLt, repaid 1.745740 USDC, sold 542,123 raw, kept 17,592 raw as the incentive; venue price 340.74500 and shadow price 315.57899 USD; position after: 380,896 raw AAPLt, 0.000000 USDC debt; decision #3 0x8e37f401efd376e635a1eed57f083dd0fa80f1a92efe1976af83fc70e3968aea; gate FEED_STALE (REGULAR)",
+      "evidence": [
+        "docs/evidence/feed-outage-rescue-2026-10-12.md",
+        "docs/evidence/feed-outage-rescue-2026-10-12.json",
+        "deployments/base-sepolia.json#protection",
+        "apps/keeper/src/protect-job.ts",
+        "scripts/sepolia/record_protect.py"
+      ],
+      "sizingBefore": {
+        "standing": "IN_BAND",
+        "collateral": "940611",
+        "borrowShares": "1745326212175",
+        "debtAssets": "1745740",
+        "shadowPrice36": "3155789876087046693146232613752001493",
+        "venuePrice36": "3407450000000000000000000000000000000",
+        "venueOracleLive": "false",
+        "shadowLtvWad": "588114015436081082",
+        "venueLtvWad": "544678392204385283",
+        "preLifWad": "1011803114541351351",
+        "preLcfWad": "1000000000000000000",
+        "targetLtvWad": "580000000000000000",
+        "maxSeizedAssets": "0",
+        "maxRepaidShares": "0",
+        "maxRepaidAssets": "0",
+        "fullCloseAllowed": "true",
+        "fullCloseSeizedAssets": "559715",
+        "fullCloseRepaidAssets": "1745740"
+      },
+      "sizingAfter": {
+        "standing": "NO_POSITION",
+        "collateral": "380896",
+        "borrowShares": "0",
+        "debtAssets": "0",
+        "shadowPrice36": "3155789876087046693146232613752001493",
+        "venuePrice36": "3407450000000000000000000000000000000",
+        "venueOracleLive": "false",
+        "shadowLtvWad": "0",
+        "venueLtvWad": "0",
+        "preLifWad": "0",
+        "preLcfWad": "0",
+        "targetLtvWad": "580000000000000000",
+        "maxSeizedAssets": "0",
+        "maxRepaidShares": "0",
+        "maxRepaidAssets": "0",
+        "fullCloseAllowed": "false",
+        "fullCloseSeizedAssets": "0",
+        "fullCloseRepaidAssets": "0"
+      },
+      "events": {
+        "morphoRepay": {
+          "assets": 1745740,
+          "shares": 1745326212175
+        },
+        "morphoWithdrawCollateral": {
+          "assets": 559715
+        },
+        "preLiquidate": {
+          "repaidAssets": 1745740,
+          "repaidShares": 1745326212175,
+          "seizedAssets": 559715
+        },
+        "protected": {
+          "decision": 3,
+          "borrower": "0x2f0d9b1f16cd702259c6cc259e8d5e5455282a4e",
+          "seizedAssets": 559715,
+          "repaidAssets": 1745740,
+          "collateralSold": 542123,
+          "venuePrice36": "3407450000000000000000000000000000000",
+          "shadowPrice36": "3155789876087046693146232613752001493",
+          "decisionHash": "0x8e37f401efd376e635a1eed57f083dd0fa80f1a92efe1976af83fc70e3968aea"
+        }
+      },
+      "predicate": {
+        "feed": "0xa652b75CA90084FA16D4F18Fd96B5dd7069ee52a",
+        "slot": 5,
+        "valueBefore": 1791726186,
+        "valueAtInclusion": 1791726186,
+        "held": true
+      },
+      "gate": {
+        "state": "FEED_STALE",
+        "session": "REGULAR",
+        "answer": "34074500000",
+        "updatedAt": "1791726186"
+      },
+      "signer": {
+        "address": "0x40668755c993a551db05e844ff9150a0c00a0373",
+        "nonce": 67,
+        "gasLimit": 900000,
+        "gasUsed": 468917,
+        "maxPriorityFeePerGas": 1000000
+      },
+      "attempts": [
+        {
+          "what": "Morpho.liquidate on the same market at the same moment (eth_call from the deployer, borrower 0xB789…82Fc, 1 raw seized)",
+          "result": "FeedStale(0xB2000000000000000000000E063E65377cA34141, 1791726186, 93600)"
+        }
+      ],
+      "notes": "The AAPLt test feed was held stale by the operator in the REGULAR session (setRoundData 0x9d1e1d550847b754de0de3e6257966becd9e6817ecb9adc486c049f4ff81b00b, updatedAt 27 h old, the keeper's mirror held in KV): the 9-11 Oct weekend passed without the Saturday rescue, and the ShadowGuard treats FEED_STALE like MARKET_CLOSED. The TWAP moved at block 48027594; the keeper armed the close-out at head 48027595 and Base included it in block 48027596. While the venue oracle refuses to price, only a full close-out can pass on a SessionGuard market (Morpho re-checks health at the market oracle on a partial)."
     }
   ]
 }

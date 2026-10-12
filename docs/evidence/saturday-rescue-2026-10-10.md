@@ -41,4 +41,30 @@ repay 0.535090 USDC = 0.400000 user reserve + 0.135090 Reserve advance (fee 0.00
 
 ## Friday, at the close, Saturday, Monday
 
-To be filled from the runbook's steps, with `scripts/sepolia/record_protect.py` for the Protector action.
+**Friday: the mirror was not applied** (JSON `friday`). The Friday step was a one-shot job set for 04:43 IST; the machine
+running it slept, the dry run started at 05:40:36 IST, ten minutes after the 05:30 IST close, and its only failing check
+was the close itself. A mirror after the close would have moved the held shadow price unrecorded, so the previous mirror
+(tick −12125, 336.1675 USD) stayed. It made no material difference: the mock sat 6 ticks (about 0.06%) under the mainnet
+1h TWAP (tick −12131, 336.3693 USD), and mirroring would have moved the drill position from 56.33% to 56.30% and line 1
+from 48.67% to 48.64% while held.
+
+**At the close: nothing acted** (JSON `atClose`, read at Sat 06:41 and 19:07 IST). The gate answered
+`MARKET_CLOSED(WEEKEND)` with AAPLt held at 336.844; the keeper's `/v1/protect` showed both targets `BELOW_BAND` with the
+venue oracle off (drill 56.33%, line 1 48.67%), `/v1/vault` showed line 1 `BELOW_GRACE`, nothing was armed, and the
+protection signer's balance did not move: the keeper signed nothing while the feed was held, as it should when nothing is
+in the band.
+
+**Saturday: the two recorded rescues were not run** (JSON `saturday`). They needed an operator to move the mock DEX
+during the closed window and nobody did. The same two actions ran on **Mon 12 Oct in the REGULAR session under a staged
+frozen feed** (the AAPLt test feed held stale, which the `ShadowGuard` treats exactly like a weekend): the keeper closed
+the drill position out (`0x9774913eecd620da53019d701f10c8e90400cb6497030785a2e374360d280352`) and repaid line 1 down the
+ladder (`0x47ac5279c4804e73d05f1e8d813775514e4f8b8b09c6ffc7b014fac1956e1d24`), each as a validity transaction, while a raw
+liquidation was refused `FeedStale`. Recorded as a feed-outage rescue, not as a weekend:
+`docs/evidence/feed-outage-rescue-2026-10-12.md`.
+
+**Monday: the reopen was captured live** (JSON `monday`). Zero rounds on all ten feeds while closed; first prints 21 to
+53 s after Sun 20:00 ET (AAPLc −5.8 bps, MSTRc +201.0 bps); the Observatory's capture and the chain reconstruction agree
+on every field (`docs/evidence/reopen-2026-10-11.md`). The keeper mirrored AAPLc's first print onto the Sepolia AAPLt feed
+229 s behind mainnet (`0xdc69fd45842948d33732530a37de97bc96a81008c6df457271c9ccfe89e93c45`). No weekend advance existed to
+settle; the feed-outage rescue's advance was settled in session (`0x7b71e812afff01285f20eb4af568a334834dda6b463e5242cd8da7fc8636df9f`)
+and harvested into the Reserve (`0x5b6874d4c3b9bf415e453c0f1d199a5b406c1b163b5a5e4404815602e8ab11c3`).

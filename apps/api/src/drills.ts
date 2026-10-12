@@ -156,6 +156,20 @@ export const DRILL_DEFINITIONS: readonly DrillDefinition[] = [
     ],
   },
   {
+    id: "reserve-ladder",
+    title: "Protective repay down the funding ladder",
+    description:
+      "Where a sale cannot run, the DeskProtectionVault repays a desk line at any hour from the user's reserve, then the partner's reserve, then a bounded advance from the Boundline Reserve (ERC-4626); the advance is settled in the next open session with its fee, which the Reserve harvests into its share price. The desk's repay never reads the oracle, so the ladder works while the feed is held.",
+    venue: "morpho",
+    steps: [
+      step(1, "Reserves in place", "The user deposits into their own reserve in the DeskProtectionVault; the Reserve allocates advance liquidity to the vault (a sink under its utilisation cap)."),
+      step(2, "Over grace", "The line's shadow LTV crosses the keeper's grace line (52%); the vault job sizes the repay that returns it to the target (45%) and previews the ladder."),
+      step(3, "Repay down the ladder", "DeskProtectionVault.protect(lineId, amount), armed by the keeper as a validity transaction with a held-feed predicate: user reserve, then partner reserve, then an advance (fee 1%, cap per line), paid through desk.repay; Protected with a decision hash."),
+      step(4, "Settle in session", "repayAdvance(lineId, principal + fee) by anyone once the session is open; AdvanceSettled with a decision hash."),
+      step(5, "Harvest", "BoundlineReserve.harvest(vault): the fee moves into the Reserve and its share price rises."),
+    ],
+  },
+  {
     id: "validity-transactions",
     title: "Validity transactions (Cobalt)",
     description: "base_sendRawTransactionValidity with storage predicates on the feed's round slot and a block-number bound: Base itself holds the keeper's action until the state matches.",

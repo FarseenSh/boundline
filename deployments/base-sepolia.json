@@ -357,6 +357,57 @@
       },
       "result": "line 1 debt 3.206726 -> 3.203147 USDC, collateral 1,998,934 -> 1,997,869 raw AAPLt; enrollment back at m0 = 1.0, preview NO_CHANGE",
       "evidence": "docs/evidence/drills/dividend-harvest.json (run 2)"
+    },
+    {
+      "date": "2026-10-12",
+      "what": "feed-outage rescue (the Saturday rescue's two actions, run in the REGULAR session under a staged frozen feed: the AAPLt test feed held stale, which the ShadowGuard treats like a weekend): the keeper Worker closed out the drill position on the Protector and repaid desk line 1 down the DeskProtectionVault ladder, each a validity transaction on the feed's updatedAt slot; a raw Morpho.liquidate was refused FeedStale; the advance was settled in session and harvested",
+      "txs": {
+        "staleRound": {
+          "tx": "0x9d1e1d550847b754de0de3e6257966becd9e6817ecb9adc486c049f4ff81b00b",
+          "block": 48027552
+        },
+        "closeOut": {
+          "tx": "0x9774913eecd620da53019d701f10c8e90400cb6497030785a2e374360d280352",
+          "block": 48027596,
+          "armedAtHead": 48027595,
+          "seizedRaw": 559715,
+          "repaidUsdcRaw": 1745740,
+          "soldRaw": 542123,
+          "decisionHash": "0x8e37f401efd376e635a1eed57f083dd0fa80f1a92efe1976af83fc70e3968aea",
+          "predicateSlot5": 1791726186
+        },
+        "vaultRepay": {
+          "tx": "0x47ac5279c4804e73d05f1e8d813775514e4f8b8b09c6ffc7b014fac1956e1d24",
+          "block": 48027656,
+          "armedAtHead": 48027655,
+          "repaidRaw": 540000,
+          "fromUserRaw": 400000,
+          "fromAdvanceRaw": 140000,
+          "debtBeforeRaw": 3203537,
+          "debtAfterRaw": 2663537,
+          "decisionHash": "0xcacc2f5793921b5aff4cbf0a587f50472f05ade4235a2b1552fc57838cb112ab",
+          "predicateSlot5": 1791726186
+        },
+        "mirrorRestore": {
+          "tx": "0xd532f47f5671b7955bb69e3f4748ee84ade58ce7920a80e7619a50b21e47d8b4",
+          "block": 48027746
+        },
+        "settleAdvance": {
+          "tx": "0x7b71e812afff01285f20eb4af568a334834dda6b463e5242cd8da7fc8636df9f",
+          "block": 48027778,
+          "amountRaw": 141400
+        },
+        "reserveHarvest": {
+          "tx": "0x5b6874d4c3b9bf415e453c0f1d199a5b406c1b163b5a5e4404815602e8ab11c3",
+          "block": 48027791
+        }
+      },
+      "refusal": {
+        "call": "Morpho.liquidate(AAPLt market, 0xB789…82Fc, 1, 0, 0x) eth_call from the deployer, before and after the close-out",
+        "result": "FeedStale(0xB2000000000000000000000E063E65377cA34141, 1791726186, 93600)"
+      },
+      "result": "drill position 58.81% -> closed (1.745740 USDC repaid, 559,715 raw seized, 542,123 sold, 17,592 kept); line 1 54.00% -> 44.90% (0.40 user reserve + 0.14 Reserve advance); Reserve 1 share = 1.0017 USDC after the harvest",
+      "evidence": "docs/evidence/feed-outage-rescue-2026-10-12.md (+ .json); docs/evidence/drills/{protection,reserve-ladder,stale-feed}.json"
     }
   ],
   "gas": {
@@ -986,7 +1037,8 @@
     "tools": [
       "scripts/sepolia/twap.py",
       "scripts/sepolia/record_protect.py"
-    ]
+    ],
+    "outcome": "the weekend's two recorded rescues were not run (no operator during the closed window; the keeper armed nothing, both targets below band); the same two actions ran Mon 12 Oct under a staged frozen feed: see proofs (2026-10-12) and docs/evidence/feed-outage-rescue-2026-10-12.md"
   },
   "harvest": {
     "dividendHarvester": {

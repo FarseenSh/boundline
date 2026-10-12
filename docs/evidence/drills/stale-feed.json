@@ -166,6 +166,139 @@
         "deployments/base-sepolia.json#drills"
       ],
       "notes": "Staleness is judged against the gate's per-feed heartbeat and tolerance, in session only: on a weekend the calendar's MARKET_CLOSED takes precedence. The keeper's mirror copies mainnet's round verbatim, so on Sepolia the drill held it (KV) for the window and let the next tick restore the live value."
+    },
+    {
+      "ranAt": 1791823392,
+      "chainId": 84532,
+      "label": "Mon 12 Oct 2026, REGULAR session: the AAPLt test feed held stale (same round and answer, updatedAt 27 h old) under a KV hold of the keeper's mirror, as the stage for the feed-outage rescue; the venue oracle refuses, a raw liquidation is refused, the ShadowGuard prices at the TWAP; releasing the hold let the keeper's mirror restore the live round",
+      "txs": [
+        {
+          "hash": "0x9d1e1d550847b754de0de3e6257966becd9e6817ecb9adc486c049f4ff81b00b",
+          "block": 48027552,
+          "gasUsed": 43142,
+          "label": "TestPriceFeed(AAPLt).setRoundData(round 36893488147419103552, answer 34074500000, updatedAt 1791726186 = 27 h before block time) by the mirror key, inside a KV hold"
+        },
+        {
+          "hash": "0xd532f47f5671b7955bb69e3f4748ee84ade58ce7920a80e7619a50b21e47d8b4",
+          "block": 48027746,
+          "gasUsed": 43142,
+          "label": "keeper Worker mirror tick after the hold was released: setRoundData with the live mainnet AAPLc round (the gate reopens)"
+        }
+      ],
+      "observations": [
+        {
+          "what": "keeper /v1/config hold (all three symbols, KV)",
+          "value": {
+            "hold": {
+              "feed": [
+                "AAPLt",
+                "NVDAt",
+                "TSLAt"
+              ],
+              "registry": [
+                "AAPLt",
+                "NVDAt",
+                "TSLAt"
+              ]
+            },
+            "holdSource": "kv"
+          },
+          "block": 48027481
+        },
+        {
+          "what": "mirror key nonce stable (latest = pending) across the settle window",
+          "value": {
+            "nonce": 162,
+            "settleSeconds": 70
+          },
+          "block": 48027549
+        },
+        {
+          "what": "keeper /v1/config hold narrowed to AAPLt",
+          "value": {
+            "hold": {
+              "feed": [
+                "AAPLt"
+              ],
+              "registry": [
+                "AAPLt"
+              ]
+            },
+            "holdSource": "kv"
+          },
+          "block": 48027565
+        },
+        {
+          "what": "SessionGate.check(AAPLt) stale",
+          "value": {
+            "state": "FEED_STALE",
+            "session": "REGULAR",
+            "answer": "34074500000",
+            "updatedAt": "1791726186"
+          },
+          "block": 48027552
+        },
+        {
+          "what": "ShadowGuard.shadowPrice() stale",
+          "value": {
+            "price36": "3294441557248393598272352146348057085",
+            "usd": 329.44415572483933,
+            "source": "TWAP",
+            "gate": "FEED_STALE",
+            "session": "REGULAR"
+          },
+          "block": 48027552
+        },
+        {
+          "what": "SessionGuard(AAPLt).price() stale (Morpho borrow, withdrawCollateral and liquidate read it)",
+          "value": {
+            "ok": false,
+            "revert": "FeedStale(0xB2000000000000000000000E063E65377cA34141, 1791726186, 93600)"
+          },
+          "block": 48027552
+        },
+        {
+          "what": "desk.quote(1, 0) and obligationStatus(1) stale",
+          "value": {
+            "quote": "FEED_STALE",
+            "obligation": "HOLD_FEED"
+          },
+          "block": 48027552
+        },
+        {
+          "what": "eth_call Morpho.liquidate(AAPLt market, borrower, 1, 0, 0x) stale",
+          "value": {
+            "ok": false,
+            "result": "FeedStale(0xB2000000000000000000000E063E65377cA34141, 1791726186, 93600)"
+          },
+          "block": 48027552
+        },
+        {
+          "what": "SessionGate.check(AAPLt) after the mirror restored the round",
+          "value": {
+            "state": "OPEN",
+            "session": "REGULAR",
+            "answer": "34074500000",
+            "updatedAt": "1791816167"
+          },
+          "block": 48027747
+        },
+        {
+          "what": "desk.quote(1, 0) and obligationStatus(1) after",
+          "value": {
+            "quote": "NONE",
+            "obligation": "OPEN"
+          },
+          "block": 48027747
+        }
+      ],
+      "outcome": "gate OPEN -> FEED_STALE in the REGULAR session -> OPEN; ShadowGuard source TWAP at 329.4442 USD; line 1 obligation HOLD_FEED; SessionGuard.price() and a raw Morpho.liquidate reverted FeedStale(0xB2000000000000000000000E063E65377cA34141, 1791726186, 93600); the mirror restored round 36893488147419103552 (updatedAt 1791816167)",
+      "evidence": [
+        "docs/evidence/feed-outage-rescue-2026-10-12.md",
+        "docs/evidence/feed-outage-rescue-2026-10-12.json",
+        "scripts/sepolia/outage_rescue.py"
+      ],
+      "notes": "Staleness is judged against the gate's heartbeat and tolerance (86,400 + 7,200 s) in session only; the hold kept the keeper's mirror off AAPLt (and off every symbol while the mirror key wrote the round)."
     }
   ]
 }

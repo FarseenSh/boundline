@@ -602,6 +602,22 @@
       }
     ]
   },
-  "saturday": null,
-  "monday": null
+  "saturday": {
+    "outcome": "not run",
+    "why": "The two recorded rescues needed an operator during the 48-hour closed window and none ran them. The keeper Worker watched both targets the whole weekend; both stayed below the band (drill 56.33%, line 1 48.67% while held) with the venue oracle off, so it armed and signed nothing (the atClose reads, Sat 06:41 and 19:07 IST).",
+    "replacement": "The same two actions ran on Mon 12 Oct in the REGULAR session under a staged frozen feed (the AAPLt test feed held stale; the ShadowGuard treats FEED_STALE like MARKET_CLOSED): docs/evidence/feed-outage-rescue-2026-10-12.md. It is recorded as a feed-outage rescue, not as a weekend."
+  },
+  "monday": {
+    "reopenCapture": {
+      "runId": 1791763200,
+      "record": "docs/evidence/reopen-2026-10-11.md",
+      "summary": "zero rounds on all ten feeds while closed; first prints 21 to 53 s after 20:00 ET; AAPLc -5.8 bps, MSTRc +201.0 bps; capture and chain agree on every field"
+    },
+    "aapltMirroredOntoSepolia": {
+      "tx": "0xdc69fd45842948d33732530a37de97bc96a81008c6df457271c9ccfe89e93c45",
+      "block": 47997596,
+      "behindMainnetSeconds": 229
+    },
+    "settlement": "No weekend advance existed to settle. The feed-outage rescue's advance (0.14 USDC + 0.0014 fee) was settled in session and harvested: repayAdvance 0x7b71e812afff01285f20eb4af568a334834dda6b463e5242cd8da7fc8636df9f, harvest 0x5b6874d4c3b9bf415e453c0f1d199a5b406c1b163b5a5e4404815602e8ab11c3."
+  }
 }

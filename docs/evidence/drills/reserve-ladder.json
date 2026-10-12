@@ -1,0 +1,81 @@
+{
+  "drill": "reserve-ladder",
+  "runs": [
+    {
+      "ranAt": 1791381104,
+      "chainId": 84532,
+      "label": "Wed 7 Oct 2026, in session, operator-driven: two protective repays on desk line 1 down the ladder (user reserve, then a Reserve advance), settled by the borrower with the 1% fee, the fee harvested into the Reserve's share price",
+      "txs": [
+        {
+          "hash": "0x648d1da4466f3cb0507f4a5fd9b54b1759ff33410d98f6290950ca79e6c07345",
+          "label": "the borrower deposits 1 USDC into their own reserve in the DeskProtectionVault"
+        },
+        {
+          "hash": "0xa0efe0c47d788acb8e0f756b62ebf01e155cb33c553d6e4ccdfc2d20065c9f07",
+          "block": 47806381,
+          "label": "protect(1, 0.5 USDC): 0.5 from the user reserve; debt 2.800134 -> 2.300134"
+        },
+        {
+          "hash": "0x28c1ec4479d58ff7e362499b3e0b3f41517a1ec7ee4cd2fa83523de2ca5c08a4",
+          "block": 47806408,
+          "label": "protect(1, 0.7 USDC): 0.5 from the user reserve + 0.2 Reserve advance (fee 0.002); debt -> 1.600134"
+        },
+        {
+          "hash": "0x14c4ffbdd12e2a52785b28c1837fd9c9cff2400b07bf22e2922faf96152cdb9a",
+          "label": "repayAdvance by the borrower: 0.2 principal + 0.002 fee"
+        },
+        {
+          "hash": "0xf257476420589a5455369f2337802911420427909f803684bd15d0173984da67",
+          "label": "BoundlineReserve.harvest(vault): the fee into the share price (1 share = 1.001 USDC)"
+        }
+      ],
+      "outcome": "debt 2.800134 -> 1.600134 USDC in two protective repays; 0.2 USDC advanced by the Reserve and settled with its 0.002 fee; Reserve totalAssets 2.002000 on 2.0 shares",
+      "evidence": [
+        "deployments/base-sepolia.json#reserve.liveCycle",
+        "docs/CONTEXT.md#6.1"
+      ],
+      "notes": "The vault's keeper was the deployer on 7 Oct; the keeper Worker's vault job took it over on 8 Oct."
+    },
+    {
+      "ranAt": 1791823608,
+      "chainId": 84532,
+      "label": "Mon 12 Oct 2026, REGULAR session, AAPLt feed held stale by the operator (the Saturday rescue's step 2, run in session): the keeper Worker's vault job repaid desk line 1 down the ladder as a validity transaction; the advance was settled and harvested once the feed was live again",
+      "txs": [
+        {
+          "hash": "0x47ac5279c4804e73d05f1e8d813775514e4f8b8b09c6ffc7b014fac1956e1d24",
+          "block": 48027656,
+          "gasUsed": 315168,
+          "label": "keeper Worker (signer 0x40668755c993a551db05e844ff9150a0c00a0373, nonce 68): DeskProtectionVault.protect(1, 0.540000 USDC) armed as a validity transaction (predicate: AAPLt feed slot 5 = 1791726186, held at inclusion: True); 0.400000 from the user reserve + 0.140000 Reserve advance; debt 3.203537 -> 2.663537"
+        },
+        {
+          "hash": "0xd532f47f5671b7955bb69e3f4748ee84ade58ce7920a80e7619a50b21e47d8b4",
+          "block": 48027746,
+          "label": "the keeper's mirror restores the live AAPLt round (gate OPEN)"
+        },
+        {
+          "hash": "0x4c8cd0ac62e1ce6788eda6daed06643f1df6d20370bd71f1fe7a27fa7fbb756d",
+          "block": 48027776,
+          "label": "USDC.approve(vault, 0.141400) by the borrower"
+        },
+        {
+          "hash": "0x7b71e812afff01285f20eb4af568a334834dda6b463e5242cd8da7fc8636df9f",
+          "block": 48027778,
+          "label": "repayAdvance(1, 0.141400) by the borrower: principal 140000 raw + fee, in session"
+        },
+        {
+          "hash": "0x5b6874d4c3b9bf415e453c0f1d199a5b406c1b163b5a5e4404815602e8ab11c3",
+          "block": 48027791,
+          "label": "BoundlineReserve.harvest(vault) by the manager: the fee into the share price"
+        }
+      ],
+      "outcome": "line 1 shadow LTV 54.001% (grace 52%) -> 44.8984% (target 45%); repaid 0.540000 USDC = 0.400000 user reserve + 0.000000 partner + 0.140000 Reserve advance; vault decision 0xcacc2f5793921b5aff4cbf0a587f50472f05ade4235a2b1552fc57838cb112ab; advance settled 0.141400 (principal + 1% fee); Reserve totalAssets 2.003400 on 2.000000 shares (1 share = 1.0017 USDC)",
+      "evidence": [
+        "docs/evidence/feed-outage-rescue-2026-10-12.md",
+        "docs/evidence/feed-outage-rescue-2026-10-12.json",
+        "apps/keeper/src/vault-job.ts",
+        "scripts/sepolia/outage_rescue.py"
+      ],
+      "notes": "The TWAP moved at block 48027647; the keeper armed at head 48027655 and Base included the repay in block 48027656. The desk's repay never reads the oracle, so the ladder works at any hour."
+    }
+  ]
+}

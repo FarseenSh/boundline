@@ -8,6 +8,7 @@ import keeperHold from "../../../docs/evidence/drills/keeper-hold.json" with { t
 import partialRepayment from "../../../docs/evidence/drills/partial-repayment.json" with { type: "json" };
 import protection from "../../../docs/evidence/drills/protection.json" with { type: "json" };
 import registryPause from "../../../docs/evidence/drills/registry-pause.json" with { type: "json" };
+import reserveLadder from "../../../docs/evidence/drills/reserve-ladder.json" with { type: "json" };
 import scheduledMultiplier from "../../../docs/evidence/drills/scheduled-multiplier.json" with { type: "json" };
 import staleFeed from "../../../docs/evidence/drills/stale-feed.json" with { type: "json" };
 import validityTransactions from "../../../docs/evidence/drills/validity-transactions.json" with { type: "json" };
@@ -49,6 +50,7 @@ export const DRILL_RUNS: readonly DrillRunFile[] = [
   partialRepayment,
   badDebtProbe,
   protection,
+  reserveLadder,
   validityTransactions,
   dividendHarvest,
 ] as unknown as DrillRunFile[];

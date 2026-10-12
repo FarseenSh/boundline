@@ -11,10 +11,11 @@ describe("drills registry", () => {
     const { app } = await world();
     const { res, json } = await call(app, "GET", "/v1/drills");
     expect(res.status).toBe(200);
-    expect(json.count).toBe(13);
+    expect(json.count).toBe(14);
     expect(json.drills.map((d: { id: string }) => d.id)).toEqual([
       "weekend-gap", "stale-feed", "registry-pause", "issuer-transfer-pause", "scheduled-multiplier", "ineligible-receiver",
-      "venue-halt", "keeper-hold", "partial-repayment", "bad-debt-probe", "protection", "validity-transactions", "dividend-harvest",
+      "venue-halt", "keeper-hold", "partial-repayment", "bad-debt-probe", "protection", "reserve-ladder", "validity-transactions",
+      "dividend-harvest",
     ]);
     for (const d of json.drills as { steps: { n: number }[]; runs: unknown[] }[]) {
       expect(d.steps.map((s) => s.n)).toEqual(d.steps.map((_, i) => i + 1));
@@ -28,7 +29,12 @@ describe("drills registry", () => {
     // 8 Oct: every drill has at least one recorded run (Sepolia drills and the two mainnet-fork drills)
     for (const d of json.drills as { id: string; runs: unknown[] }[]) expect(d.runs.length, d.id).toBeGreaterThanOrEqual(1);
     expect(json.drills.find((d: { id: string }) => d.id === "validity-transactions").runs).toHaveLength(2);
-    expect(json.drills.find((d: { id: string }) => d.id === "weekend-gap").runs.map((r: { chainId: number }) => r.chainId)).toEqual([84532, 8453]);
+    // 12 Oct: the 9-11 Oct weekend, captured live by the Observatory and reconstructed from the chain
+    expect(json.drills.find((d: { id: string }) => d.id === "weekend-gap").runs.map((r: { chainId: number }) => r.chainId)).toEqual([84532, 8453, 8453]);
+    // 12 Oct: the feed-outage rescue: the keeper's close-out under a staged frozen feed and the vault's ladder repay
+    expect(protection.runs.map((r: { txs: { hash: string }[] }) => r.txs[0]?.hash)).toContain("0x9774913eecd620da53019d701f10c8e90400cb6497030785a2e374360d280352");
+    const ladder = json.drills.find((d: { id: string }) => d.id === "reserve-ladder");
+    expect(ladder.runs.flatMap((r: { txs: { hash: string }[] }) => r.txs.map((t) => t.hash))).toContain("0x47ac5279c4804e73d05f1e8d813775514e4f8b8b09c6ffc7b014fac1956e1d24");
     // 9 Oct: the self-repaying leg live on Sepolia (the harvest, then the re-base on the step down)
     const harvest = json.drills.find((d: { id: string }) => d.id === "dividend-harvest").runs[0];
     expect(harvest.txs.map((t: { hash: string }) => t.hash)).toContain("0xa44b786744d8246b9352914d843ee96723314d5fd74e2fcaecdafcf85624f680");
@@ -101,7 +107,8 @@ describe("drill list view", () => {
     expect(probe.assertions.passed).toBe(probe.assertions.count);
     expect(probe.ledger).toMatchObject({ trimmed: true, pass: true });
     expect(probe.outcome).toMatch(/bad debt/);
-    expect(JSON.stringify(list.json).length).toBeLessThan(80_000);
+    // 88.7 KB on 12 Oct after the weekend, outage-rescue and reserve-ladder runs; untrimmed, the fork runs alone are ~75 KB more
+    expect(JSON.stringify(list.json).length).toBeLessThan(120_000);
     const one = await call(app, "GET", "/v1/drills/bad-debt-probe");
     expect(Array.isArray(one.json.drill.runs[0].assertions)).toBe(true);
     expect(Array.isArray(one.json.drill.runs[0].values)).toBe(true);
@@ -130,7 +137,7 @@ describe("GET /v1/evidence/export", () => {
     expect(json.decisions[0].timeline[0].event).toBe("LineOpened");
     expect(json.reconciliation.reconcile.status).toBe("PASS");
     expect(json.reconciliation.roots.roots).toHaveLength(1);
-    expect(json.drills).toHaveLength(13);
+    expect(json.drills).toHaveLength(14);
     expect(json.hash).toMatch(/^0x[0-9a-f]{64}$/);
     expect(json.hashScheme).toMatch(/keccak256/);
     // Anyone can recompute: the hash covers everything except itself and the correlation id.

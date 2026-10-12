@@ -6,15 +6,32 @@
       "chainId": 84532,
       "label": "Sat 3 Oct 2026, WEEKEND session on Base Sepolia: the session-safe AAPLt/USDC market refuses to price a held feed",
       "txs": [
-        { "hash": "0xd951c3fcc16194c08c90022fc3f271200f568bd8bfb56b3739ec17af597299a0", "block": 47634915, "label": "borrower approves AAPLt to Morpho" },
-        { "hash": "0x01191a773774584bdbf4a72aff4397c870bf455c3277d7d0adf8396a42cb760b", "block": 47634983, "label": "supplyCollateral 10 AAPLt during the weekend: success (never reads the oracle)" }
+        {
+          "hash": "0xd951c3fcc16194c08c90022fc3f271200f568bd8bfb56b3739ec17af597299a0",
+          "block": 47634915,
+          "label": "borrower approves AAPLt to Morpho"
+        },
+        {
+          "hash": "0x01191a773774584bdbf4a72aff4397c870bf455c3277d7d0adf8396a42cb760b",
+          "block": 47634983,
+          "label": "supplyCollateral 10 AAPLt during the weekend: success (never reads the oracle)"
+        }
       ],
       "attempts": [
-        { "what": "borrow 1 USDC during the WEEKEND session (eth_call)", "result": "revert 0x3e363de9…05 = MarketClosed(WEEKEND)" },
-        { "what": "SessionGuard.price() and SessionGate.priceOf(AAPLt) (eth_call)", "result": "revert MarketClosed(WEEKEND)" }
+        {
+          "what": "borrow 1 USDC during the WEEKEND session (eth_call)",
+          "result": "revert 0x3e363de9…05 = MarketClosed(WEEKEND)"
+        },
+        {
+          "what": "SessionGuard.price() and SessionGate.priceOf(AAPLt) (eth_call)",
+          "result": "revert MarketClosed(WEEKEND)"
+        }
       ],
       "outcome": "repay and supplyCollateral pass, borrow, withdrawCollateral and liquidate are refused while the feed is held",
-      "evidence": ["deployments/base-sepolia.json#proofs", "docs/CONTEXT.md#6.1"]
+      "evidence": [
+        "deployments/base-sepolia.json#proofs",
+        "docs/CONTEXT.md#6.1"
+      ]
     },
     {
       "ranAt": 1791287803,
@@ -22,7 +39,76 @@
       "label": "Fri 2 Oct 20:00 ET close to Sun 4 Oct 20:00 ET reopen, reconstructed from the Chainlink round history of all ten priced B20 feeds on Base mainnet",
       "txs": [],
       "outcome": "zero rounds on ten feeds for 52 hours; first prints 23 to 53 seconds after the reopen; reopen gaps from -7.5 to +282 bps against the held Friday value; the Aerodrome NVDAc pool was already 46 bps away from the held feed in the last block before the reopen",
-      "evidence": ["docs/evidence/reopen-2026-10-04.md", "docs/evidence/reopen-2026-10-04.json", "scripts/reopen-evidence.py"]
+      "evidence": [
+        "docs/evidence/reopen-2026-10-04.md",
+        "docs/evidence/reopen-2026-10-04.json",
+        "scripts/reopen-evidence.py"
+      ]
+    },
+    {
+      "ranAt": 1791763200,
+      "chainId": 8453,
+      "label": "Fri 9 Oct 20:00 ET close to Sun 11 Oct 20:00 ET reopen on Base mainnet: captured live by the Observatory (runs 1791590400 and 1791763200) and reconstructed from the Chainlink round history; the two agree on every field",
+      "txs": [
+        {
+          "hash": "0x2b7135d1290998e2d666013fe12eb6099a14bbf45b0812b273c92058cc0a2aa0",
+          "block": 52486937,
+          "label": "MSTRc first print after the reopen: 157.72 USD, +21 s after 20:00 ET, +201.0 bps against the held 154.613"
+        },
+        {
+          "hash": "0x93883ba705a4086fedd48de76e3bf8f565c3f921bd2ce5e6dd66cccf926a5944",
+          "block": 52486937,
+          "label": "SNDKc first print after the reopen: 1604.65 USD, +21 s after 20:00 ET, +144.7 bps against the held 1581.77"
+        },
+        {
+          "hash": "0x328ed25dbe57b8e27d1914d9a875d0ecbcc297b7f9d03442ef3eda3354f6cd27",
+          "block": 52486938,
+          "label": "MSFTc first print after the reopen: 535.995 USD, +23 s after 20:00 ET, -1.5 bps against the held 536.078"
+        },
+        {
+          "hash": "0x5ce160ab94e980bd0104fb48911992813fb0303f98fad4da06f3ef179232da5c",
+          "block": 52486938,
+          "label": "NVDAc first print after the reopen: 230.289 USD, +23 s after 20:00 ET, +1.1 bps against the held 230.264"
+        },
+        {
+          "hash": "0x2d20d3a9d9aaaecd87c1e803d5b55ec340c81631465691a9bf1580b0ad3ccc0f",
+          "block": 52486938,
+          "label": "TSLAc first print after the reopen: 384.6 USD, +23 s after 20:00 ET, +16.5 bps against the held 383.965"
+        },
+        {
+          "hash": "0xbe0e56e7b096f80a865931fa5cb74d541147fc2626e7e0108bf93226f685dc98",
+          "block": 52486942,
+          "label": "GOOGLc first print after the reopen: 352.798 USD, +31 s after 20:00 ET, +4.7 bps against the held 352.633"
+        },
+        {
+          "hash": "0x8aa8c95d31cd7ddbe99587db07107900091b16c893caab23eada79c79395bc80",
+          "block": 52486945,
+          "label": "SPCXc first print after the reopen: 164.16 USD, +37 s after 20:00 ET, +94.9 bps against the held 162.616"
+        },
+        {
+          "hash": "0x29a33e322d9ab390bd18724070d19e5ed140dd69d24cd182f61dcb0b70abab82",
+          "block": 52486947,
+          "label": "AMZNc first print after the reopen: 263.16 USD, +41 s after 20:00 ET, +51.9 bps against the held 261.8"
+        },
+        {
+          "hash": "0x3be1174f22e542c01b640815c9950f9f9913e5ea0bfab7fb4c635e35ecd32533",
+          "block": 52486952,
+          "label": "AAPLc first print after the reopen: 336.65 USD, +51 s after 20:00 ET, -5.8 bps against the held 336.844"
+        },
+        {
+          "hash": "0x0fe75ee5e83e0a014afb220ab17221b42ce6b437c34704a0ff1b6a6bed01cef6",
+          "block": 52486953,
+          "label": "METAc first print after the reopen: 720.971 USD, +53 s after 20:00 ET, +14.7 bps against the held 719.916"
+        }
+      ],
+      "outcome": "zero rounds on all ten feeds for the 48 h closed window (no feed printed for 52.1 to 56.7 h); first prints 21 to 53 s after the reopen; gaps from -5.8 bps (AAPLc) to +201.0 bps (MSTRc); the Observatory's live capture and the chain reconstruction match with 0 mismatches; the keeper mirrored the reopen onto the Sepolia test feeds 19 to 317 s behind mainnet",
+      "evidence": [
+        "docs/evidence/reopen-2026-10-11.md",
+        "docs/evidence/reopen-2026-10-11.json",
+        "https://boundline-observatory.papermind-ai.workers.dev/v1/captures",
+        "scripts/reopen-evidence.py"
+      ],
+      "notes": "The capture armed 40 s after the reopen instead of 15 minutes before it: the Cloudflare account's D1 free tier was over its daily read limit until its 00:00 UTC reset, the same instant as the transition, so the before-phase was lost (fixed: migration 0004 and the read-budget changes in apps/observatory)."
     }
   ]
 }
