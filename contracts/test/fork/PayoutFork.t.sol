@@ -69,7 +69,11 @@ contract PayoutForkTest is Test {
         return Math.mulDiv(usdcIn, 1 << 192, uint256(sqrtP) * uint256(sqrtP));
     }
 
-    function _params(uint256 amountIn, uint256 minOut, address gateToken) internal view returns (LocalPayoutRouter.PayoutParams memory) {
+    function _params(uint256 amountIn, uint256 minOut, address gateToken)
+        internal
+        view
+        returns (LocalPayoutRouter.PayoutParams memory)
+    {
         return LocalPayoutRouter.PayoutParams({
             kind: LocalPayoutRouter.PoolKind.CL,
             pool: address(POOL),
@@ -116,7 +120,9 @@ contract PayoutForkTest is Test {
         assertEq(uint256(gate.check(AAPLC).state), uint256(IPriceGate.GateState.MARKET_CLOSED));
         LocalPayoutRouter.PayoutParams memory p = _params(10e6, 0, AAPLC);
         vm.prank(user);
-        vm.expectRevert(abi.encodeWithSelector(LocalPayoutRouter.SessionClosed.selector, IPriceGate.GateState.MARKET_CLOSED));
+        vm.expectRevert(
+            abi.encodeWithSelector(LocalPayoutRouter.SessionClosed.selector, IPriceGate.GateState.MARKET_CLOSED)
+        );
         router.payout(p);
         assertEq(IERC20(USDC).balanceOf(user), 10e6, "nothing moved");
     }

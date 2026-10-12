@@ -93,7 +93,7 @@ contract LocalPayoutRouterTest is Test {
         vm.startPrank(owner);
         eurc.mint(address(cl), 1_000_000e6);
         eurc.mint(address(v2), 1_000_000e6);
-        usdc.mint(user, 1_000e6);
+        usdc.mint(user, 1000e6);
         vm.stopPrank();
         v2.sync();
         vm.prank(user);
@@ -121,7 +121,8 @@ contract LocalPayoutRouterTest is Test {
     // ------------------------------------------------------------ happy paths
 
     function test_clPayoutInSession() public {
-        LocalPayoutRouter.PayoutParams memory p = _params(LocalPayoutRouter.PoolKind.CL, address(cl), 10e6, 9.2e6, address(aapl));
+        LocalPayoutRouter.PayoutParams memory p =
+            _params(LocalPayoutRouter.PoolKind.CL, address(cl), 10e6, 9.2e6, address(aapl));
         vm.expectEmit(true, true, true, true, address(router));
         emit LocalPayoutRouter.Payout(user, user, address(usdc), address(eurc), 10e6, 9.2e6, address(cl));
         vm.prank(user);
@@ -143,7 +144,8 @@ contract LocalPayoutRouterTest is Test {
     }
 
     function test_clPayoutToAnotherReceiverWithoutGateCheck() public {
-        LocalPayoutRouter.PayoutParams memory p = _params(LocalPayoutRouter.PoolKind.CL, address(cl), 3e6, 2.76e6, address(0));
+        LocalPayoutRouter.PayoutParams memory p =
+            _params(LocalPayoutRouter.PoolKind.CL, address(cl), 3e6, 2.76e6, address(0));
         p.to = friend;
         vm.warp(T_SAT); // no gate token: the session is not consulted
         p.deadline = block.timestamp + 1;
@@ -159,7 +161,8 @@ contract LocalPayoutRouterTest is Test {
         uint256 expected = v2.getAmountOut(10e6, address(usdc));
         assertEq(expected, 9_195_400);
         assertEq(router.quoteV2(address(v2), address(usdc), 10e6), expected);
-        LocalPayoutRouter.PayoutParams memory p = _params(LocalPayoutRouter.PoolKind.V2, address(v2), 10e6, expected, address(aapl));
+        LocalPayoutRouter.PayoutParams memory p =
+            _params(LocalPayoutRouter.PoolKind.V2, address(v2), 10e6, expected, address(aapl));
         vm.prank(user);
         uint256 out = router.payout(p);
         assertEq(out, expected);
@@ -172,7 +175,8 @@ contract LocalPayoutRouterTest is Test {
         HalfFillPool half = new HalfFillPool(address(eurc), address(usdc), RATE36);
         vm.prank(owner);
         eurc.mint(address(half), 100e6);
-        LocalPayoutRouter.PayoutParams memory p = _params(LocalPayoutRouter.PoolKind.CL, address(half), 10e6, 4.6e6, address(aapl));
+        LocalPayoutRouter.PayoutParams memory p =
+            _params(LocalPayoutRouter.PoolKind.CL, address(half), 10e6, 4.6e6, address(aapl));
         vm.prank(user);
         uint256 out = router.payout(p);
         assertEq(out, 4.6e6, "half the input was swapped");
@@ -198,7 +202,8 @@ contract LocalPayoutRouterTest is Test {
     function testFuzz_fixedRateCL(uint256 amountIn) public {
         amountIn = bound(amountIn, 1, 500e6);
         uint256 expected = amountIn * RATE36 / 1e36;
-        LocalPayoutRouter.PayoutParams memory p = _params(LocalPayoutRouter.PoolKind.CL, address(cl), amountIn, expected, address(aapl));
+        LocalPayoutRouter.PayoutParams memory p =
+            _params(LocalPayoutRouter.PoolKind.CL, address(cl), amountIn, expected, address(aapl));
         vm.prank(user);
         assertEq(router.payout(p), expected);
         p.minOut = expected + 1;
@@ -210,7 +215,8 @@ contract LocalPayoutRouterTest is Test {
     // ------------------------------------------------------------ refusals
 
     function test_refusesAfterDeadline() public {
-        LocalPayoutRouter.PayoutParams memory p = _params(LocalPayoutRouter.PoolKind.CL, address(cl), 1e6, 0, address(0));
+        LocalPayoutRouter.PayoutParams memory p =
+            _params(LocalPayoutRouter.PoolKind.CL, address(cl), 1e6, 0, address(0));
         p.deadline = block.timestamp - 1;
         vm.prank(user);
         vm.expectRevert(abi.encodeWithSelector(LocalPayoutRouter.Expired.selector, block.timestamp - 1));
@@ -219,49 +225,64 @@ contract LocalPayoutRouterTest is Test {
 
     function test_refusesWhileTheMarketIsClosed() public {
         vm.warp(T_SAT);
-        LocalPayoutRouter.PayoutParams memory p = _params(LocalPayoutRouter.PoolKind.CL, address(cl), 1e6, 0, address(aapl));
+        LocalPayoutRouter.PayoutParams memory p =
+            _params(LocalPayoutRouter.PoolKind.CL, address(cl), 1e6, 0, address(aapl));
         assertEq(uint256(gate.check(address(aapl)).state), uint256(IPriceGate.GateState.MARKET_CLOSED));
         vm.prank(user);
-        vm.expectRevert(abi.encodeWithSelector(LocalPayoutRouter.SessionClosed.selector, IPriceGate.GateState.MARKET_CLOSED));
+        vm.expectRevert(
+            abi.encodeWithSelector(LocalPayoutRouter.SessionClosed.selector, IPriceGate.GateState.MARKET_CLOSED)
+        );
         router.payout(p);
-        assertEq(usdc.balanceOf(user), 1_000e6, "nothing moved");
+        assertEq(usdc.balanceOf(user), 1000e6, "nothing moved");
     }
 
     function test_refusesWhileTheFeedIsStale() public {
         vm.warp(T_REGULAR + 2 days); // Sat 3 Oct 14:00 ET is closed; use Mon 5 Oct 14:00 ET instead
         vm.warp(1_791_223_200); // Mon 2026-10-05 14:00 ET, regular session, feed untouched since 1 Oct
-        LocalPayoutRouter.PayoutParams memory p = _params(LocalPayoutRouter.PoolKind.CL, address(cl), 1e6, 0, address(aapl));
+        LocalPayoutRouter.PayoutParams memory p =
+            _params(LocalPayoutRouter.PoolKind.CL, address(cl), 1e6, 0, address(aapl));
         IPriceGate.Verdict memory v = gate.check(address(aapl));
         assertEq(uint256(v.state), uint256(IPriceGate.GateState.FEED_STALE));
         vm.prank(user);
-        vm.expectRevert(abi.encodeWithSelector(LocalPayoutRouter.SessionClosed.selector, IPriceGate.GateState.FEED_STALE));
+        vm.expectRevert(
+            abi.encodeWithSelector(LocalPayoutRouter.SessionClosed.selector, IPriceGate.GateState.FEED_STALE)
+        );
         router.payout(p);
     }
 
     function test_refusesAnUnknownGateToken() public {
-        LocalPayoutRouter.PayoutParams memory p = _params(LocalPayoutRouter.PoolKind.CL, address(cl), 1e6, 0, address(usdc));
+        LocalPayoutRouter.PayoutParams memory p =
+            _params(LocalPayoutRouter.PoolKind.CL, address(cl), 1e6, 0, address(usdc));
         vm.prank(user);
-        vm.expectRevert(abi.encodeWithSelector(LocalPayoutRouter.SessionClosed.selector, IPriceGate.GateState.UNKNOWN_TOKEN));
+        vm.expectRevert(
+            abi.encodeWithSelector(LocalPayoutRouter.SessionClosed.selector, IPriceGate.GateState.UNKNOWN_TOKEN)
+        );
         router.payout(p);
     }
 
     function test_refusesSlippage() public {
-        LocalPayoutRouter.PayoutParams memory p = _params(LocalPayoutRouter.PoolKind.CL, address(cl), 10e6, 9.3e6, address(aapl));
+        LocalPayoutRouter.PayoutParams memory p =
+            _params(LocalPayoutRouter.PoolKind.CL, address(cl), 10e6, 9.3e6, address(aapl));
         vm.prank(user);
         vm.expectRevert(abi.encodeWithSelector(LocalPayoutRouter.SlippageExceeded.selector, 9.2e6, 9.3e6));
         router.payout(p);
     }
 
     function test_refusesAPoolThatDoesNotHoldThePair() public {
-        LocalPayoutRouter.PayoutParams memory p = _params(LocalPayoutRouter.PoolKind.CL, address(cl), 1e6, 0, address(0));
+        LocalPayoutRouter.PayoutParams memory p =
+            _params(LocalPayoutRouter.PoolKind.CL, address(cl), 1e6, 0, address(0));
         p.tokenOut = address(aapl);
         vm.prank(user);
-        vm.expectRevert(abi.encodeWithSelector(LocalPayoutRouter.PoolMismatch.selector, address(cl), address(usdc), address(aapl)));
+        vm.expectRevert(
+            abi.encodeWithSelector(LocalPayoutRouter.PoolMismatch.selector, address(cl), address(usdc), address(aapl))
+        );
         router.payout(p);
         p = _params(LocalPayoutRouter.PoolKind.V2, address(v2), 1e6, 0, address(0));
         p.tokenIn = address(aapl);
         vm.prank(user);
-        vm.expectRevert(abi.encodeWithSelector(LocalPayoutRouter.PoolMismatch.selector, address(v2), address(aapl), address(eurc)));
+        vm.expectRevert(
+            abi.encodeWithSelector(LocalPayoutRouter.PoolMismatch.selector, address(v2), address(aapl), address(eurc))
+        );
         router.payout(p);
     }
 
@@ -286,7 +307,8 @@ contract LocalPayoutRouterTest is Test {
     }
 
     function test_refusesWithoutAllowance() public {
-        LocalPayoutRouter.PayoutParams memory p = _params(LocalPayoutRouter.PoolKind.CL, address(cl), 1e6, 0, address(0));
+        LocalPayoutRouter.PayoutParams memory p =
+            _params(LocalPayoutRouter.PoolKind.CL, address(cl), 1e6, 0, address(0));
         vm.prank(stranger);
         vm.expectRevert();
         router.payout(p);

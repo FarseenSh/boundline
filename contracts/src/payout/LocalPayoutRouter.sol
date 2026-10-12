@@ -185,13 +185,14 @@ contract LocalPayoutRouter is IUniswapV3SwapCallback, ReentrancyGuardTransient {
         _activePool = p.pool;
         _activeTokenIn = p.tokenIn;
         _maxIn = p.amountIn;
-        (int256 amount0, int256 amount1) = ICLSwapPool(p.pool).swap(
-            p.to,
-            zeroForOne,
-            int256(p.amountIn),
-            zeroForOne ? TickMath.MIN_SQRT_RATIO + 1 : TickMath.MAX_SQRT_RATIO - 1,
-            abi.encode(zeroForOne)
-        );
+        (int256 amount0, int256 amount1) = ICLSwapPool(p.pool)
+            .swap(
+                p.to,
+                zeroForOne,
+                int256(p.amountIn),
+                zeroForOne ? TickMath.MIN_SQRT_RATIO + 1 : TickMath.MAX_SQRT_RATIO - 1,
+                abi.encode(zeroForOne)
+            );
         _activePool = address(0);
         _activeTokenIn = address(0);
         _maxIn = 0;
