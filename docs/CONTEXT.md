@@ -53,8 +53,8 @@ staged frozen feed (the AAPLt test feed held stale, which the ShadowGuard treats
 out the drill position at the TWAP shadow price and repaid desk line 1 down the vault's ladder, each a validity
 transaction on the frozen feed slot, while a raw `Morpho.liquidate` was refused `FeedStale`; the advance was settled and
 harvested in session. The same evening the Cloudflare account was found over **D1's free daily read quota** (one unindexed
-query: 4.21M of 5M reads a day), which had also cost both live capture runs their before-phase; fixed in code, migration
-and deploy waiting on Workers Paid and a human-run deploy.
+query: 4.21M of 5M reads a day), which had also cost both live capture runs their before-phase; fixed in code, and
+deployed at 18:20 UTC once the account was on Workers Paid (migration 0004 applied, both capture runs closed).
 
 ## 2. Frame
 
@@ -67,7 +67,7 @@ and deploy waiting on Workers Paid and a human-run deploy.
 | Plan of record | `/Users/farseen/BaseFlow/reports/Boundline v3 full build plan 2026-09-26.md` (mechanics) and `Boundline v3 winning idea plan 2026-09-26.md` (pitch) |
 | Repo | `/Users/farseen/boundline`, local git on `main`, no remote yet (public repo needed before submission; pushing later keeps the dates, never backdate) |
 | Old repo | `/Users/farseen/BaseFlow`: reference and plans only, nothing imported |
-| Cloudflare plan | Workers **Free** plan, and the 10 ms CPU cap **is enforced, inconsistently** (corrected 8 Oct: the 7 Oct note "no longer enforced" was wrong). 8 Oct 06:39 UTC: every indexer cron tick died `exceededCpu` at `cpuTime 10` and its sources had stalled for hours, while the keeper (8 ms) and Observatory (6 ms) ticks passed and API fetches at 16–19 ms ended `ok`. After the 8 Oct diets: keeper 3–6 ms, indexer 8–16 ms (passing), Observatory 4–25 ms. **Workers Paid ($5/month) is the fix; human decision pending.** Some crons never fire on this account (the API's, 8 Oct; the indexer's, 3 Oct): drive them from a cron that does, through a binding |
+| Cloudflare plan | Workers **Paid** since the evening of 12 Oct (D1 answered 12 of 12 probes at 18:11 UTC; no daily D1 caps, no 10 ms CPU cap). Before that Workers **Free**, where the 10 ms CPU cap **was enforced, inconsistently** (corrected 8 Oct: the 7 Oct note "no longer enforced" was wrong). 8 Oct 06:39 UTC: every indexer cron tick died `exceededCpu` at `cpuTime 10` and its sources had stalled for hours, while the keeper (8 ms) and Observatory (6 ms) ticks passed and API fetches at 16–19 ms ended `ok`. After the 8 Oct diets: keeper 3–6 ms, indexer 8–16 ms (passing), Observatory 4–25 ms. Some crons never fire on this account (the API's, 8 Oct; the indexer's, 3 Oct): drive them from a cron that does, through a binding |
 | Dependency order | toolchain → calendar and oracles → Observatory → test stocks, CreditDesk and policy → indexer and registry → pre-liquidation, AaveDesk, ProtectionVault, Reserve → fork replay and nightly assurance → router, self-repaying and local-money legs → API, SDK, widget, console, app, agent surface → drills, evidence, docs → deck, videos, submission |
 
 ## 3. Repository map
@@ -460,7 +460,10 @@ the identical `eth_call`, because base-forge's local simulation runs Beryl preco
   DeskProtectionVault, Reserve, payout router; vault events folded into line timelines) and `mainnet-policy-registry`;
   `/v1/seize-watch`. **Roots for Sepolia 2026-10-06 and 2026-10-07 report `drift: true`**: the backfill added events to
   days already rooted; re-rooting needs `DELETE FROM daily_roots WHERE chain_id = 84532 AND day >= '2026-10-06'` on D1
-  `boundline-indexer` (the permission classifier denied it to the lane: a human approval).
+  `boundline-indexer` (the permission classifier denied it to the lane: a human approval). **Re-rooted 12 Oct** with
+  Farseen's approval: the delete removed 6 rows (6–11 Oct) at 18:23 UTC and the indexer re-formed them by 18:46 UTC after
+  hashing the backfilled events (8 per tick), every day `drift: false` and chained to the next: 6 Oct 54 → 61 events
+  (root `0x18f17091…`), 7 Oct 31 → 51 (`0xafec52c1…`), 8 Oct 57, 9 Oct 49, 10 and 11 Oct 0.
 - **Seize watch (mainnet, 8 Oct):** no `SEIZE_ROLE` has ever been granted on the ten stocks (full-history scan from block
   49,145,000, 187 governance logs, live `hasRole` checks); `SEIZE_EXEMPT_POLICY` went 0 → policy 129 on all ten on Mon 5 Oct
   2026 17:38–18:00 UTC (a blocklist administered by `0x38467bE00970af18076fd08F6b4Cf38Ba91572B1`; two addresses blocklisted
@@ -520,10 +523,10 @@ the identical `eth_call`, because base-forge's local simulation runs Beryl preco
   `taken_at`, 36,000 → ~1,200 for the Aave view, 12,960 + a sort → 1 for the held print. `test/d1-sqlite.ts` runs the
   stores' real SQL on Node's SQLite with every migration and asserts the plans. **Capture runs complete:** the window
   ends at +5400 s to the second, so only a tick landing exactly then completed a run (both live runs stayed open); an
-  idle tick now closes overdue runs (`closeOverdueRuns`, one read of 4 rows). Observatory 226 tests. **Not deployed yet:**
-  the auto-mode classifier refuses a production deploy from the session, and the migration needs D1 reads (Workers Paid
-  or after 00:00 UTC). Order: `pnpm exec wrangler d1 migrations apply boundline-observatory --remote`, then
-  `pnpm exec wrangler deploy` (code first is harmless).
+  idle tick now closes overdue runs (`closeOverdueRuns`, one read of 4 rows). Observatory 226 tests. **Deployed 12 Oct
+  18:20 UTC** with Farseen's go-ahead, once the account was on Workers Paid: Observatory `704e8868`, migration 0004
+  applied remotely; the first idle tick closed both live capture runs (`completedAt` 1791595800 and 1791768600, each the
+  run's start + 5400 s).
 - **API drills registry** (`48db571`): 14 drills (new `reserve-ladder`: the 7 Oct operator cycle and the 12 Oct keeper run);
   new runs on `protection` (3), `stale-feed` (2), `weekend-gap` (the 9–11 Oct weekend); the list view is 88.7 KB (guard
   raised to 120 KB). Served after the API is redeployed (runs are bundled at build time).
@@ -739,7 +742,10 @@ does not fire, the `Events` entrypoint and `/health` `features: ["route","webhoo
 the site has a bridge Worker (`apps/site/worker/`) with service bindings to the Observatory and the API. Deploy a router
 change with `pnpm --filter @boundline/router build` first (`dist/` is gitignored). Last deploys: 9 Oct keeper
 `28fe170c` (vars `HARVESTER`, `HARVEST_TARGETS`), API `6dd36100`; 8 Oct indexer `aba6ef13`, Observatory `326a3f30`,
-agent `f6ec84db`, app `75aa8695`, console `1bfb9a5b`, site `b15a91fe`.
+agent `f6ec84db`, app `75aa8695`, console `1bfb9a5b`, site `b15a91fe`; 12 Oct Observatory `704e8868` (migration 0004),
+API `41ddd5b4`, site `13123dff`. Checked 12 Oct: the live agent, app and console carry their last commits (each was
+deployed minutes before it was committed; the indexer and keeper likewise by timestamp), so only the Observatory, API and
+site were behind `main`.
 
 **12 Oct: D1's free daily quota was exhausted.** From about 16:00 UTC every D1 query on the account failed ("exceeded
 D1's free tier daily row read limit … wait until tomorrow (midnight UTC)", code 7500): the indexer, the Observatory's
@@ -747,9 +753,10 @@ position panels and capture detail, and everything reading through them (console
 500, while KV- and RPC-backed routes (Observatory `/`, `/v1/tokens`, `/v1/sessions`, keeper, agent) kept working.
 `wrangler d1 insights --sort-by reads` named the cause (positions `MAX(taken_at)`, 4.21M of the ~4.8M reads a day) and
 `--sort-by writes` showed writes at ~97K of the 100K free a day (snapshots 56.3K: one row plus two index rows per insert).
-Farseen chose Workers Paid (no daily D1 caps); until it is active the cap is enforced intermittently (probes alternate
-between answering and refusing). Pending deploys (human-run, the session's classifier refuses production deploys):
-Observatory migration 0004 + code, API (bundles the 12 Oct drill runs), site (copy).
+Over the cap D1 refused unevenly (probes alternated between answering and refusing). Farseen moved the account to
+Workers Paid that evening: D1 answered 12 of 12 probes at 18:11 UTC, and with his go-ahead the session deployed the
+Observatory (migration 0004 + code), the API (the 12 Oct drill runs: 14 drills, `protection` 3 runs) and the site
+(copy) at 18:20–18:23 UTC.
 
 ## 7. Keys, accounts and secrets (locations only, never values)
 
@@ -894,7 +901,11 @@ python3 -I scripts/sepolia/outage_rescue.py show                       # every n
 12 Oct cross-check: the build matched section 9 of 9 Oct exactly before the session's changes (264/8 forge, 887 vitest,
 typecheck clean); keeper healthy (all pairs in sync, both protection targets below band, vault and harvest keepers set);
 the Observatory had captured the 9 Oct close and the 11 Oct reopen live; the indexer, the Observatory's position routes and
-capture detail answered 500 from the D1 quota (section 6.3).
+capture detail answered 500 from the D1 quota (section 6.3). After the deploys (18:20–18:46 UTC): every D1-backed route
+answered 200, the API listed 14 drills (`protection` 3 runs, `reserve-ladder` 2), both capture runs carried
+`completedAt`, the keeper reported 3 of 3 feeds and registries in sync with 0 read errors, the indexer was within a few
+minutes of both heads, the live site was byte-identical to `apps/site/public/index.html`, and the Sepolia roots from
+6 Oct were re-formed without drift.
 
 Morning cross-check (8 Oct 06:35–07:00 UTC, before the lanes): forge 240/0/5, vitest 691 and typecheck matched section 9 of
 7 Oct; all 8 Workers answered; **94 of 94** recorded full transaction hashes are successful Base Sepolia transactions (the
@@ -972,26 +983,24 @@ chain by the lane that wrote it (K1: 123 transactions, all status 1).
 was not applied (recorded), the Saturday rescues were not run on the weekend (recorded; done under a staged outage on
 12 Oct), the reopen capture is in `docs/evidence/reopen-2026-10-11.*`, the advance was settled and harvested.
 
-**Next build items (session-doable):** apply migration 0004 and deploy the Observatory, deploy the API (new drill runs)
-and the site (copy) — human-run or with a permission rule, the classifier refuses them; the mainnet deploy the moment
-the keys are funded (`deploy-mainnet.sh broadcast`, then `check`, Basescan verification, and the apps' config: keeper
-mainnet targets, SDK `mainnet` desk, API `MARKETS`, Observatory/agent pre-liquidation flags); re-root Sepolia 2026-10-06/07
-once the human approves the D1 delete; top up the MockSwapPool before any further close-out. Not worth the remaining time:
-the reserve-yield source, other chains, the desk freeze redeploy.
+**Done 12 Oct night:** Workers Paid active; Observatory (migration 0004), API and site deployed; both capture runs
+closed; the Sepolia daily roots from 6 Oct rebuilt (Farseen approved the delete).
+
+**Next build items (session-doable):** the mainnet deploy the moment the keys are funded (`deploy-mainnet.sh broadcast`,
+then `check`, Basescan verification, and the apps' config: `MAINNET_PRE_LIQUIDATIONS` in `packages/router`, SDK `mainnet`
+desk, API `MARKETS`, Observatory/agent pre-liquidation flags); top up the MockSwapPool before any further close-out. Not
+worth the remaining time: the reserve-yield source, other chains, the desk freeze redeploy.
 
 **Human-only**:
-- **Workers Paid ($5/month)**: chosen 12 Oct; confirm it is active (D1 still refused queries intermittently at 17:05 UTC).
-  It lifts D1's daily caps (5M reads / 100K writes, both near or over the limit) and the Free plan's 10 ms CPU cap.
 - **Route signer key** for the API (typed data only, unfunded), or a decision to keep plans unsigned.
 - **Mainnet keys**: deployer 0.005 ETH, keeper 0.002 ETH (about $20), agreed 12 Oct; the key file `~/.boundline/base-mainnet.env`
-  did not exist yet at 23:00 IST. Optional: a USDC seed and each developer's AAPLc position.
+  did not exist yet at 23:41 IST. Optional: a USDC seed and each developer's AAPLc position.
 - **Arena project with both developers registered**; the second developer's own commits (all commits so far are
   Farseen's, and the roster must match who did the work); a **public GitHub repo** (`docs/submission/PUBLIC-REPO-CHECKLIST.md`).
 - The `TODO-HUMAN` fields in `docs/submission/SUBMISSION.md` (backgrounds, teammate, GitHub URL, X handle, University
   wording, the prior-work sentence) and the two videos.
 - The recording wallet's address if the demo is not recorded with the borrower test wallet (it must be admitted to the
   test stocks' allowlists first).
-- Approval for the indexer re-root (`DELETE FROM daily_roots WHERE chain_id = 84532 AND day >= '2026-10-06'`).
 - Circle faucet top-ups (20 USDC per 2 h) for the deployer `0x2f0d…2a4E` (2.96 USDC after 12 Oct; the MockSwapPool needs
   ≥ 1.8 USDC before another close-out drill);
   CDP project and Builder Code; boundline.xyz; Cloudflare R2 scope if exports are wanted; CI secrets once the remote exists.

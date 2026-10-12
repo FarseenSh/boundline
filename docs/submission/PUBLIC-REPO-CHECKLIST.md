@@ -106,5 +106,6 @@ Open each in a private window: the site, app, Observatory, console, API `/health
 `/v1/protect`, indexer `/v1/sources`, the repository, both videos (unlisted, not private), and five Basescan links from
 the evidence index. On 12 Oct the Cloudflare account ran out of D1's free daily read quota and every D1-backed route
 (the indexer, the Observatory's position panels, the API's obligations, the console and the app's statements through
-them) answered 500 until the 00:00 UTC reset: check that the indexer's `/v1/sources` and the Observatory's `/v1/positions`
-answer 200 before recording.
+them) answered 500 for a few hours; the account has been on Workers Paid since that evening and the Observatory's reads
+are indexed (migration 0004). Still check that the indexer's `/v1/sources` and the Observatory's `/v1/positions` answer
+200 before recording.

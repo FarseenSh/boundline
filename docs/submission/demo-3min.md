@@ -14,12 +14,11 @@ mainnet") and the Basescan link of the deploy to beat 3, and nothing more.
 
 Recording happens Mon 12 Oct night or Tue 13 Oct morning IST, in a live session: REGULAR until 01:30 IST, POST until
 05:30 IST, then OVERNIGHT. The gate refuses draws only while the feeds are held; the next close is Fri 16 Oct 20:00 ET.
-So every beat can be recorded in one sitting, with one precondition:
-
-| Precondition | Why |
-| --- | --- |
-| **D1 is back:** `https://boundline-indexer.papermind-ai.workers.dev/v1/sources` and the Observatory's `/v1/positions` answer 200 | On 12 Oct the Cloudflare account ran out of D1's free daily read quota and every D1-backed route answered 500 until the 00:00 UTC reset (05:30 IST): the indexer, the Observatory's position panels, the API's obligations and route plans, the console's timelines and the app's statements. It comes back at 05:30 IST, or as soon as the Workers Paid plan is active. |
-| The API serves the 12 Oct runs: the console's Drills page lists 14 drills and `protection` has 3 runs | The drill runs are bundled into the API at build time; until it is redeployed the console shows 13 drills without Monday's runs. |
+So every beat can be recorded in one sitting. Both preconditions of 12 Oct were met that night (18:23 UTC): the account
+is on Workers Paid, so D1 no longer runs out of daily reads (it had taken the indexer, the Observatory's position panels,
+the API's obligations, the console's timelines and the app's statements down for a few hours), and the redeployed API
+serves 14 drills with Monday's runs (`protection` 3, `reserve-ladder` 2). A last check before recording:
+`https://boundline-indexer.papermind-ai.workers.dev/v1/sources` and the Observatory's `/v1/positions` answer 200.
 
 ## Before recording (checklist)
 
