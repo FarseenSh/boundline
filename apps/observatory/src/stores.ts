@@ -1,5 +1,5 @@
 // D1 access behind small store interfaces, with an in-memory twin used by the tests.
-import type { Address, Hex } from "viem";
+import { getAddress, type Address, type Hex } from "viem";
 import type { AaveBorrowerRecord, AavePositionRow } from "./aave-positions.js";
 import type { Session } from "./calendar-port.js";
 import type { CaptureRow, CaptureSummary, TransitionKind } from "./capture.js";
@@ -175,9 +175,26 @@ function aavePositionFromDb(r: AavePositionDbRow): AavePositionRow {
   };
 }
 
+/**
+ * The latest views read only rows written within this many seconds before the newest row, an index range on
+ * (chain_id, taken_at) (migration 0004) instead of a GROUP BY over the whole history (15,214 rows per call on 12 Oct
+ * 2026, growing about 14,000 a day). Morpho positions are rewritten in full every 10 to 15 minutes (POSITIONS_EVERY_SECONDS
+ * checked on the fifth-minute tick) and the Aave batch rotates AAVE_BATCH_PER_TICK = 25 borrowers every 5 minutes (31
+ * known: a full pass in 10 minutes; 600 borrowers would still fit), so two hours spans 8 or more Morpho refreshes and 12
+ * full Aave passes. A position that stops being written (closed, or its borrower dropped) leaves the view two hours after
+ * its last row instead of lingering at its last state. The window is anchored on the newest row, not on the clock, so a
+ * stalled job still shows its last refresh.
+ */
+export const LATEST_POSITIONS_WINDOW_SECONDS = 2 * 3600;
+
+// Latest row per key as "no newer row for the same key" (a primary-key probe per row in the window), not a GROUP BY:
+// SQLite answers a GROUP BY (chain_id, market_id, address) from the primary key's covering index because it is already
+// in group order, which reads the whole chain's history; with ANALYZE statistics it does so even with a covering
+// (chain_id, taken_at, ...) index. This form keeps the (chain_id, taken_at) range with or without statistics
+// (test/stores.test.ts asserts the plan). Before migration 0004 it is still correct, just a full read.
 const LATEST_AAVE_SQL = `SELECT p.* FROM aave_positions p
-  JOIN (SELECT chain_id, address, MAX(taken_at) AS taken_at FROM aave_positions WHERE chain_id = ?1 GROUP BY chain_id, address) m
-    ON p.chain_id = m.chain_id AND p.address = m.address AND p.taken_at = m.taken_at
+  WHERE p.chain_id = ?1 AND p.taken_at >= (SELECT taken_at FROM aave_positions WHERE chain_id = ?1 ORDER BY taken_at DESC LIMIT 1) - ?2
+    AND NOT EXISTS (SELECT 1 FROM aave_positions q WHERE q.chain_id = p.chain_id AND q.address = p.address AND q.taken_at > p.taken_at)
   ORDER BY p.protection_case DESC, (p.shadow_hf IS NULL) ASC, p.shadow_hf ASC, p.debt_value_usd DESC`;
 
 function runFromDb(r: RunDbRow): CaptureRunRecord {
@@ -232,9 +249,16 @@ function positionFromDb(r: PositionDbRow): PositionRow {
 }
 
 const LATEST_POSITIONS_SQL = `SELECT p.* FROM positions p
-  JOIN (SELECT chain_id, market_id, address, MAX(taken_at) AS taken_at FROM positions WHERE chain_id = ?1 GROUP BY chain_id, market_id, address) m
-    ON p.chain_id = m.chain_id AND p.market_id = m.market_id AND p.address = m.address AND p.taken_at = m.taken_at
+  WHERE p.chain_id = ?1 AND p.taken_at >= (SELECT taken_at FROM positions WHERE chain_id = ?1 ORDER BY taken_at DESC LIMIT 1) - ?2
+    AND NOT EXISTS (SELECT 1 FROM positions q WHERE q.chain_id = p.chain_id AND q.market_id = p.market_id AND q.address = p.address AND q.taken_at > p.taken_at)
   ORDER BY p.protection_case DESC, (p.shadow_hf IS NULL) ASC, p.shadow_hf ASC, p.venue_hf ASC`;
+
+/** Both spellings a stored address can have: the Borrow-log scan writes lowercase, Morpho's API checksummed. An IN list
+ *  keeps the (address, taken_at) index usable, which `lower(address) = lower(?)` did not (a full scan per call). */
+function addressSpellings(address: string): [string, string] {
+  const lower = address.toLowerCase();
+  return [lower, getAddress(lower)];
+}
 
 export function d1Stores(db: D1Database): Stores {
   const capture: CaptureStore = {
@@ -317,18 +341,19 @@ export function d1Stores(db: D1Database): Stores {
       );
     },
     async latestPositions(chainId) {
-      const { results } = await db.prepare(LATEST_POSITIONS_SQL).bind(chainId).all<PositionDbRow>();
+      const { results } = await db.prepare(LATEST_POSITIONS_SQL).bind(chainId, LATEST_POSITIONS_WINDOW_SECONDS).all<PositionDbRow>();
       return results.map(positionFromDb);
     },
     async positionsForAddress(address) {
       const { results } = await db
-        .prepare("SELECT * FROM positions WHERE lower(address) = lower(?1) ORDER BY taken_at DESC, market_id ASC LIMIT 50")
-        .bind(address)
+        .prepare("SELECT * FROM positions WHERE address IN (?1, ?2) ORDER BY taken_at DESC, market_id ASC LIMIT 50")
+        .bind(...addressSpellings(address))
         .all<PositionDbRow>();
       return results.map(positionFromDb);
     },
     async lastPositionsTakenAt(chainId) {
-      const r = await db.prepare("SELECT MAX(taken_at) AS t FROM positions WHERE chain_id = ?1").bind(chainId).first<{ t: number | null }>();
+      // One entry of the (chain_id, taken_at) index; MAX(taken_at) over the primary key scanned every row (4.21M reads a day).
+      const r = await db.prepare("SELECT taken_at AS t FROM positions WHERE chain_id = ?1 ORDER BY taken_at DESC LIMIT 1").bind(chainId).first<{ t: number | null }>();
       return r?.t ?? null;
     },
   };
@@ -387,7 +412,7 @@ export function d1Stores(db: D1Database): Stores {
       );
     },
     async latestPositions(chainId) {
-      const { results } = await db.prepare(LATEST_AAVE_SQL).bind(chainId).all<AavePositionDbRow>();
+      const { results } = await db.prepare(LATEST_AAVE_SQL).bind(chainId, LATEST_POSITIONS_WINDOW_SECONDS).all<AavePositionDbRow>();
       return results.map(aavePositionFromDb);
     },
     async positionsForAddress(address) {
@@ -416,6 +441,12 @@ export interface MemorySeed {
 
 export interface MemoryStores extends Stores {
   state: Required<MemorySeed>;
+}
+
+/** The D1 views' window start: the newest row's takenAt less LATEST_POSITIONS_WINDOW_SECONDS (no rows: nothing qualifies). */
+function windowStart(rows: ReadonlyArray<{ takenAt: number }>): number {
+  if (rows.length === 0) return Infinity;
+  return rows.reduce((m, r) => Math.max(m, r.takenAt), -Infinity) - LATEST_POSITIONS_WINDOW_SECONDS;
 }
 
 export function memoryStores(seed: MemorySeed = {}): MemoryStores {
@@ -497,8 +528,9 @@ export function memoryStores(seed: MemorySeed = {}): MemoryStores {
     },
     async latestPositions(chainId) {
       const latest = new Map<string, PositionRow>();
+      const since = windowStart(state.positions.filter((p) => p.chainId === chainId));
       for (const p of state.positions) {
-        if (p.chainId !== chainId) continue;
+        if (p.chainId !== chainId || p.takenAt < since) continue;
         const k = key(p);
         const cur = latest.get(k);
         if (!cur || p.takenAt > cur.takenAt) latest.set(k, p);
@@ -548,8 +580,9 @@ export function memoryStores(seed: MemorySeed = {}): MemoryStores {
     },
     async latestPositions(chainId) {
       const latest = new Map<string, AavePositionRow>();
+      const since = windowStart(state.aavePositions.filter((p) => p.chainId === chainId));
       for (const p of state.aavePositions) {
-        if (p.chainId !== chainId) continue;
+        if (p.chainId !== chainId || p.takenAt < since) continue;
         const k = p.address.toLowerCase();
         const cur = latest.get(k);
         if (!cur || p.takenAt > cur.takenAt) latest.set(k, p);

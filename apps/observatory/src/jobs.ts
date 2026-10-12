@@ -3,7 +3,7 @@
 import type { Hex } from "viem";
 import { AAVE_BATCH_PER_TICK, AAVE_CHAIN_ID, readAavePositions, rotate, shadowUsdFromSnapshot, type AaveBorrowerRecord, type AaveMeta } from "./aave-positions.js";
 import type { CalendarPort } from "./calendar-port.js";
-import { activeTransition, captureRows, emptySummary, firstUpdateAt, isComplete, phaseFor, updateSummary, type CaptureSummary } from "./capture.js";
+import { CAPTURE_AFTER_SECONDS, activeTransition, captureRows, emptySummary, firstUpdateAt, isComplete, phaseFor, updateSummary, type CaptureSummary } from "./capture.js";
 import type { MarketRow } from "./morpho.js";
 import { CHAIN_ID, POSITIONS_EVERY_SECONDS, fetchApiBorrowers, planScan, readPositions, scanBorrowLogs, type Borrower, type PositionRow, type PositionsRpc } from "./positions.js";
 import type { EthCall } from "./rpc.js";
@@ -17,11 +17,14 @@ export interface Logger {
 
 export type CaptureStatus = { status: "idle" } | { status: "recording" | "completed"; transitionAt: number; phase: string; ticks: number };
 
-/** Records this tick when inside a capture window and folds it into the run's summary. */
+/** How many of the newest runs an idle tick looks at for one left open (a close and a reopen per weekend: two weekends). */
+export const RUNS_CHECKED_WHEN_IDLE = 4;
+
+/** Records this tick when inside a capture window and folds it into the run's summary; outside one, closes overdue runs. */
 export async function runCapture(store: CaptureStore, calendar: CalendarPort, snapshot: Snapshot, log: Logger = console): Promise<CaptureStatus> {
   const now = snapshot.takenAt;
   const active = activeTransition(calendar, now);
-  if (!active) return { status: "idle" };
+  if (!active) return closeOverdueRuns(store, now, log);
   const phase = phaseFor(now, active.at) ?? "after";
   let run = await store.getRun(active.at);
   if (run?.completedAt) return { status: "completed", transitionAt: active.at, phase, ticks: run.summary.ticks };
@@ -56,6 +59,25 @@ export async function runCapture(store: CaptureStore, calendar: CalendarPort, sn
   }
   await store.putRun(next);
   return { status: next.completedAt ? "completed" : "recording", transitionAt: active.at, phase, ticks: next.summary.ticks };
+}
+
+/**
+ * Closes runs whose window ended without a completing tick. The window ends at +90 minutes to the second while the cron
+ * ticks wherever its minute lands, so the in-window check above fires only for a tick at exactly +5400 s: both live runs
+ * of 9 to 12 Oct 2026 (the Friday close and the Sunday reopen) stayed open after 89 "after" ticks. The first tick after
+ * the window closes them, as does any later one if the cron was down; nothing is recorded (the window is over) and
+ * `completedAt` is the window's end. Costs one read of RUNS_CHECKED_WHEN_IDLE rows on the primary key per idle tick.
+ */
+async function closeOverdueRuns(store: CaptureStore, now: number, log: Logger): Promise<CaptureStatus> {
+  let newest: CaptureRunRecord | null = null;
+  for (const run of await store.listRuns(RUNS_CHECKED_WHEN_IDLE)) {
+    if (run.completedAt !== null || !isComplete(now, run.transitionAt)) continue;
+    const closed: CaptureRunRecord = { ...run, completedAt: run.transitionAt + CAPTURE_AFTER_SECONDS };
+    await store.putRun(closed);
+    log.log(`capture complete for ${run.transitionAt} (closed at ${now}, after its window): first update ${run.firstUpdateAt ?? "none"} after ${run.summary.ticks} ticks`);
+    newest ??= closed;
+  }
+  return newest ? { status: "completed", transitionAt: newest.transitionAt, phase: "after", ticks: newest.summary.ticks } : { status: "idle" };
 }
 
 export interface PositionsDeps {

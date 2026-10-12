@@ -1,12 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { CAPTURE_AFTER_SECONDS } from "../src/capture.js";
+import { CAPTURE_AFTER_SECONDS, emptySummary } from "../src/capture.js";
 import { MULTICALL3, SELECTOR, addressAt, decodeAggregate3Calldata, encodeAggregate3Result, wordUint } from "../src/encoding.js";
 import { runCapture, runPositions, type Logger } from "../src/jobs.js";
 import type { MarketRow } from "../src/morpho.js";
 import { BORROW_TOPIC, POSITIONS_EVERY_SECONDS, SCAN_SPAN, type PositionsRpc } from "../src/positions.js";
 import { buildSnapshot, type Snapshot } from "../src/snapshot.js";
-import { memoryStores } from "../src/stores.js";
+import { d1Stores, memoryStores } from "../src/stores.js";
 import { REOPEN, weekendCalendar } from "./capture.test.js";
+import { sqliteD1 } from "./d1-sqlite.js";
 import { pool, reads, token } from "./fixtures.js";
 
 const quiet: Logger = { log: () => undefined, error: () => undefined };
@@ -64,6 +65,56 @@ describe("runCapture", () => {
     expect(t.heldAnswer).toBe("33366495000");
     expect(t.first?.gapBps).toBeCloseTo(-109.8, 0);
     expect(stores.state.runs[0]!.armedAt).toBe(REOPEN + 20 * 60);
+  });
+
+  it("closes the run on the first tick after the window when no tick lands on its last second (the live 9-12 Oct runs)", async () => {
+    const stores = memoryStores();
+    const statuses: Array<{ at: number; status: string }> = [];
+    // Ticks 38 s past each minute, like the live cron: the last tick inside the window is +5378 s, the next +5438 s.
+    for (let at = REOPEN - 15 * 60 + 38; at <= REOPEN + CAPTURE_AFTER_SECONDS + 300; at += 60) {
+      const r = await runCapture(stores.capture, cal, tick(at), quiet);
+      statuses.push({ at: at - REOPEN, status: r.status });
+      if (at === REOPEN + 5438) expect(r).toEqual({ status: "completed", transitionAt: REOPEN, phase: "after", ticks: 105 });
+    }
+    const run = stores.state.runs[0]!;
+    expect(run.completedAt).toBe(REOPEN + CAPTURE_AFTER_SECONDS);
+    expect(run.summary.ticks).toBe(105); // 15 before, 1 at, 89 after: the live runs' shape
+    expect(stores.state.captures).toHaveLength(105);
+    expect(Math.max(...stores.state.captures.map((r) => r.takenAt))).toBe(REOPEN + 5378); // nothing recorded after the window
+    expect(statuses.filter((s) => s.at > 5378).map((s) => s.status)).toEqual(["completed", "idle", "idle", "idle", "idle"]);
+  });
+
+  it("closes runs a stopped cron left open on a later idle tick, newest reported, nothing recorded", async () => {
+    const open = (transitionAt: number, kind: "reopen" | "close") => ({
+      transitionAt,
+      fromSession: kind === "reopen" ? ("WEEKEND" as const) : ("POST" as const),
+      toSession: kind === "reopen" ? ("OVERNIGHT" as const) : ("WEEKEND" as const),
+      kind,
+      armedAt: transitionAt + 40,
+      firstUpdateAt: kind === "reopen" ? transitionAt + 21 : null,
+      completedAt: null,
+      summary: { ...emptySummary(), ticks: 90, lastTickAt: transitionAt + 5378 },
+    });
+    const stores = memoryStores({ runs: [open(CLOSE, "close"), open(REOPEN, "reopen")] });
+    const later = REOPEN + 26 * 3600; // Monday evening: outside every window
+    expect(await runCapture(stores.capture, cal, tick(later), quiet)).toEqual({ status: "completed", transitionAt: REOPEN, phase: "after", ticks: 90 });
+    expect(stores.state.runs.map((r) => [r.transitionAt, r.completedAt])).toEqual([
+      [CLOSE, CLOSE + CAPTURE_AFTER_SECONDS],
+      [REOPEN, REOPEN + CAPTURE_AFTER_SECONDS],
+    ]);
+    expect(stores.state.captures).toHaveLength(0);
+    expect(await runCapture(stores.capture, cal, tick(later + 60), quiet)).toEqual({ status: "idle" });
+  });
+
+  it("does the same through the D1 statements (SQLite)", async () => {
+    const s = sqliteD1();
+    const store = d1Stores(s.db).capture;
+    for (let at = REOPEN + 5378 - 120; at <= REOPEN + 5438; at += 60) await runCapture(store, cal, tick(at), quiet);
+    const run = await store.getRun(REOPEN);
+    expect(run).toMatchObject({ transitionAt: REOPEN, completedAt: REOPEN + CAPTURE_AFTER_SECONDS });
+    expect(run?.summary.ticks).toBe(3);
+    expect(await store.rowsFor(REOPEN)).toHaveLength(3);
+    expect(await runCapture(store, cal, tick(REOPEN + 5498), quiet)).toEqual({ status: "idle" });
   });
 });
 
