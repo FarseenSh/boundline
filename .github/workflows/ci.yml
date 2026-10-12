@@ -25,7 +25,10 @@ jobs:
       - name: size check (EIP-170, src only; base-std's test mocks are over the limit by design)
         run: forge build --root contracts --sizes --skip 'test/**' --skip 'script/**'
       - name: test
-        run: FOUNDRY_PROFILE=ci forge test --root contracts -vvv
+        # One thread: the deploy-script tests set GATE, KEEPER, PARTNER_ID and MAX_LTV_WAD through vm.setEnv, which is
+        # process-wide, so suites running in parallel can read each other's values (seen 12 Oct under this profile:
+        # DeployAave's test_envDefaults read DeployCreditDesk's 0.4e18). Serial, the suite takes about 20 s.
+        run: FOUNDRY_PROFILE=ci forge test --root contracts -vvv --threads 1
       - name: fmt
         run: forge fmt --root contracts --check
 
