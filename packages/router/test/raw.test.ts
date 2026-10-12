@@ -42,4 +42,12 @@ describe("candidates subpath", () => {
     const sep = buildCandidates("AAPLt", { tokens: [token()], mainnetMarkets: [], mainnetRates: [], sepoliaRates: [] });
     expect(sep.candidates[0]).toMatchObject({ chainId: 84532, pricesAroundTheClock: false, protection: "pre-liquidation" });
   });
+  it("routes a mainnet market as protected once a Boundline pre-liquidation exists for it", () => {
+    const id = `0x${"AB".repeat(32)}`;
+    const market = { id, collateral: { address: "0xb200000000000000000000C2e324d24d7eEcd1fb", symbol: "AAPLc" }, lltv: 0.86, totalSupplyAssets: "1000", totalBorrowAssets: "400" };
+    const inputs = { tokens: [token()], mainnetMarkets: [market], mainnetRates: [], sepoliaRates: [] };
+    expect(buildCandidates("AAPLc", inputs).candidates[0]!.protection).toBe("none");
+    const withPre = buildCandidates("AAPLc", { ...inputs, preLiquidations: { [id.toLowerCase()]: "0x00000000000000000000000000000000000000aa" } });
+    expect(withPre.candidates[0]!.protection).toBe("pre-liquidation");
+  });
 });

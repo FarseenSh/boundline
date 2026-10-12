@@ -117,11 +117,21 @@ export async function readRates(rpcs: readonly string[], ids: readonly string[],
   });
 }
 
+/**
+ * Mainnet Morpho markets with a Boundline pre-liquidation contract (created on Morpho's official factory by
+ * contracts/script/DeployMainnet.s.sol, priced by the stock's ShadowGuard; deployments/base-mainnet.json), keyed by the
+ * lowercase market id. Empty until the mainnet deploy: a market listed here routes as protected; every other mainnet
+ * market prices at the held feed and liquidates at any hour.
+ */
+export const MAINNET_PRE_LIQUIDATIONS: Readonly<Record<string, string>> = {};
+
 export interface CandidateInputs {
   tokens: readonly ObservatoryToken[];
   mainnetMarkets: readonly ObservatoryMarket[];
   mainnetRates: readonly RateRead[];
   sepoliaRates: readonly RateRead[];
+  /** Overrides MAINNET_PRE_LIQUIDATIONS (tests, or a caller with a fresher deployment record). */
+  preLiquidations?: Readonly<Record<string, string>>;
 }
 
 /** Every candidate for one collateral symbol (mainnet `AAPLc` or Sepolia `AAPLt`); unknown rates fail closed (rate 0, flagged). */
@@ -155,8 +165,7 @@ export function buildCandidates(collateral: string, inputs: CandidateInputs): { 
         borrowRateWad: good?.borrowRateWad ?? 0n,
         lltvWad: good?.lltvWad ?? lltvWadOf(m.lltv),
         availableLiquidity: good?.availableLiquidity ?? BigInt(m.totalSupplyAssets) - BigInt(m.totalBorrowAssets),
-        // No Boundline pre-liquidation exists on mainnet yet; these markets price at the held feed and liquidate at any hour.
-        protection: "none",
+        protection: (inputs.preLiquidations ?? MAINNET_PRE_LIQUIDATIONS)[m.id.toLowerCase()] ? "pre-liquidation" : "none",
         ...common,
         pricesAroundTheClock: true,
       });
