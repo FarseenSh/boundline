@@ -1,0 +1,257 @@
+{
+ "title": "Liquidations on Base mainnet's B20 credit venues, Fri 25 Sep 20:00 ET to Mon 12 Oct 16:00 UTC 2026",
+ "generatedAt": 1791824891,
+ "method": {
+  "scanner": "eth_getLogs over every block in the span, 1,000-block windows (the public gateway's maximum), two queries per window",
+  "logsRpc": "https://base.gateway.tenderly.co",
+  "verificationRpc": "an archive Base mainnet RPC (receipts, block timestamps, historical eth_call); the URL is not recorded",
+  "fromBlock": 51795727,
+  "toBlock": 52515727,
+  "fromTimestamp": 1790380800,
+  "toTimestamp": 1791820800,
+  "blocks": 720001,
+  "windows": 721,
+  "queries": 1442,
+  "seconds": 221,
+  "queryA": "no address; topic0 in {Morpho Liquidate, PreLiquidate, Morpho Repay (control)}; topic1 in the 13 B20 market ids; Liquidate and Repay kept only when emitted by Morpho Blue 0xBBBBBbbBBb9cC5e90e3b3Af64bdAF62C37EEFFCb",
+  "queryB": "address = the Aave V4 MAG7 spoke 0x17905Db0e4A3514467539956c084180616AE7B8D; topic0 in {LiquidationCall, ReportDeficit, Repay (control)}",
+  "topics": {
+   "morphoLiquidate": "0xa4946ede45d0c6f06a0f5ce92c9ad3b4751452d2fe0e25010783bcab57a67e41",
+   "preLiquidate": "0xd5b01f148b35d6069b626af105bf8881bc2e30ee1ce3de4630903abab0ba8580",
+   "morphoRepay": "0x52acb05cebbd3cd39715469f22afbf5a17496295ef3bc9bb5944056c63ccaa09",
+   "liquidationCall": "0x2a1f12d996f530f89d8038aa293f9fde81cac44b6dfd6225e3358d09b78a4a37",
+   "reportDeficit": "0x59932f333b3a5e3fec86e662babe8dd767529ed207420e7468bd220cdfb3f076",
+   "spokeRepay": "0xd765a0263e8a360da8dd4fdb8c0dc5553adec12a96f29a462cdb45e5bea407dd"
+  },
+  "positiveControls": {
+   "morphoB20Repays": 248,
+   "aaveSpokeRepays": 772
+  },
+  "sessionRule": "ET = UTC-4 (EDT through 1 Nov 2026); WEEKEND = Fri 20:00 ET to Sun 20:00 ET (the Coinbase stock feeds hold Friday's last round); no NYSE holiday falls in the span"
+ },
+ "markets": {
+  "0xae1a30486234bf7e7ac166c7c03d9bc5f2cd8a39be2c48e73c665ac7148c3c28": {
+   "symbol": "AAPLc",
+   "lltv": 0.625
+  },
+  "0xcca091ada0a486dd74743ab5f1b1b972adefaad357e2634fd7362a0d798dcd42": {
+   "symbol": "AMZNc",
+   "lltv": 0.625
+  },
+  "0x0cc78b1f4993015116e90626a18a1ba0e1ca73d0b75781b231d02fa5536e62a5": {
+   "symbol": "GOOGLc",
+   "lltv": 0.625
+  },
+  "0xa3913d896b7e9c0e0a84f1be27d376cf2065616101cb7c44674af8a154e684cc": {
+   "symbol": "GOOGLc",
+   "lltv": 0.77
+  },
+  "0x44b343b5087c0bd34207cb5c199f12030777bf6b8c0a128438246f1212f37ca5": {
+   "symbol": "METAc",
+   "lltv": 0.625
+  },
+  "0xa8835b567d1808f1fc9970d635b374d0f376b9f74e4b5840b2c74c5597cac88a": {
+   "symbol": "METAc",
+   "lltv": 0.86
+  },
+  "0x4f9329a87a70e722cdab07b3647ef705671b25079d4f3bae559be5cfe12a7318": {
+   "symbol": "MSFTc",
+   "lltv": 0.625
+  },
+  "0xb4b42dd66cef25614b94510a910d54b2c148e7621d22b4271566724beda63d13": {
+   "symbol": "NVDAc",
+   "lltv": 0.625
+  },
+  "0xfef5641f70e19a87e369304daa9ba823754f3db1e6481d757fcae0442cffe479": {
+   "symbol": "NVDAc",
+   "lltv": 0.77
+  },
+  "0x91360eea2686ef7ce4966b4e82cf6ff712af02baf0f7211459780d9f5af1612a": {
+   "symbol": "NVDAc",
+   "lltv": 0.77
+  },
+  "0x5c800e8607e95fb96196570e229aef9a8a66595d4233a58fc406373bfac675db": {
+   "symbol": "NVDAc",
+   "lltv": 0.77
+  },
+  "0xce983b9ee6344e16ebbcc66812f23caafc63ae83fcc14fa29b66c7e69e9cecf6": {
+   "symbol": "SPCXc",
+   "lltv": 0.625
+  },
+  "0xc819df1685193012fc1d189e4ae22f6658442805f121303aebb04c81bd6d55d5": {
+   "symbol": "TSLAc",
+   "lltv": 0.625
+  }
+ },
+ "counts": {
+  "morphoB20Liquidations": 0,
+  "morphoB20PreLiquidations": 0,
+  "aaveMag7Liquidations": 2,
+  "aaveMag7DeficitsReported": 0
+ },
+ "liquidations": [
+  {
+   "venue": "Aave V4 MAG7 spoke",
+   "event": "liquidationCall",
+   "tx": "0xeae435367fbfdd29003822bce54b02f1bb692a412d0790fbcc6400dc7dcfa035",
+   "block": 52037586,
+   "logIndex": 18,
+   "status": 1,
+   "logInReceipt": true,
+   "from": "0x7a874be3d3713d6b7767c36d2abd5488da6dc2e1",
+   "to": "0xa14f2d3c5b761e4038dcf72216e60227ba11debf",
+   "timeUtc": "Thu 01 Oct 2026 14:21:59 UTC",
+   "timeEt": "Thu 01 Oct 2026 10:21:59 ET",
+   "timestamp": 1790864519,
+   "session": "REGULAR",
+   "collateral": "MSFTc",
+   "debt": "USDC",
+   "user": "0x26d595dddbad81bf976ef6f24686a12a800b141f",
+   "liquidator": "0xa14f2d3c5b761e4038dcf72216e60227ba11debf",
+   "receiveShares": false,
+   "debtRestoredUsdc": 9.866689,
+   "drawnSharesLiquidated": 9866019,
+   "premiumDelta": {
+    "sharesDelta": 0,
+    "offsetRayDelta": 0,
+    "restoredPremiumRay": 0
+   },
+   "collateralRemoved": 0.02003981,
+   "collateralSharesLiquidated": 2003981,
+   "collateralSharesToLiquidator": 1994529,
+   "feedAtBlock": {
+    "roundId": 36893488147419103547,
+    "answer": 516.7,
+    "updatedAt": 1790863375,
+    "ageSeconds": 1144
+   },
+   "collateralValueAtFeedUsd": 10.35457,
+   "impliedBonusPct": 4.945,
+   "feedHeld": false,
+   "poolAtBlock": null
+  },
+  {
+   "venue": "Aave V4 MAG7 spoke",
+   "event": "liquidationCall",
+   "tx": "0x98dbba0de970f877cb0410d7c762ac1370d5451802f66419cf770c3b21228538",
+   "block": 52345653,
+   "logIndex": 311,
+   "status": 1,
+   "logInReceipt": true,
+   "from": "0x7a874be3d3713d6b7767c36d2abd5488da6dc2e1",
+   "to": "0xa14f2d3c5b761e4038dcf72216e60227ba11debf",
+   "timeUtc": "Thu 08 Oct 2026 17:30:53 UTC",
+   "timeEt": "Thu 08 Oct 2026 13:30:53 ET",
+   "timestamp": 1791480653,
+   "session": "REGULAR",
+   "collateral": "TSLAc",
+   "debt": "USDC",
+   "user": "0x37619647c8efc03b1f9dce061890316073b3a051",
+   "liquidator": "0xa14f2d3c5b761e4038dcf72216e60227ba11debf",
+   "receiveShares": false,
+   "debtRestoredUsdc": 137.079874,
+   "drawnSharesLiquidated": 137041479,
+   "premiumDelta": {
+    "sharesDelta": 0,
+    "offsetRayDelta": 0,
+    "restoredPremiumRay": 0
+   },
+   "collateralRemoved": 0.38882916,
+   "collateralSharesLiquidated": 38882916,
+   "collateralSharesToLiquidator": 38699523,
+   "feedAtBlock": {
+    "roundId": 36893488147419103959,
+    "answer": 369.927,
+    "updatedAt": 1791479499,
+    "ageSeconds": 1154
+   },
+   "collateralValueAtFeedUsd": 143.838405,
+   "impliedBonusPct": 4.93,
+   "feedHeld": false,
+   "poolAtBlock": null
+  }
+ ],
+ "weekends": [
+  {
+   "close": 1790380800,
+   "reopen": 1790553600,
+   "readAt": 1790424000,
+   "block": 51817327,
+   "morphoB20TotalBorrowUsdc": 104933.041295,
+   "morphoPerMarketRaw": {
+    "0xae1a30486234bf7e7ac166c7c03d9bc5f2cd8a39be2c48e73c665ac7148c3c28": 25962441568,
+    "0xcca091ada0a486dd74743ab5f1b1b972adefaad357e2634fd7362a0d798dcd42": 990,
+    "0x0cc78b1f4993015116e90626a18a1ba0e1ca73d0b75781b231d02fa5536e62a5": 990,
+    "0xa3913d896b7e9c0e0a84f1be27d376cf2065616101cb7c44674af8a154e684cc": 49047841661,
+    "0x44b343b5087c0bd34207cb5c199f12030777bf6b8c0a128438246f1212f37ca5": 19921172350,
+    "0xa8835b567d1808f1fc9970d635b374d0f376b9f74e4b5840b2c74c5597cac88a": 0,
+    "0x4f9329a87a70e722cdab07b3647ef705671b25079d4f3bae559be5cfe12a7318": 990,
+    "0xb4b42dd66cef25614b94510a910d54b2c148e7621d22b4271566724beda63d13": 9983095306,
+    "0xfef5641f70e19a87e369304daa9ba823754f3db1e6481d757fcae0442cffe479": 150000,
+    "0x91360eea2686ef7ce4966b4e82cf6ff712af02baf0f7211459780d9f5af1612a": 1000094,
+    "0x5c800e8607e95fb96196570e229aef9a8a66595d4233a58fc406373bfac675db": 0,
+    "0xce983b9ee6344e16ebbcc66812f23caafc63ae83fcc14fa29b66c7e69e9cecf6": 17336356,
+    "0xc819df1685193012fc1d189e4ae22f6658442805f121303aebb04c81bd6d55d5": 990
+   },
+   "aaveMag7UsdcTotalDebt": 405892.514509,
+   "liquidationsInsideClosedWindow": 0,
+   "liquidationsInSixHoursAfterReopen": 0,
+   "closeEt": "Fri 25 Sep 20:00 ET to Sun 27 Sep 20:00 ET",
+   "debtPricedAtFrozenFeedUsdc": 510825.555804
+  },
+  {
+   "close": 1790985600,
+   "reopen": 1791158400,
+   "readAt": 1791028800,
+   "block": 52119727,
+   "morphoB20TotalBorrowUsdc": 79576.334579,
+   "morphoPerMarketRaw": {
+    "0xae1a30486234bf7e7ac166c7c03d9bc5f2cd8a39be2c48e73c665ac7148c3c28": 25715958328,
+    "0xcca091ada0a486dd74743ab5f1b1b972adefaad357e2634fd7362a0d798dcd42": 990,
+    "0x0cc78b1f4993015116e90626a18a1ba0e1ca73d0b75781b231d02fa5536e62a5": 990,
+    "0xa3913d896b7e9c0e0a84f1be27d376cf2065616101cb7c44674af8a154e684cc": 24501408569,
+    "0x44b343b5087c0bd34207cb5c199f12030777bf6b8c0a128438246f1212f37ca5": 19732548721,
+    "0xa8835b567d1808f1fc9970d635b374d0f376b9f74e4b5840b2c74c5597cac88a": 0,
+    "0x4f9329a87a70e722cdab07b3647ef705671b25079d4f3bae559be5cfe12a7318": 990,
+    "0xb4b42dd66cef25614b94510a910d54b2c148e7621d22b4271566724beda63d13": 9606590401,
+    "0xfef5641f70e19a87e369304daa9ba823754f3db1e6481d757fcae0442cffe479": 150000,
+    "0x91360eea2686ef7ce4966b4e82cf6ff712af02baf0f7211459780d9f5af1612a": 1000094,
+    "0x5c800e8607e95fb96196570e229aef9a8a66595d4233a58fc406373bfac675db": 0,
+    "0xce983b9ee6344e16ebbcc66812f23caafc63ae83fcc14fa29b66c7e69e9cecf6": 18674506,
+    "0xc819df1685193012fc1d189e4ae22f6658442805f121303aebb04c81bd6d55d5": 990
+   },
+   "aaveMag7UsdcTotalDebt": 1148845.697343,
+   "liquidationsInsideClosedWindow": 0,
+   "liquidationsInSixHoursAfterReopen": 0,
+   "closeEt": "Fri 2 Oct 20:00 ET to Sun 4 Oct 20:00 ET",
+   "debtPricedAtFrozenFeedUsdc": 1228422.031922
+  },
+  {
+   "close": 1791590400,
+   "reopen": 1791763200,
+   "readAt": 1791633600,
+   "block": 52422127,
+   "morphoB20TotalBorrowUsdc": 15825.646624,
+   "morphoPerMarketRaw": {
+    "0xae1a30486234bf7e7ac166c7c03d9bc5f2cd8a39be2c48e73c665ac7148c3c28": 4700305997,
+    "0xcca091ada0a486dd74743ab5f1b1b972adefaad357e2634fd7362a0d798dcd42": 992,
+    "0x0cc78b1f4993015116e90626a18a1ba0e1ca73d0b75781b231d02fa5536e62a5": 990,
+    "0xa3913d896b7e9c0e0a84f1be27d376cf2065616101cb7c44674af8a154e684cc": 5240499197,
+    "0x44b343b5087c0bd34207cb5c199f12030777bf6b8c0a128438246f1212f37ca5": 36077887,
+    "0xa8835b567d1808f1fc9970d635b374d0f376b9f74e4b5840b2c74c5597cac88a": 0,
+    "0x4f9329a87a70e722cdab07b3647ef705671b25079d4f3bae559be5cfe12a7318": 990,
+    "0xb4b42dd66cef25614b94510a910d54b2c148e7621d22b4271566724beda63d13": 707854358,
+    "0xfef5641f70e19a87e369304daa9ba823754f3db1e6481d757fcae0442cffe479": 150000,
+    "0x91360eea2686ef7ce4966b4e82cf6ff712af02baf0f7211459780d9f5af1612a": 1000094,
+    "0x5c800e8607e95fb96196570e229aef9a8a66595d4233a58fc406373bfac675db": 0,
+    "0xce983b9ee6344e16ebbcc66812f23caafc63ae83fcc14fa29b66c7e69e9cecf6": 5139755129,
+    "0xc819df1685193012fc1d189e4ae22f6658442805f121303aebb04c81bd6d55d5": 990
+   },
+   "aaveMag7UsdcTotalDebt": 1548054.358627,
+   "liquidationsInsideClosedWindow": 0,
+   "liquidationsInSixHoursAfterReopen": 0,
+   "closeEt": "Fri 9 Oct 20:00 ET to Sun 11 Oct 20:00 ET",
+   "debtPricedAtFrozenFeedUsdc": 1563880.005251
+  }
+ ]
+}
