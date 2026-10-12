@@ -3,7 +3,8 @@
 Living record of everything built so far, where it lives, how it is verified, and what is open.
 **Start here** in any new session (human or Claude), then `docs/BUILD.md` for the schedule.
 Update this file at the end of every session together with the ledger in `docs/BUILD.md`.
-Last update: **Fri 9 Oct 2026, afternoon IST** (cross-check, the self-repaying leg live, the keeper's harvest job; see sections 8–12).
+Last update: **Mon 12 Oct 2026, night IST** (the live reopen capture, the feed-outage rescue, the D1 read budget; see the
+12 Oct entries in sections 5, 6, 8–12).
 
 ## 1. What Boundline is, in one paragraph
 
@@ -44,7 +45,16 @@ On 9 Oct 2026 the **self-repaying leg went live on Sepolia**: the `DividendHarve
 and NVDAc's real 1 Oct dividend step, replayed on the AAPLt registry mirror, was swept into the loan, first by the
 operator and then by the **keeper Worker's new harvest job on its own, three blocks after the step**, each followed by a
 re-base when the step was removed; the partner API's stored policy version now follows the desk; the submission's
-pending slots for the drills, webhooks, route plans and the harvester carry hashes.
+pending slots for the drills, webhooks, route plans and the harvester carry hashes. Over the **9 to 11 Oct weekend** the
+keeper watched both protection targets for 48 hours and, both being below the band, signed nothing; the planned
+Saturday rescues were not run (no operator). The Observatory **captured the Sun 11 Oct reopen live** on all ten feeds and
+a chain reconstruction matches it field for field. On **12 Oct** the Saturday rescue's two actions ran in session under a
+staged frozen feed (the AAPLt test feed held stale, which the ShadowGuard treats like a weekend): the keeper Worker closed
+out the drill position at the TWAP shadow price and repaid desk line 1 down the vault's ladder, each a validity
+transaction on the frozen feed slot, while a raw `Morpho.liquidate` was refused `FeedStale`; the advance was settled and
+harvested in session. The same evening the Cloudflare account was found over **D1's free daily read quota** (one unindexed
+query: 4.21M of 5M reads a day), which had also cost both live capture runs their before-phase; fixed in code, migration
+and deploy waiting on Workers Paid and a human-run deploy.
 
 ## 2. Frame
 
@@ -500,6 +510,27 @@ the identical `eth_call`, because base-forge's local simulation runs Beryl preco
   switch's namespace id is the keeper's `KEEPER_STATE`) and retries a KV write once after `wrangler whoami` when the OAuth
   token expired (`Authentication error [code: 10000]`, seen 8 and 9 Oct); `errors.json` has the harvester's errors.
 
+**12 Oct 2026 (Monday):**
+
+- **Observatory read budget** (`068d65e`): migration `0004_read_budget.sql` (indexes `positions (chain_id, taken_at)`,
+  `aave_positions (chain_id, taken_at)`, `snapshots (symbol, feed_updated_at, taken_at)`); the latest-positions views read a
+  two-hour range anchored on the newest row with `NOT EXISTS` (a GROUP BY reads the whole history even with an index);
+  `lastPositionsTakenAt` is `ORDER BY taken_at DESC LIMIT 1`; `positionsForAddress` uses `address IN (lower, checksum)`
+  (`lower(address)` scanned the table). Measured on production-sized synthetic data: 15,901 → 1 rows for the newest
+  `taken_at`, 36,000 → ~1,200 for the Aave view, 12,960 + a sort → 1 for the held print. `test/d1-sqlite.ts` runs the
+  stores' real SQL on Node's SQLite with every migration and asserts the plans. **Capture runs complete:** the window
+  ends at +5400 s to the second, so only a tick landing exactly then completed a run (both live runs stayed open); an
+  idle tick now closes overdue runs (`closeOverdueRuns`, one read of 4 rows). Observatory 226 tests. **Not deployed yet:**
+  the auto-mode classifier refuses a production deploy from the session, and the migration needs D1 reads (Workers Paid
+  or after 00:00 UTC). Order: `pnpm exec wrangler d1 migrations apply boundline-observatory --remote`, then
+  `pnpm exec wrangler deploy` (code first is harmless).
+- **API drills registry** (`48db571`): 14 drills (new `reserve-ladder`: the 7 Oct operator cycle and the 12 Oct keeper run);
+  new runs on `protection` (3), `stale-feed` (2), `weekend-gap` (the 9–11 Oct weekend); the list view is 88.7 KB (guard
+  raised to 120 KB). Served after the API is redeployed (runs are bundled at build time).
+- **Scripts:** `scripts/sepolia/outage_rescue.py` (`show`, `pre`, `stale`, `step1`, `step2`, `restore`, `settle`): the
+  feed-outage rescue step by step, snapshotting every number into `docs/evidence/feed-outage-rescue-2026-10-12.json`;
+  `forge fmt` clean (`ec86941`).
+
 ## 6. Deployments and live state
 
 ### 6.1 Base Sepolia (chain 84532), deployed 3 Oct 2026, all verified on sepolia.basescan.org
@@ -636,9 +667,36 @@ fee (`0x14c4ffbd…db9a`); the Reserve harvested the fee (`0xf2574764…da67`): 
 - Line 1 after: 1,997,869 raw AAPLt, 3.203147 USDC debt (48.7% at the mirrored TWAP while held); pool about 1.798 USDC
   (headroom over the drill debt about +0.053).
 
+**9–11 Oct weekend:** the Friday mirror was not applied (the one-shot job ran after the close; materiality 6 ticks); at the
+close and through the weekend both targets stayed below the band (drill 56.33%, line 1 48.67% while held) and the keeper
+signed nothing; the recorded Saturday rescues were not run. The keeper mirrored the Sun 11 Oct reopen onto the test feeds
+(NVDAt +19 s, AAPLt +229 s `0xdc69fd45…3c45`, TSLAt +317 s behind mainnet). Record: `docs/evidence/saturday-rescue-2026-10-10.*`.
+
+**12 Oct 2026 (feed-outage rescue; `deployments/base-sepolia.json` → `proofs` 2026-10-12; `docs/evidence/feed-outage-rescue-2026-10-12.*`):**
+
+- Staging: keeper mirror held (KV, all symbols, then AAPLt only); `setRoundData` on the AAPLt test feed, same round and
+  answer, `updatedAt` 1791726186 (27 h old) `0x9d1e1d550847b754de0de3e6257966becd9e6817ecb9adc486c049f4ff81b00b` (block
+  48,027,552): gate `FEED_STALE` (REGULAR), ShadowGuard source TWAP, `SessionGuard.price()` and a raw `Morpho.liquidate`
+  revert `FeedStale(AAPLt, 1791726186, 93600)`, line 1 obligation `HOLD_FEED`.
+- Step 1: mock TWAP to tick −11695 (drill position 58.81%, `IN_BAND`); the keeper armed at head 48,027,595 and Base
+  included the close-out at 48,027,596: `0x9774913eecd620da53019d701f10c8e90400cb6497030785a2e374360d280352` (559,715 raw
+  seized, 1.745740 USDC repaid, 542,123 sold, 17,592 kept, decision #3 `0x8e37f401…8aea`, predicate held).
+- Step 2: tick −11086 (line 1 54.00%); armed at 48,027,655, included at 48,027,656:
+  `0x47ac5279c4804e73d05f1e8d813775514e4f8b8b09c6ffc7b014fac1956e1d24` (0.40 user reserve + 0.14 advance, fee 0.0014;
+  debt 3.203537 → 2.663537; 44.90%; vault decision `0xcacc2f57…12ab`).
+- Restore: TWAP mirrored (tick −12242), hold released, the Worker's mirror restored the live round
+  `0xd532f47f5671b7955bb69e3f4748ee84ade58ce7920a80e7619a50b21e47d8b4` (gate `OPEN`). Settle:
+  `repayAdvance(1, 0.1414)` `0x7b71e812afff01285f20eb4af568a334834dda6b463e5242cd8da7fc8636df9f`; Reserve `harvest`
+  `0x5b6874d4c3b9bf415e453c0f1d199a5b406c1b163b5a5e4404815602e8ab11c3` (totalAssets 2.0034 on 2.0 shares).
+- After: drill position closed (380,896 raw AAPLt left, no debt); **the MockSwapPool holds 0.052420 USDC** (top it up
+  before any further close-out); line 1 2,663,537 raw USDC debt on 1,997,869 raw AAPLt (39.13% at the feed); vault 1.0 USDC
+  advance liquidity, user reserve 0; protect signer 0.004834 ETH.
+
 ### 6.2 Base mainnet (chain 8453)
 
-Nothing deployed: there is no mainnet deployer key yet. **Since 8 Oct the whole footprint is one command**
+Nothing deployed yet: on 12 Oct Farseen agreed to fund a fresh deployer (0.005 ETH) and keeper (0.002 ETH) kept in
+`~/.boundline/base-mainnet.env` (created by him; the session cannot write keys). Re-rehearsed 12 Oct on a fork of the
+then-current mainnet: 50 transactions, 0 failed, 51,023,874 gas, 33/33 checks, 0.00031456 ETH ($0.79). **Since 8 Oct the whole footprint is one command**
 (`contracts/script/deploy-mainnet.sh broadcast`, runbook `docs/runbooks/mainnet-deploy.md`): 50 transactions, about 51M
 gas, 0.00031 ETH at 8 Oct fees (about $0.80); fund the deployer with 0.005 ETH and a keeper key with 0.002 ETH. METAc and
 GOOGLc get no pre-liquidation (no 24/7 pool in the address book). Constants the code relies on: Morpho
@@ -682,6 +740,16 @@ the site has a bridge Worker (`apps/site/worker/`) with service bindings to the 
 change with `pnpm --filter @boundline/router build` first (`dist/` is gitignored). Last deploys: 9 Oct keeper
 `28fe170c` (vars `HARVESTER`, `HARVEST_TARGETS`), API `6dd36100`; 8 Oct indexer `aba6ef13`, Observatory `326a3f30`,
 agent `f6ec84db`, app `75aa8695`, console `1bfb9a5b`, site `b15a91fe`.
+
+**12 Oct: D1's free daily quota was exhausted.** From about 16:00 UTC every D1 query on the account failed ("exceeded
+D1's free tier daily row read limit … wait until tomorrow (midnight UTC)", code 7500): the indexer, the Observatory's
+position panels and capture detail, and everything reading through them (console obligations, API obligations) answered
+500, while KV- and RPC-backed routes (Observatory `/`, `/v1/tokens`, `/v1/sessions`, keeper, agent) kept working.
+`wrangler d1 insights --sort-by reads` named the cause (positions `MAX(taken_at)`, 4.21M of the ~4.8M reads a day) and
+`--sort-by writes` showed writes at ~97K of the 100K free a day (snapshots 56.3K: one row plus two index rows per insert).
+Farseen chose Workers Paid (no daily D1 caps); until it is active the cap is enforced intermittently (probes alternate
+between answering and refusing). Pending deploys (human-run, the session's classifier refuses production deploys):
+Observatory migration 0004 + code, API (bundles the 12 Oct drill runs), site (copy).
 
 ## 7. Keys, accounts and secrets (locations only, never values)
 
@@ -765,6 +833,19 @@ has about $0.16 of capacity and the policy's smallest draw is $1, so the demo's 
 AAPLt would push Saturday's step 2 past the ShadowGuard's 30% guard (demo checklist and runbook). The Claude-in-Chrome
 extension was not connected, so the front ends were checked over HTTP only (all 200).
 
+**12 Oct facts:** D1's free tier caps the **account** at 5M rows read and 100K rows written a day, resetting at 00:00
+UTC, and a row read counts every row a query visits (a full scan of a growing table costs its size every run).
+`wrangler d1 insights <db> --timePeriod 1d --sort-type sum --sort-by reads|writes --json` ranks queries (it does not count
+against the quota). Over the cap, D1 fails every query with code 7500 and enforces it unevenly (probes alternate). Under US
+daylight time the weekly feed close and reopen (20:00 ET) are exactly 00:00 UTC, the last instant of D1's quota day, so a
+quota run-out costs exactly the minutes before each transition. SQLite answers a GROUP BY on the primary key's prefix by
+scanning the PK index in order (the whole history) even when a narrower range index exists; "no newer row for the same
+key" (`NOT EXISTS`) keeps the range scan. `lower(address) = lower(?)` defeats an `(address, …)` index. The ShadowGuard's
+`heldFeed` is `MARKET_CLOSED || FEED_STALE`, so a stale feed in session exercises the weekend protection path exactly; the
+keeper's jobs do not gate on the session. The auto-mode classifier refuses `wrangler deploy` (production deploy) and once
+refused a plain read of `deployments/base-sepolia.json` through `python3 -c`; the Read tool works. A closed drill position
+leaves the MockSwapPool nearly empty (it pays the close-out's USDC).
+
 **8 Oct facts:** the Free plan's 10 ms cap kills heavy cron ticks (`exceededCpu` at exactly `cpuTime 10`) while light
 ones and some 16–19 ms fetches pass: never rely on leniency, measure with a tail. Hono's default SmartRouter compiles a
 regular expression over every route on the first request of a cold isolate (24–26 ms CPU); `PatternRouter` costs 0.2–0.3
@@ -794,19 +875,26 @@ disagree on the head for a few seconds, so run one broadcaster per key at a time
 retry a `nonce too low`; `mainnet.base.org` rate-limits Cloudflare egress, hence the RPC fallback
 list; KV on the free tier allows 1,000 writes a day, hence the throttle; macOS has no `timeout`.
 
-## 9. Verification state (9 Oct 2026, afternoon IST)
+## 9. Verification state (12 Oct 2026, night IST)
 
 ```sh
 forge test --root contracts     # 264 passed, 0 failed, 8 skipped (fork suites without BASE_RPC_URL), 29 suites
-pnpm test                       # 887 vitest: calendar 106, chain 19, ledger 10, router 15, agent 19, api 121, indexer 108,
-                                #   keeper 131, observatory 217, sdk 95, console 46
+forge fmt --root contracts --check   # clean since 12 Oct (ec86941)
+pnpm test                       # 897 vitest: calendar 106, chain 19, ledger 10, router 16, agent 19, api 121, indexer 108,
+                                #   keeper 131, observatory 226, sdk 95, console 46
 pnpm typecheck                  # clean (every package and app)
 BASE_RPC_URL=<alchemy archive> FOUNDRY_BASE=true ~/.foundry/bin/base-forge test --root contracts --match-path 'test/fork/*'
-                                # + test/drills and test/harvest: 9 fork suites, 42 passed (8 Oct)
+                                # + test/drills and test/harvest: 8 fork suites (5 in fork/, 2 in drills/, HarvestFork), 42 passed (8 Oct)
 scripts/drills/run-fork-drills.sh [--only venue-halt|bad-debt-probe]   # writes docs/evidence/drills/{venue-halt,bad-debt-probe}.json
-contracts/script/deploy-mainnet.sh rehearse                            # 50 txs, ~51M gas, 33/33 checks on a base-anvil fork
+contracts/script/deploy-mainnet.sh rehearse                            # 50 txs, ~51M gas, 33/33 checks on a base-anvil fork (re-run 12 Oct: 0.00031456 ETH)
 python3 -I scripts/sepolia/twap.py show                                # the Saturday numbers, live
+python3 -I scripts/sepolia/outage_rescue.py show                       # every number the feed-outage rescue reads, live
 ```
+
+12 Oct cross-check: the build matched section 9 of 9 Oct exactly before the session's changes (264/8 forge, 887 vitest,
+typecheck clean); keeper healthy (all pairs in sync, both protection targets below band, vault and harvest keepers set);
+the Observatory had captured the 9 Oct close and the 11 Oct reopen live; the indexer, the Observatory's position routes and
+capture detail answered 500 from the D1 quota (section 6.3).
 
 Morning cross-check (8 Oct 06:35–07:00 UTC, before the lanes): forge 240/0/5, vitest 691 and typecheck matched section 9 of
 7 Oct; all 8 Workers answered; **94 of 94** recorded full transaction hashes are successful Base Sepolia transactions (the
@@ -870,38 +958,33 @@ chain by the lane that wrote it (K1: 123 transactions, all status 1).
   kept artificially fresh. The desk went to Sepolia at 200 optimizer runs rather than waiting for the library
   split. The Cobalt wire runs as `cast send` with an `eth_call` guard before each write. The API is
   self-custody only: it prepares typed data and calldata and never signs. Indexer phase 1 is Sepolia only.
+- **12 Oct**: the missed Saturday rescue is replaced by the same two actions under a staged frozen feed in session,
+  recorded as a feed-outage rescue and never called a weekend (the ShadowGuard's `heldFeed` makes the paths identical);
+  the vault ladder gets its own drill (`reserve-ladder`) instead of sharing the Protector's; the Observatory's latest views
+  drop positions not written for two hours (closed ones no longer linger); D1 is fixed with indexes and bounded queries
+  regardless of the plan, and Farseen takes Workers Paid; mainnet: Farseen funds fresh deployer and keeper keys himself;
+  the public repository stays local until he publishes it (his call, 12 Oct); claims in the submission carry the replay's
+  "staged" caveat and say "replay", not "nightly".
 
 ## 11. Open items
 
-**Clocked** (the runbook `docs/runbooks/saturday-rescue-2026-10-10.md` has every command and number)
-- **Fri 9 Oct, before 20:00 ET (before Sat 05:15 IST):** `python3 -I scripts/sepolia/friday.py` (dry run passed at 13:30
-  IST; a one-shot in the 9 Oct Claude session runs it at 04:43 IST if that session is still open). By hand: `twap.py mirror`, then `show`:
-  drill position below 58% and line 1 below 52% at the mirrored TWAP while held, pool USDC ≥ drill debt + 0.03 (top up
-  first if not); keeper `/v1/status`, `/v1/protect`, `/v1/vault` healthy, `/v1/config` hold empty; record the "before"
-  state. If the DEX gaps more than ~2.7% under the feed into the close, the keeper closes the drill position out at once:
-  record it as Saturday's step 1.
-- **Sat 10 Oct, after 05:30 IST, screen recording on:** step 1 `twap.py ltv --who drill --bps 5880` → the keeper closes
-  the drill position out (validity transaction, held predicate) + the refused raw `Morpho.liquidate` call; step 2 (only
-  after step 1 landed) `twap.py ltv --who line1 --bps 5400` → the vault job repays line 1 ≈ 0.534 USDC (0.4 user reserve
-  + ≈ 0.134 Reserve advance; ≈ 0.70 if the demo's beat 4 drew on line 1 first); step 3 `twap.py mirror`; record both. Top the pool up before moving the TWAP, never after
-  (a simulated revert backs a target off ~5 min).
-- **Mon 12 Oct after 05:30 IST:** `/v1/captures` run `1791763200` (Sun 11 Oct 20:00 ET); first-print hashes into the
-  submission; the borrower settles the advance (`repayAdvance(1, …)` ≈ 0.135 USDC, ≈ 0.30 after a beat-4 draw) and the Reserve harvests; deadline
-  Tue 13 Oct 12:29 IST.
+**Clocked:** the submission, before **Tue 13 Oct 12:29 IST**. The weekend items of 9–12 Oct are closed: the Friday mirror
+was not applied (recorded), the Saturday rescues were not run on the weekend (recorded; done under a staged outage on
+12 Oct), the reopen capture is in `docs/evidence/reopen-2026-10-11.*`, the advance was settled and harvested.
 
-**Next build items:** re-root Sepolia 2026-10-06/07 once the human approves the D1 delete (then refresh the console
-mock's 10-06 root); the reserve-yield source of the self-repaying leg; mainnet deploy with `deploy-mainnet.sh broadcast`
-the moment a funded key exists (it includes the harvester), then point the agent, router, Observatory and the keeper's
-`HARVEST_TARGETS` at it; Robinhood Chain and Arbitrum (only with a real deployment and position each); the CreditDesk
-freeze redeploy (with `setProtectionVault`; the Cobalt allowlists must admit the vault) is optional: the live desk carries
-every live flow except the vault's `recover`. Done 9 Oct: the Sepolia harvester and live harvests (operator and keeper),
-`/v1/whoami`'s policy version.
+**Next build items (session-doable):** apply migration 0004 and deploy the Observatory, deploy the API (new drill runs)
+and the site (copy) — human-run or with a permission rule, the classifier refuses them; the mainnet deploy the moment
+the keys are funded (`deploy-mainnet.sh broadcast`, then `check`, Basescan verification, and the apps' config: keeper
+mainnet targets, SDK `mainnet` desk, API `MARKETS`, Observatory/agent pre-liquidation flags); re-root Sepolia 2026-10-06/07
+once the human approves the D1 delete; top up the MockSwapPool before any further close-out. Not worth the remaining time:
+the reserve-yield source, other chains, the desk freeze redeploy.
 
 **Human-only**:
-- **Workers Paid ($5/month)**: the 10 ms cap is enforced inconsistently (section 2); Saturday's keeper fits today
-  (3–6 ms) but nothing guarantees it.
+- **Workers Paid ($5/month)**: chosen 12 Oct; confirm it is active (D1 still refused queries intermittently at 17:05 UTC).
+  It lifts D1's daily caps (5M reads / 100K writes, both near or over the limit) and the Free plan's 10 ms CPU cap.
 - **Route signer key** for the API (typed data only, unfunded), or a decision to keep plans unsigned.
-- **Mainnet keys**: deployer 0.005 ETH, keeper 0.002 ETH (about $25); optional USDC seed and each developer's AAPLc position.
+- **Mainnet keys**: deployer 0.005 ETH, keeper 0.002 ETH (about $20), agreed 12 Oct; the key file `~/.boundline/base-mainnet.env`
+  did not exist yet at 23:00 IST. Optional: a USDC seed and each developer's AAPLc position.
 - **Arena project with both developers registered**; the second developer's own commits (all commits so far are
   Farseen's, and the roster must match who did the work); a **public GitHub repo** (`docs/submission/PUBLIC-REPO-CHECKLIST.md`).
 - The `TODO-HUMAN` fields in `docs/submission/SUBMISSION.md` (backgrounds, teammate, GitHub URL, X handle, University
@@ -909,7 +992,8 @@ every live flow except the vault's `recover`. Done 9 Oct: the Sepolia harvester 
 - The recording wallet's address if the demo is not recorded with the borrower test wallet (it must be admitted to the
   test stocks' allowlists first).
 - Approval for the indexer re-root (`DELETE FROM daily_roots WHERE chain_id = 84532 AND day >= '2026-10-06'`).
-- Circle faucet top-ups (20 USDC per 2 h) for the deployer `0x2f0d…2a4E` (2.96 USDC; Saturday needs ≥ 1.2 in reserve);
+- Circle faucet top-ups (20 USDC per 2 h) for the deployer `0x2f0d…2a4E` (2.96 USDC after 12 Oct; the MockSwapPool needs
+  ≥ 1.8 USDC before another close-out drill);
   CDP project and Builder Code; boundline.xyz; Cloudflare R2 scope if exports are wanted; CI secrets once the remote exists.
 
 ## 12. Commit history
@@ -982,6 +1066,12 @@ every live flow except the vault's `recover`. Done 9 Oct: the Sepolia harvester 
 | `f113c99`, `278dc05` | Keeper harvest job; the Worker harvested and re-based on its own |
 | `3d9d83d`, `f2a770a` | `friday.py`; keeper RPC re-sends a rate-limited batch to the next node |
 | `95bd40d`, `bbd57ac` | 9 Oct context and ledger; the harvest job reads nothing while it could not act |
+| `85a9f56`, `e915fef` | 9 Oct: context for the harvest gate; submission counts |
+| `3dc89f3` | 10 Oct: evidence of the Friday step and the close (the mirror not applied, nothing acted while held) |
+| `068d65e` | 12 Oct: Observatory D1 read budget (migration 0004, bounded latest views) and capture runs that complete |
+| `0ac40b0` | The 9–11 Oct weekend and the Sun 11 Oct reopen, captured live and reconstructed from the chain |
+| `48db571` | The feed-outage rescue on Base Sepolia; drill runs, the `reserve-ladder` drill, the weekend record filled |
+| `ec86941` | `forge fmt` on the payout router and its tests |
 
 ## 13. How to keep this file true
 

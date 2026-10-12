@@ -1,28 +1,28 @@
 # X thread (build in public)
 
 Post from the project account (`TODO-HUMAN: handle`). Every number links to its evidence. Each post is under 280
-characters with X's URL weighting (23 per link); the count is in brackets. Attach the image named under a post if you
-have it. Swap the `[pending]` post in once Saturday's rescue lands.
+characters with X's weighting (23 per link, 2 for a minus sign or an emoji); the count is in brackets. Attach the image
+named under a post if you have it. Post 9 is the Monday feed-outage rescue: send it after the thread, or on its own.
 
 ---
 
-**1/8** [277]
+**1/8** [264]
 
 Coinbase's tokenized stocks trade on Base all weekend. Their price feeds don't.
 
-Over 2–4 Oct all ten Chainlink stock feeds printed nothing for 52 hours. The lending markets for these stocks read that frozen price, and can liquidate at any hour.
+Two weekends running, all ten Chainlink stock feeds printed nothing for 48 hours. Lending markets read that frozen price and can liquidate at any hour.
 
 We built the fix: Boundline 🧵
 
-*(image: the Observatory's feed table on a Saturday, every feed held)*
+*(image: the Observatory's weekend-gaps panel, 9–11 Oct)*
 
-**2/8** [255]
+**2/8** [269]
 
-When the feeds reopened on Sunday at 20:00 ET, the first prints came 23–53 seconds after the bell, with gaps from −7.5 to +282 bps.
+Sun 11 Oct, 20:00 ET: the feeds reopened. The first prints came 21–53 seconds after the bell, MSTRc +201 bps, SNDKc +145 bps.
 
-The DEX already knew: NVDAc's Aerodrome TWAP sat 46 bps above the frozen feed before the reopen.
+Our Observatory captured it live, and the chain agrees field for field, down to the transaction of every first print.
 
-https://github.com/TODO-HUMAN/boundline/blob/main/docs/evidence/reopen-2026-10-04.md
+https://github.com/TODO-HUMAN/boundline/blob/main/docs/evidence/reopen-2026-10-11.md
 
 **3/8** [270]
 
@@ -43,11 +43,11 @@ Each keeper action is a Cobalt validity transaction with a predicate on the feed
 Our keeper did this on its own twice:
 https://sepolia.basescan.org/tx/0x982c7327efa9f0460b92501a4322ec5dc730e5faaca3ce1d87dc80f708dfb695
 
-**6/8** [234]
+**6/8** [257]
 
-We replay real Aave V4 and Morpho positions (two of them pushed closer to their limit) on a mainnet fork through −3%, −8% and −15% weekend gaps.
+We replay real Aave V4 and Morpho positions on a mainnet fork through −3%, −8% and −15% weekend gaps, two of them staged near their limit.
 
-Raw venues: 3 liquidations at the reopen. With Boundline: 0.
+Raw venues: 3 liquidations at the reopen, all on the staged positions. With Boundline: 0.
 
 https://boundline-observatory.papermind-ai.workers.dev/v1/assurance
 
@@ -71,16 +71,11 @@ Built for Colosseum's Crypto World's Fair, Base track.
 
 ---
 
-**[pending] Saturday post, to send on Sat 10 Oct after the rescue lands**
+**9 (Monday, the feed-outage rescue)** [278]
 
-It's Saturday. The feeds are frozen. The DEX moved.
+Monday we froze the Apple feed on Sepolia mid-session (to our oracles an outage is a weekend) and dropped the test DEX.
 
-Our keeper just protected a position at the live price, in a transaction Base would only include while the feed was still frozen:
-https://sepolia.basescan.org/tx/`<hash>`
+Our keeper closed the position at the live price, in a tx Base includes only while the feed is frozen:
+https://sepolia.basescan.org/tx/0x9774913eecd620da53019d701f10c8e90400cb6497030785a2e374360d280352
 
-A plain liquidation on the same market: refused.
-
-**[pending] Monday post, after the Sun 20:00 ET reopen (Mon 12 Oct 05:30 IST)**
-
-The feeds reopened at 20:00 ET: first prints `<n>`–`<n>` s after the bell, gaps `<a>` to `<b>` bps (captured live by
-the Observatory, run `1791763200`). `<one line on the protected position>`.
+A plain liquidation: refused.

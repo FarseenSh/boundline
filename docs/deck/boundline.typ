@@ -74,16 +74,16 @@
 #grid(columns: (1.55fr, 1fr), column-gutter: 16pt,
   tbl((auto, auto, auto, auto, auto, auto),
     [*Feed*], [*Held print*], [*Age at reopen*], [*Rounds while closed*], [*First print*], [*Gap*],
-    [AAPLc], [333.66], [55.3 h], [0], [+45 s], [−7.5 bps],
-    [AMZNc], [251.28], [56.9 h], [0], [+27 s], [+18.7 bps],
-    [GOOGLc], [342.80], [52.8 h], [0], [+45 s], [+47.3 bps],
-    [METAc], [727.92], [53.5 h], [0], [+29 s], [+9.8 bps],
-    [MSFTc], [516.20], [58.3 h], [0], [+51 s], [+28.2 bps],
-    [MSTRc], [160.62], [51.9 h], [0], [+53 s], [+282.3 bps],
-    [NVDAc], [234.69], [54.9 h], [0], [+43 s], [+19.2 bps],
-    [SNDKc], [1,722.70], [55.3 h], [0], [+23 s], [+64.9 bps],
-    [SPCXc], [158.79], [51.9 h], [0], [+23 s], [+28.7 bps],
-    [TSLAc], [370.36], [52.1 h], [0], [+37 s], [+52.1 bps],
+    [AAPLc], [336.84], [52.5 h], [0], [+51 s], [−5.8 bps],
+    [AMZNc], [261.80], [52.7 h], [0], [+41 s], [+51.9 bps],
+    [GOOGLc], [352.63], [54.7 h], [0], [+31 s], [+4.7 bps],
+    [METAc], [719.92], [54.4 h], [0], [+53 s], [+14.7 bps],
+    [MSFTc], [536.08], [53.3 h], [0], [+23 s], [−1.5 bps],
+    [MSTRc], [154.61], [53.2 h], [0], [+21 s], [+201.0 bps],
+    [NVDAc], [230.26], [56.7 h], [0], [+23 s], [+1.1 bps],
+    [SNDKc], [1,581.77], [52.4 h], [0], [+21 s], [+144.7 bps],
+    [SPCXc], [162.62], [52.1 h], [0], [+37 s], [+94.9 bps],
+    [TSLAc], [383.97], [55.9 h], [0], [+23 s], [+16.5 bps],
   ),
   block[
     #text(size: 10.5pt)[
@@ -96,7 +96,7 @@
   ],
 )
 #v(2pt)
-#text(size: 8pt, fill: mute)[The 2–4 Oct 2026 weekend, all ten feeds, from the Chainlink round history on Base mainnet (`docs/evidence/reopen-2026-10-04.md`).]
+#text(size: 8pt, fill: mute)[The 9–11 Oct 2026 weekend, all ten feeds: captured live by the Observatory and reconstructed from the Chainlink round history on Base mainnet, agreeing on every field (`docs/evidence/reopen-2026-10-11.md`). 2–4 Oct looked the same: zero rounds, first prints 23–53 s, MSTRc +282 bps.]
 #pagebreak()
 
 // ───────────────────────────────────────────── 3 · what boundline is
@@ -120,7 +120,7 @@
   [Time], [`MarketCalendar`: every NYSE session onchain (pre, regular, post, overnight, weekend, holiday, early closes, daylight saving)], [5,643 instants, 3 independent implementations, 0 disagreements],
   [Verdict], [`SessionGate`: per stock, is this price safe? Session, feed age, Coinbase OracleRegistry pause, issuer transfer pause; fails closed], [34 oracle tests],
   [Venue oracle], [`SessionGuard` (Morpho): reverts while the feed is held, so borrow, withdraw and liquidate stop; repay never reads it], [live since 3 Oct; mainnet fork],
-  [Protection], [`ShadowGuard`: the 24/7 Aerodrome TWAP less a haircut. Morpho's audited pre-liquidation + Boundline's `Protector`; the `DeskProtectionVault` ladder and the `BoundlineReserve` (ERC-4626)], [keeper acted twice on its own; Reserve advance settled],
+  [Protection], [`ShadowGuard`: the 24/7 Aerodrome TWAP less a haircut. Morpho's audited pre-liquidation + Boundline's `Protector`; the `DeskProtectionVault` ladder and the `BoundlineReserve` (ERC-4626)], [keeper acted on its own, also under a frozen feed; Reserve advances settled],
   [Credit], [`CreditDesk` (Morpho), `AaveDesk` (Aave V4 via Taker/Giver): partner policy, decision hashes, local-money payout], [live lines; Aave on a mainnet fork],
   [Data], [Observatory, indexer with hash-chained daily roots, fork replay through weekend gaps], [live on mainnet reads],
   [Partners], [API (x402-metered), SDK, app, console, MCP agent surface], [eight Workers live],
@@ -159,6 +159,8 @@
       [`slot ≠ held`], [#hx[0xbbd84631…b2fb] · included after the round changed],
       [keeper, held], [#hx[0x982c7327…b695] · automatic protection],
       [keeper, held], [#hx[0x6d45ddc9…40d9] · automatic, 89 min later],
+      [keeper, frozen], [#hx[0x9774913e…0352] · close-out, staged outage, 12 Oct],
+      [vault, frozen], [#hx[0x47ac5279…1d24] · ladder repay, same predicate],
     )
     #v(4pt)
     #text(size: 8.5pt, fill: mute)[Measured: "not before", not "as soon as" (`docs/evidence/validity-transactions-sepolia.md`).]
@@ -176,13 +178,13 @@
   [Reserve advance], [protective repay on a live line: 0.5 USDC from the user's reserve + 0.2 USDC Reserve advance, settled with a 1% fee], [#hx[0x28c1ec44…08a4]],
   [Local money], [0.5 USDC → 0.46 EURCt inside the borrow flow, session-checked], [#hx[0x9090633c…5bd3]],
   [x402], [two keyless API calls paid \$0.01 test USDC each], [#hx[0x8816d08f…c6ff]],
-  [#pend[Sat 10 Oct]], [the keeper's rescue while the feed is frozen], [#pend[hash]],
+  [Frozen feed], [Mon 12 Oct, a staged feed outage: the keeper closed out an in-band position at the live price as a validity transaction; a raw liquidation reverted `FeedStale`; the vault repaid a second line from the user's reserve + a Reserve advance], [#hx[0x9774913e…0352]],
   [Drills], [stale feed, registry pause, issuer pause, scheduled multiplier, blocked receiver, keeper hold: each refused by name, repays still land], [#hx[0x84064c22…8429]],
   [Webhooks], [a hold and a release on a live line reached the partner HMAC-signed, 84 s and 170 s after the block], [#hx[0x5dd9d8df…42b7]],
   [Dividend → loan], [a dividend multiplier step swept into a desk line's debt: flash loan, repay first, sell only the dividend collateral], [#hx[0xa44b7867…f680]],
 )
 #v(3pt)
-#text(size: 8pt, fill: mute)[Every contract verified on sepolia.basescan.org; addresses and full hashes in `deployments/base-sepolia.json`. #pend[mainnet deploys need a funded key]]
+#text(size: 8pt, fill: mute)[Every contract verified on sepolia.basescan.org; addresses and full hashes in `deployments/base-sepolia.json`. Nothing is deployed on mainnet yet: the deploy is one rehearsed command.]
 #pagebreak()
 
 // ───────────────────────────────────────────── 8 · mainnet
@@ -190,10 +192,10 @@
 #grid(columns: (1fr, 1fr), column-gutter: 16pt,
   block[
     #grid(columns: (1fr, 1fr), column-gutter: 10pt, row-gutter: 10pt,
-      stat(coral)[\$371K][USDC debt across 28 Aave V4 stock positions on Base (8 Oct, 06:51 UTC)],
-      stat(amber)[13][Morpho B20 markets, 53 positions, 15,774.75 USDC borrowed],
+      stat(coral)[\$1.73M][USDC borrowed on Aave V4's MAG7 stock spoke against \$5.14M of tokenized-stock collateral (block 52,517,725, 12 Oct)],
+      stat(amber)[14][Morpho B20 markets, 16,315.76 USDC borrowed (12 Oct)],
       stat(live)[10][Coinbase stock feeds, sessions and registry flags, every minute],
-      stat(focus)[5][mainnet-fork suites: SessionGuard on the live Morpho, the Protector on a real Steakhouse borrower, Aave's live Taker and Giver, the real EURC pool, the replay],
+      stat(focus)[8][mainnet-fork suites: SessionGuard on the live Morpho, the Protector on a real Steakhouse borrower, Aave's Taker and Giver, the EURC pool, the replay, the Aave hub halt, a bad-debt probe, a real dividend],
     )
   ],
   block[
@@ -206,7 +208,7 @@
       [−15%], [2 of 5], [0 of 5],
     )
     #v(4pt)
-    #text(size: 8.5pt, fill: ink2)[Five positions: three real, two real positions staged closer to their limit. Boundline acts on Saturday at the live price (pre-liquidation in the band, a repay above it). Evidence hash #hx[0xa626f099…3c45].]
+    #text(size: 8.5pt, fill: ink2)[Five positions: three as they stood, two real positions staged near their limit. Every raw liquidation was a staged position; the three as they stood stayed healthy even at −15%. Boundline acts on Saturday at the live price (pre-liquidation in the band, a repay above it). Evidence hash #hx[0xa626f099…3c45].]
   ],
 )
 #pagebreak()
@@ -214,7 +216,7 @@
 // ───────────────────────────────────────────── 9 · partners and agents
 #head[the partner surface][A wallet integrates in a day and keeps its brand.]
 #grid(columns: (1fr, 1fr, 1fr), column-gutter: 12pt,
-  note[#text(fill: ink, weight: "bold")[Partner API] \ Keys, quotes (capacity rounds down, charges round up, unknown data fails closed), obligations, decision timelines, policy versions, drills, evidence export. Public routes metered by *x402*. #pend[routes, webhooks]],
+  note[#text(fill: ink, weight: "bold")[Partner API] \ Keys, quotes (capacity rounds down, charges round up, unknown data fails closed), obligations, decision timelines, policy versions, drills, evidence export. Public routes metered by *x402*. Route plans; HMAC-signed webhooks.],
   note[#text(fill: ink, weight: "bold")[SDK + app] \ One `wallet_sendCalls` batch: authorise, approve, add collateral, draw, swap to local money. Preconfirmation in 200 ms. The Boundline app is partner \#1.],
   note[#text(fill: ink, weight: "bold")[Console + agents] \ Obligations, timelines, policy editor, drills, reconciliation, evidence with the hash recomputed in the page. An *MCP* server: session, positions, shadow health, quote, protect, route.],
 )
@@ -229,8 +231,8 @@
   [B20 Credit Observatory], [read every Coinbase stock feed, session, registry flag, DEX gap and real Aave and Morpho position on Base, minute by minute, from an open JSON API],
   [`MarketCalendar` + `@boundline/calendar`], [ask onchain or in TypeScript which NYSE session any instant belongs to, holidays and early closes included],
   [`SessionGate`, `SessionGuard`, `ShadowGuard`], [list a Morpho market that refuses a frozen price; protect positions at a live price],
-  [The weekend dataset], [rebuild any weekend's freeze and reopen from the chain (`scripts/reopen-evidence.py`, standard library only)],
-  [The replay harness], [take real positions through weekend gaps on a fork and publish the result with a hash (built to run nightly; first run 7 Oct)],
+  [The weekend dataset], [two weekends recorded (9–11 Oct also captured live); rebuild any weekend's freeze and reopen from the chain (`scripts/reopen-evidence.py`, standard library only)],
+  [The replay harness], [take real positions through weekend gaps on a fork and publish the result with a hash (first run 7 Oct; scheduled nightly in CI once the repository is public)],
 )
 #pagebreak()
 
@@ -246,7 +248,7 @@
     #v(3pt)
     #text(size: 10.5pt)[Farseen Shaikh, incoming MSc Data Science, TU Berlin · #todo[second developer, one line each]]
     #v(3pt)
-    #text(size: 9.5pt, fill: ink2)[53 commits from 3 to 8 Oct, 240 Foundry + 691 TypeScript tests, eight services live.]
+    #text(size: 9.5pt, fill: ink2)[98 commits from 3 to 12 Oct, 264 Foundry + 897 TypeScript tests, eight mainnet-fork suites, eight services live.]
   ],
   block[
     #text(font: mono, size: 8pt, fill: coral, tracking: 1.6pt)[THE ASK]
@@ -261,7 +263,7 @@
     #v(8pt)
     #text(font: mono, size: 8pt, fill: coral, tracking: 1.6pt)[VALIDATION]
     #v(3pt)
-    #text(size: 10.5pt)[\$371K of stock-backed debt on Aave V4 alone sits on a feed that freezes every weekend. #todo[conversations, opt-ins]]
+    #text(size: 10.5pt)[\$1.73M of stock-backed debt on Aave V4's stock spoke alone sits on a feed that freezes every weekend. #todo[conversations, opt-ins]]
   ],
 )
 #pagebreak()

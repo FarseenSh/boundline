@@ -147,8 +147,8 @@ evidence index below):
   on a fork of mainnet on 12 Oct: 50 transactions, 33 of 33 post-deploy checks, 0.00031 ETH (about $0.79) of gas. It is
   not deployed on mainnet yet.
 
-**Built in the window:** 88 commits from Sat 3 Oct to Fri 9 Oct 2026 in a new repository; 264 Foundry tests (unit,
-fuzz, invariant, differential) plus nine mainnet-fork suites that run against an archive RPC; 887 TypeScript tests;
+**Built in the window:** 98 commits from Sat 3 Oct to Mon 12 Oct 2026 in a new repository; 264 Foundry tests (unit,
+fuzz, invariant, differential) plus eight mainnet-fork suites that run against an archive RPC; 897 TypeScript tests;
 eight Cloudflare Workers live.
 `TODO-HUMAN: refresh the counts on submission day (git log | wc -l, forge test, pnpm test).`
 

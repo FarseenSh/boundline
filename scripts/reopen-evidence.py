@@ -155,7 +155,8 @@ def pool_prices(pool, block):
         twap = (1 / p_tick) * 10 ** (8 - 6)
     except Exception as e:  # pool without 1h history
         twap = None
-    return {"spot": p1_in_0, "twap1h": twap, "tick": s[1] - (1 << 24) if s[1] >= (1 << 23) else s[1]}
+    # slot0's int24 tick arrives ABI-padded: sign-extended to a full 256-bit word, so decode it as an int256.
+    return {"spot": p1_in_0, "twap1h": twap, "tick": int256(s[1])}
 
 
 def main():

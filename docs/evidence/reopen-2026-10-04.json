@@ -240,7 +240,7 @@
     "AAPLc": {
       "spot": 333.4867627951355,
       "twap1h": 333.5890846261394,
-      "tick": 115792089237316195423570985008687907853269984665640564039457584007913112850675,
+      "tick": -12045,
       "heldFeed": 333.66495,
       "spotVsHeldBps": -5.340303345150795,
       "twapVsHeldBps": -2.2736992261414244
@@ -248,10 +248,11 @@
     "NVDAc": {
       "spot": 235.63500204253646,
       "twap1h": 235.7630567466088,
-      "tick": 115792089237316195423570985008687907853269984665640564039457584007913112854148,
+      "tick": -8572,
       "heldFeed": 234.68592897,
       "spotVsHeldBps": 40.44013532050252,
       "twapVsHeldBps": 45.896564030752295
     }
-  }
+  },
+  "dexNote": "tick corrected on 12 Oct 2026 from the script's first output (slot0's int24 is sign-extended to 256 bits; the script subtracted 2^24 from the raw word): t = raw - 2^256 + 2^24, checked against slot0 at blockBeforeReopen"
 }

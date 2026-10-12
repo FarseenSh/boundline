@@ -187,7 +187,7 @@ describe("the page", () => {
     expect(html).toContain("Weekend gaps");
     expect(html).toContain("Oct 04"); // the evidence reopen, Sun 4 Oct 20:00 ET
     expect(html).toContain("-7.5 bps");
-    expect(html).toContain("Nightly assurance");
+    expect(html).toContain("Assurance replay");
     expect(html).toContain("pre-repay saturday");
     expect(html).toContain("0xabc");
     expect(html).toContain('href="/v1/gaps"');

@@ -1,4 +1,4 @@
-// Nightly assurance: the fork replay harness (scripts/replay) takes every real Aave and Morpho stock position
+// Assurance replay: the fork replay harness (scripts/replay) takes every real Aave and Morpho stock position
 // through Friday close, a set of feed gaps and the Sunday reopen, raw venue against Boundline, and publishes the
 // result to the SNAPSHOTS KV namespace under `assurance-latest`. The Observatory only serves and renders it.
 export const KV_ASSURANCE = "assurance-latest";

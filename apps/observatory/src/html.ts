@@ -33,7 +33,7 @@ export interface PageExtras {
   aave?: AavePositionRow[] | null;
   /** The weekend-gap panel (cached in KV). */
   gaps?: GapsPanel | null;
-  /** The nightly assurance run from KV, or the reason there is none to show. */
+  /** The latest assurance replay from KV, or the reason there is none to show. */
   assurance?: AssuranceStatus | null;
   /** The seize watch from the indexer (cached in KV). */
   seize?: SeizeWatchBody | null;
@@ -215,10 +215,10 @@ ${blocks}
 ${more}</div>`;
 }
 
-// ---------------------------------------------------------------- nightly assurance
+// ---------------------------------------------------------------- assurance replay
 
 export function assurancePanel(a: AssuranceStatus | null): string {
-  const head = `<h2>Nightly assurance</h2>`;
+  const head = `<h2>Assurance replay</h2>`;
   if (a === null || a.status === "no run yet") return `${head}<div class="panel"><p class="mute">No run yet. The replay harness forks Base at the latest block, takes every real Aave and Morpho stock position through Friday close, a feed gap and the Sunday reopen, raw venue against Boundline, and publishes the result here with its evidence hash.</p></div>`;
   if (a.status === "malformed") return `${head}<div class="panel"><p class="mute">The last run could not be read: ${escapeHtml(a.detail)}.</p></div>`;
   const r = a.run;
@@ -235,6 +235,7 @@ export function assurancePanel(a: AssuranceStatus | null): string {
     .join("\n");
   return `${head}<div class="panel"><p>${verdict} ran ${escapeHtml(fmtEt(r.ranAt, true))} · fork block ${r.forkBlock} (${escapeHtml(fmtEt(r.forkBlockTime))}) · ${r.summary.positions} position${r.summary.positions === 1 ? "" : "s"} × ${r.summary.scenarios} scenario${r.summary.scenarios === 1 ? "" : "s"} · raw venue liquidatable in ${r.summary.rawLiquidatable}, with Boundline ${r.summary.boundlineLiquidatable}.</p>
 <p class="mute">Evidence <code>${escapeHtml(r.evidenceHash)}</code> · ${escapeHtml(r.artifact)}</p>
+<p class="mute">Rows that share an address are one real position replayed twice: as it stood, and staged near its limit before the gap (the evidence file labels each row). The harness is scheduled to run nightly in CI once the repository is public.</p>
 <div class="wrap"><table><thead><tr><th>Scenario</th><th>Venue</th><th>Position</th><th>Collateral</th><th>Debt (USDC)</th><th>Raw HF at reopen</th><th>Raw venue</th><th>Boundline action</th><th>HF after</th><th>With Boundline</th></tr></thead><tbody>
 ${rows}
 </tbody></table></div></div>`;
