@@ -61,7 +61,7 @@
 #v(1fr)
 #line(length: 100%, stroke: 0.6pt + ln)
 #v(6pt)
-#text(font: mono, size: 8.5pt, fill: mute)[Farseen Shaikh · #todo[second developer] · Colosseum Crypto World's Fair, Base track · October 2026]
+#text(font: mono, size: 8.5pt, fill: mute)[Farseen Shaikh · Colosseum Crypto World's Fair, Base track · October 2026]
 #set page(footer: ftr)
 #pagebreak()
 
@@ -242,9 +242,9 @@
     #v(8pt)
     #text(font: mono, size: 8pt, fill: coral, tracking: 1.6pt)[TEAM]
     #v(3pt)
-    #text(size: 10.5pt)[Farseen Shaikh, incoming MSc Data Science, TU Berlin · #todo[second developer, one line each]]
+    #text(size: 10.5pt)[Farseen Shaikh, incoming MSc Data Science, TU Berlin]
     #v(3pt)
-    #text(size: 9.5pt, fill: ink2)[121 commits from 3 to 13 Oct, 264 Foundry + 898 TypeScript tests, eight mainnet-fork suites, eight services live, the footprint on Base mainnet.]
+    #text(size: 9.5pt, fill: ink2)[122 commits from 3 to 13 Oct, 264 Foundry + 898 TypeScript tests, eight mainnet-fork suites, eight services live, the footprint on Base mainnet.]
   ],
   block[
     #text(font: mono, size: 8pt, fill: coral, tracking: 1.6pt)[THE ASK]
@@ -259,7 +259,7 @@
     #v(8pt)
     #text(font: mono, size: 8pt, fill: coral, tracking: 1.6pt)[VALIDATION]
     #v(3pt)
-    #text(size: 10.5pt)[\$1.73M of stock-backed debt on Aave V4's stock spoke alone sits on a feed that freezes every weekend. #todo[conversations, opt-ins]]
+    #text(size: 10.5pt)[\$1.73M of stock-backed debt on Aave V4's stock spoke alone sits on a feed that freezes every weekend.]
   ],
 )
 #pagebreak()
