@@ -51,4 +51,5 @@ Verify on Sepolia, EIP-712 partner attestation fallback).
 
 - Partner key rotation.
 - The live Sepolia desk predates `recoverCollateral` (the freeze redeploy did not happen), so the Morpho-side vault's
-  recovery path is unit- and invariant-proven and not live on Sepolia; its repay path is live (7 and 12 Oct).
+  recovery path is unit- and invariant-proven and not live on Sepolia; its repay path is live (7 and 12 Oct). The 13 Oct
+  mainnet desk has it (selector `0x77cbdedf` is in its code); no mainnet line exists yet to exercise it.
