@@ -20,8 +20,11 @@ describe("config", () => {
     expect(marketByCollateral(c, "0xb2000000000000000000000e063e65377ca34141")?.symbol).toBe("AAPLt");
     expect(marketById(c, "0x4A03B124A170A913931F00AB87F7966D388370CF457C0A3C4FB6FCF4FBB88047")?.symbol).toBe("AAPLt");
   });
-  it("mainnet has no desk yet and unknown chains throw", () => {
-    expect(BASE_MAINNET.desk).toBeNull();
+  it("mainnet carries the deployed footprint and unknown chains throw", () => {
+    expect(BASE_MAINNET.desk).toBe(getAddress("0x1671166DB8B93057Fa9a95b052b86c30E7B6a7Dd"));
+    expect(marketById(BASE_MAINNET, "0xb50ecaba0652b5a51bde9a747e9b7a2075c7ab68fd3c6ef7c05eabf6bb0f1d28")?.symbol).toBe("AAPLc");
+    expect(stockBySymbol(BASE_MAINNET, "AAPLc")?.sessionGuard).toBe(marketById(BASE_MAINNET, "0xb50ecaba0652b5a51bde9a747e9b7a2075c7ab68fd3c6ef7c05eabf6bb0f1d28")?.oracle);
+    expect(stockBySymbol(BASE_MAINNET, "TSLAc")?.sessionGuard).toBeNull();
     expect(() => configFor(1)).toThrow(/no configuration/);
   });
   it("explorer links", () => {

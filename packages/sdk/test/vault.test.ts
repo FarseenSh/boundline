@@ -52,10 +52,10 @@ const transport = custom({
 describe("DeskProtectionVault reads", () => {
   const b = createBoundline({ chainId: 84532, transport });
 
-  it("is wired on Sepolia; mainnet has no vault yet", () => {
+  it("is wired on Sepolia and mainnet; a chain without a vault refuses", () => {
     expect(b.vault?.vault).toBe(vault);
-    expect(BASE_MAINNET.deskProtectionVault).toBeNull();
-    expect(() => vaultOf(BASE_MAINNET)).toThrow(/no DeskProtectionVault/);
+    expect(BASE_MAINNET.deskProtectionVault).toBe("0x0828f1aDADaf7C1f44B3425337ebE7189c7B1cD9");
+    expect(() => vaultOf({ ...BASE_MAINNET, deskProtectionVault: null })).toThrow(/no DeskProtectionVault/);
   });
 
   it("reads the reserves, a line's advance, the funding preview and the debt", async () => {
@@ -107,7 +107,7 @@ describe("DeskProtectionVault calls", () => {
     expect(() => prepareVaultDeposit(cfg, 0n)).toThrow(/positive/);
     expect(() => prepareVaultWithdraw(cfg, 0n)).toThrow(/positive/);
     expect(() => prepareRepayAdvance(cfg, 1n, 0n)).toThrow(/positive/);
-    expect(() => prepareVaultDeposit(BASE_MAINNET, 1n)).toThrow(/no DeskProtectionVault/);
+    expect(() => prepareVaultDeposit({ ...BASE_MAINNET, deskProtectionVault: null }, 1n)).toThrow(/no DeskProtectionVault/);
   });
 
   it("is reachable from the Boundline object", () => {

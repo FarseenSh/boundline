@@ -33,12 +33,14 @@ describe("payout pools", () => {
     expect(payoutPoolOf(cfg, eurct.token.toLowerCase())).toBe(eurct);
     expect(() => payoutPoolOf(cfg, "cNGN")).toThrow(/no local-money pool/);
   });
-  it("mainnet knows the Aerodrome EURC/USDC pool but has no router yet", () => {
+  it("mainnet routes on the Aerodrome EURC/USDC pool; a chain without a router refuses", () => {
     const eurc = payoutPoolOf(BASE_MAINNET, "EURC");
     expect(eurc.pool).toBe("0xE846373C1a92B167b4E9cd5d8E4d6B1Db9E90EC7");
     expect(eurc.kind).toBe("cl");
     expect(eurc.quoteSource).toBe("slot0");
-    expect(() => preparePayout(BASE_MAINNET, { token: "EURC", amountIn: 1n, minOut: 0n, to: user, deadline: 1n })).toThrow(/no LocalPayoutRouter/);
+    expect(preparePayout(BASE_MAINNET, { token: "EURC", amountIn: 1n, minOut: 0n, to: user, deadline: 1n }).to).toBe("0xFC18E12929a3763476c13463fb05106F6F226112");
+    const noRouter = { ...BASE_MAINNET, payout: { ...BASE_MAINNET.payout, router: null } };
+    expect(() => preparePayout(noRouter, { token: "EURC", amountIn: 1n, minOut: 0n, to: user, deadline: 1n })).toThrow(/no LocalPayoutRouter/);
   });
 });
 

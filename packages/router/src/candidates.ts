@@ -120,10 +120,23 @@ export async function readRates(rpcs: readonly string[], ids: readonly string[],
 /**
  * Mainnet Morpho markets with a Boundline pre-liquidation contract (created on Morpho's official factory by
  * contracts/script/DeployMainnet.s.sol, priced by the stock's ShadowGuard; deployments/base-mainnet.json), keyed by the
- * lowercase market id. Empty until the mainnet deploy: a market listed here routes as protected; every other mainnet
- * market prices at the held feed and liquidates at any hour.
+ * lowercase market id. A market listed here routes as protected; every other mainnet market prices at the held feed and
+ * liquidates at any hour.
  */
-export const MAINNET_PRE_LIQUIDATIONS: Readonly<Record<string, string>> = {};
+export const MAINNET_PRE_LIQUIDATIONS: Readonly<Record<string, string>> = {
+  // Steakhouse AAPLc/USDC (MorphoChainlinkOracleV2, 62.5%)
+  "0xae1a30486234bf7e7ac166c7c03d9bc5f2cd8a39be2c48e73c665ac7148c3c28": "0x50353Fd5D28cD5b1481Dd96b0074655484447e2F",
+  // Steakhouse NVDAc/USDC
+  "0xb4b42dd66cef25614b94510a910d54b2c148e7621d22b4271566724beda63d13": "0x8d2573D18E07186CC87B61ac1593bC293d9ECc8f",
+  // Boundline's session-safe AAPLc/USDC (SessionGuard oracle)
+  "0xb50ecaba0652b5a51bde9a747e9b7a2075c7ab68fd3c6ef7c05eabf6bb0f1d28": "0x1D6B5C5134C1450f9F07272106aE47637EbFCAFb",
+};
+
+/**
+ * Mainnet Morpho markets priced by a Boundline SessionGuard (lowercase ids): they refuse to price while the market is
+ * closed, so they do not price around the clock and Saturday mode never applies to them.
+ */
+export const MAINNET_SESSION_SAFE_MARKETS: ReadonlySet<string> = new Set(["0xb50ecaba0652b5a51bde9a747e9b7a2075c7ab68fd3c6ef7c05eabf6bb0f1d28"]);
 
 export interface CandidateInputs {
   tokens: readonly ObservatoryToken[];
@@ -132,6 +145,8 @@ export interface CandidateInputs {
   sepoliaRates: readonly RateRead[];
   /** Overrides MAINNET_PRE_LIQUIDATIONS (tests, or a caller with a fresher deployment record). */
   preLiquidations?: Readonly<Record<string, string>>;
+  /** Overrides MAINNET_SESSION_SAFE_MARKETS. */
+  sessionSafeMarkets?: ReadonlySet<string>;
 }
 
 /** Every candidate for one collateral symbol (mainnet `AAPLc` or Sepolia `AAPLt`); unknown rates fail closed (rate 0, flagged). */
@@ -167,7 +182,7 @@ export function buildCandidates(collateral: string, inputs: CandidateInputs): { 
         availableLiquidity: good?.availableLiquidity ?? BigInt(m.totalSupplyAssets) - BigInt(m.totalBorrowAssets),
         protection: (inputs.preLiquidations ?? MAINNET_PRE_LIQUIDATIONS)[m.id.toLowerCase()] ? "pre-liquidation" : "none",
         ...common,
-        pricesAroundTheClock: true,
+        pricesAroundTheClock: !(inputs.sessionSafeMarkets ?? MAINNET_SESSION_SAFE_MARKETS).has(m.id.toLowerCase()),
       });
     }
   } else {

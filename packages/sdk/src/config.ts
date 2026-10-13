@@ -1,6 +1,6 @@
 // Every address the SDK and the app need, per chain, in one place. Base Sepolia is live
-// (deployments/base-sepolia.json, 3 Oct 2026); Base mainnet has no desk yet and is listed so the
-// app can add it without touching anything else.
+// (deployments/base-sepolia.json, 3 Oct 2026); Base mainnet carries the footprint of
+// contracts/script/DeployMainnet.s.sol (deployments/base-mainnet.json). The app builds for one chain (VITE_CHAIN_ID).
 import { getAddress, stringToHex, type Address, type Hex } from "viem";
 
 export interface StockConfig {
@@ -152,24 +152,36 @@ export const BASE_MAINNET: BoundlineChainConfig = {
   name: "Base",
   rpcUrls: ["https://base-rpc.publicnode.com", "https://base.drpc.org", "https://mainnet.base.org"],
   explorer: "https://basescan.org",
-  desk: null,
-  gate: null,
+  // deployments/base-mainnet.json: the desk on the SessionGate, over the session-safe AAPLc market.
+  desk: addr("0x1671166DB8B93057Fa9a95b052b86c30E7B6a7Dd"),
+  gate: addr("0x327895dA0fe53e18A8af5E98Bc749223B5227Ec6"),
   morpho: addr("0xBBBBBbbBBb9cC5e90e3b3Af64bdAF62C37EEFFCb"),
   usdc: addr("0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"),
   usdcDecimals: 6,
   partnerId: BOUNDLINE_PARTNER_ID,
   stocks: stocks([
-    { symbol: "AAPLc", name: "Apple", token: addr("0xb200000000000000000000C2e324d24d7eEcd1fb"), feed: addr("0x787f13dEa48Db0897CbCDD985de77809D837F988"), sessionGuard: null, decimals: 8 },
-    { symbol: "NVDAc", name: "NVIDIA", token: addr("0xb20000000000000000000078ee7ce2fE4908108C"), feed: addr("0x04689a41629776563E6822F76f2e57D148d28513"), sessionGuard: null, decimals: 8 },
+    { symbol: "AAPLc", name: "Apple", token: addr("0xb200000000000000000000C2e324d24d7eEcd1fb"), feed: addr("0x787f13dEa48Db0897CbCDD985de77809D837F988"), sessionGuard: addr("0xf94C3C8aEb3E79376868a23f42a31Cb3B6a3F132"), decimals: 8 },
+    { symbol: "NVDAc", name: "NVIDIA", token: addr("0xb20000000000000000000078ee7ce2fE4908108C"), feed: addr("0x04689a41629776563E6822F76f2e57D148d28513"), sessionGuard: addr("0x8ffE3c46D677ee3b8CE1773C22607aA340e1fc8E"), decimals: 8 },
     { symbol: "TSLAc", name: "Tesla", token: addr("0xb2000000000000000000001e800a7f5189430cD0"), feed: addr("0xFaf869185383a24F8cb00e27BdA6b63B9905DCb4"), sessionGuard: null, decimals: 8 },
   ]),
-  markets: [],
-  preLiquidation: null,
-  reserve: null,
-  deskProtectionVault: null,
-  // The router is not on mainnet yet; the pool is Aerodrome's Slipstream EURC/USDC (token0 EURC, tickSpacing 50, verified 7 Oct 2026).
+  markets: [
+    {
+      // Boundline's session-safe AAPLc/USDC market: SessionGuard oracle, AdaptiveCurveIrm, 62.5%.
+      id: "0xb50ecaba0652b5a51bde9a747e9b7a2075c7ab68fd3c6ef7c05eabf6bb0f1d28" as Hex,
+      symbol: "AAPLc",
+      collateral: addr("0xb200000000000000000000C2e324d24d7eEcd1fb"),
+      loan: addr("0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"),
+      oracle: addr("0xf94C3C8aEb3E79376868a23f42a31Cb3B6a3F132"),
+      lltvWad: 625_000_000_000_000_000n,
+    },
+  ],
+  // The session-safe AAPLc market's pre-liquidation (the Steakhouse AAPLc and NVDAc ones are in @boundline/router).
+  preLiquidation: addr("0x1D6B5C5134C1450f9F07272106aE47637EbFCAFb"),
+  reserve: addr("0xc4d5d866E9b5aDf35B4FD750fb192d99e20da1B4"),
+  deskProtectionVault: addr("0x0828f1aDADaf7C1f44B3425337ebE7189c7B1cD9"),
+  // The pool is Aerodrome's Slipstream EURC/USDC (token0 EURC, tickSpacing 50, verified 7 Oct 2026).
   payout: {
-    router: null,
+    router: addr("0xFC18E12929a3763476c13463fb05106F6F226112"),
     pools: [
       {
         symbol: "EURC",

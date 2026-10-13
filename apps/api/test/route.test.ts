@@ -205,10 +205,10 @@ describe("POST /v1/route on Base mainnet", () => {
   });
   const deps = (feedLive: boolean): NonNullable<AppDeps["route"]> => ({ sepolia: null, mainnet: { observatory: async (path) => (path === "/v1/tokens" ? tokens(feedLive) : markets), rpcs: ["https://rpc.test"], fetchImpl: mainnetRpc } });
 
-  it("routes 1 AAPLc to the Steakhouse market at the live rate, protection none, default 55 % policy", async () => {
+  it("routes 1 AAPLc to the Steakhouse market at the live rate, protected by Boundline's pre-liquidation, default 55 % policy", async () => {
     const { app } = await world({ route: deps(true) });
     const { json } = await call(app, "POST", "/v1/route", { body: { chainId: 8453, borrower: USER, collateral: [{ symbol: "AAPLc", amount: "1" }] } });
-    expect(json.plan.chosen).toMatchObject({ venue: "morpho", chainId: 8453, marketId: STEAKHOUSE, protection: "none", expectedRateWad: (RATE_PER_SECOND * 31_536_000n).toString() });
+    expect(json.plan.chosen).toMatchObject({ venue: "morpho", chainId: 8453, marketId: STEAKHOUSE, protection: "pre-liquidation", expectedRateWad: (RATE_PER_SECOND * 31_536_000n).toString() });
     const value = (100_000_000n * PRICE8 * 1_000_000n) / (100_000_000n * 100_000_000n);
     // 55 % of 335.683 USDC is 184.625650, above the 150 USDC the market can lend: liquidity is the bound that bites
     expect((value * 550_000_000_000_000_000n) / 10n ** 18n).toBe(184_625_650n);

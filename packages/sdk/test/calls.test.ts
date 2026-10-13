@@ -54,7 +54,7 @@ describe("prepared calls encode exactly what the ABI says", () => {
     expect(REPAY_ALL).toBe(2n ** 256n - 1n);
   });
   it("refuses a chain without a desk", () => {
-    expect(() => prepareDraw(BASE_MAINNET, 1n, 1n)).toThrow(/no CreditDesk/);
+    expect(() => prepareDraw({ ...BASE_MAINNET, desk: null }, 1n, 1n)).toThrow(/no CreditDesk/);
   });
 });
 

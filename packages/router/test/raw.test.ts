@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { aprWad, buildCandidates, gateOf, price36To8, type ObservatoryToken } from "../src/candidates.js";
+import { aprWad, buildCandidates, gateOf, MAINNET_PRE_LIQUIDATIONS, MAINNET_SESSION_SAFE_MARKETS, price36To8, type ObservatoryToken } from "../src/candidates.js";
 import { addressFromWord, decodeAggregate3, encodeAggregate3, encodeMarket, MORPHO, word, wordAt } from "../src/raw.js";
 
 // The candidate builder and the raw encoders moved here from apps/agent on 8 Oct 2026 (the agent re-exports them and
@@ -49,5 +49,15 @@ describe("candidates subpath", () => {
     expect(buildCandidates("AAPLc", inputs).candidates[0]!.protection).toBe("none");
     const withPre = buildCandidates("AAPLc", { ...inputs, preLiquidations: { [id.toLowerCase()]: "0x00000000000000000000000000000000000000aa" } });
     expect(withPre.candidates[0]!.protection).toBe("pre-liquidation");
+  });
+  it("protects the deployed mainnet markets and keeps Saturday mode off the session-safe one", () => {
+    const market = (id: string) => ({ id, collateral: { address: "0xb200000000000000000000C2e324d24d7eEcd1fb", symbol: "AAPLc" }, lltv: 0.625, totalSupplyAssets: "1000", totalBorrowAssets: "400" });
+    const steakhouse = "0xae1a30486234bf7e7ac166c7c03d9bc5f2cd8a39be2c48e73c665ac7148c3c28";
+    const safe = "0xB50ECABA0652B5A51BDE9A747E9B7A2075C7AB68FD3C6EF7C05EABF6BB0F1D28";
+    const { candidates } = buildCandidates("AAPLc", { tokens: [token()], mainnetMarkets: [market(steakhouse), market(safe)], mainnetRates: [], sepoliaRates: [] });
+    expect(candidates[0]).toMatchObject({ marketId: steakhouse, protection: "pre-liquidation", pricesAroundTheClock: true });
+    expect(candidates[1]).toMatchObject({ marketId: safe, protection: "pre-liquidation", pricesAroundTheClock: false });
+    expect(MAINNET_PRE_LIQUIDATIONS[safe.toLowerCase()]).toBe("0x1D6B5C5134C1450f9F07272106aE47637EbFCAFb");
+    expect(MAINNET_SESSION_SAFE_MARKETS.has(steakhouse)).toBe(false);
   });
 });
