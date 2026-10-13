@@ -43,19 +43,15 @@
 #let todo(body) = box(fill: rgb("#3a2b10"), inset: (x: 4pt, y: 2pt), radius: 3pt, stroke: 0.5pt + amber)[#text(font: mono, size: 8pt, fill: amber)[TODO: #body]]
 #let pend(body) = box(fill: panel2, inset: (x: 4pt, y: 2pt), radius: 3pt, stroke: 0.5pt + focus)[#text(font: mono, size: 8pt, fill: focus)[pending: #body]]
 #let hx(h) = text(font: mono, size: 8pt, fill: ink2)[#h]
-#let mark(s) = box(width: s, height: s, baseline: 15%, {
-  place(rect(width: s, height: s, radius: s * 12 / 64, fill: coral))
-  place(dx: s * 14 / 64, dy: s * 18 / 64, rect(width: s * 20 / 64, height: s * 5 / 64, fill: paper))
-  place(dx: s * 14 / 64, dy: s * 30 / 64, rect(width: s * 36 / 64, height: s * 5 / 64, fill: paper))
-  place(dx: s * 14 / 64, dy: s * 42 / 64, rect(width: s * 28 / 64, height: s * 5 / 64, fill: paper))
-})
-#let wordmark(sz) = text(font: serif, size: sz, fill: ink, tracking: -0.01em)[Boundline#text(fill: coral)[.]]
+// The brand mark and lockup from docs/brand (bl, with the weekend held): outlined SVGs, so no font is needed.
+#let mark(s) = box(baseline: 15%, image("boundline-tile.svg", width: s))
+#let lockup(h) = image("boundline-lockup-dark.svg", height: h)
 #let tbl(cols, ..cells) = text(size: 8.6pt)[#table(columns: cols, inset: (x: 6pt, y: 3.6pt), stroke: 0.5pt + ln,
   fill: (x, y) => if y == 0 { panel2 } else { none }, ..cells)]
 
 // ───────────────────────────────────────────── 1 · title
 #v(26mm)
-#grid(columns: (auto, auto), column-gutter: 14pt, align: horizon, mark(46pt), wordmark(58pt))
+#lockup(54pt)
 #v(14pt)
 #text(size: 17pt)[Borrow against your stocks on Base. Paid in your currency.]
 #linebreak()
@@ -248,7 +244,7 @@
     #v(3pt)
     #text(size: 10.5pt)[Farseen Shaikh, incoming MSc Data Science, TU Berlin · #todo[second developer, one line each]]
     #v(3pt)
-    #text(size: 9.5pt, fill: ink2)[106 commits from 3 to 13 Oct, 264 Foundry + 898 TypeScript tests, eight mainnet-fork suites, eight services live, the footprint on Base mainnet.]
+    #text(size: 9.5pt, fill: ink2)[110 commits from 3 to 13 Oct, 264 Foundry + 898 TypeScript tests, eight mainnet-fork suites, eight services live, the footprint on Base mainnet.]
   ],
   block[
     #text(font: mono, size: 8pt, fill: coral, tracking: 1.6pt)[THE ASK]
@@ -270,7 +266,7 @@
 
 // ───────────────────────────────────────────── 12 · links
 #v(14mm)
-#grid(columns: (auto, auto), column-gutter: 12pt, align: horizon, mark(34pt), wordmark(42pt))
+#lockup(40pt)
 #v(10pt)
 #text(size: 14pt, fill: ink2)[Never liquidated while Wall Street is closed.]
 #v(12pt)

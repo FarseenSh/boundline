@@ -150,7 +150,7 @@ evidence index below):
   market is unseeded and no mainnet borrower has opted into protection yet, so nothing has been lent or protected on
   mainnet; the product runs on Base Sepolia.
 
-**Built in the window:** 106 commits from Sat 3 Oct to Tue 13 Oct 2026 in a new repository; 264 Foundry tests (unit,
+**Built in the window:** 110 commits from Sat 3 Oct to Tue 13 Oct 2026 in a new repository; 264 Foundry tests (unit,
 fuzz, invariant, differential) plus eight mainnet-fork suites that run against an archive RPC; 898 TypeScript tests;
 eight Cloudflare Workers live; the footprint deployed on Base mainnet.
 `TODO-HUMAN: if you commit again before submitting, bump the commit count (git rev-list --count HEAD).`
@@ -198,8 +198,10 @@ India
 
 ## Logo
 
-`docs/submission/logo.png` (1040 × 256, wordmark) and `docs/submission/logo-mark.png` (512 × 512, square mark);
-vector versions `logo.svg`, `logo-mark.svg`.
+`docs/submission/logo.png` (1040 × 256, the lockup on ink) and `docs/submission/logo-mark.png` (512 × 512, the tile);
+vector versions `logo.svg`, `logo-mark.svg`. The mark is "bl, with the weekend held": a lowercase b, the boundary at
+Friday 20:00 ET as the l, and the 48 held hours as a hatched band. The full kit (favicons, avatar, lockups, social
+cards, rules) is in `docs/brand/`.
 
 ## GitHub repository
 

@@ -1,3 +1,4 @@
+// Superseded on 13 Oct 2026: the logo is now the docs/brand kit (docs/brand/source/brand.py). Kept for history.
 // Renders the Boundline logo as PNGs for upload forms: `typst compile logo.typ logo-{p}.png --ppi 144`.
 // Page 1: the square mark (the app icon, apps/app/public/icon.svg). Page 2: mark + wordmark on the app's paper colour.
 #let paper = rgb("#0e1116")
