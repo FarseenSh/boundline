@@ -30,6 +30,9 @@ contract SessionGuardMorphoForkTest is Test {
 
     uint256 constant T_MON_PRE = 1_791_189_000; // Mon 2026-10-05 04:30 ET
     uint256 constant T_SAT = 1_791_640_800; // Sat 2026-10-10 10:00 ET
+    /// @dev The fork block: Thu 8 Oct 2026, before the 9-11 Oct weekend this suite stages, where it passed and the evidence
+    ///      was taken. Forking later would warp back in time past feeds updated since; FORK_BLOCK overrides it.
+    uint256 constant FORK_BLOCK = 52_327_527;
     uint256 constant T_MON_PRE_2 = 1_791_793_800; // Mon 2026-10-12 04:30 ET
 
     address owner = makeAddr("owner");
@@ -52,7 +55,7 @@ contract SessionGuardMorphoForkTest is Test {
             vm.skip(true);
             return;
         }
-        vm.createSelectFork(url);
+        vm.createSelectFork(url, vm.envOr("FORK_BLOCK", FORK_BLOCK));
         assertTrue(MORPHO.isIrmEnabled(IRM), "AdaptiveCurveIrm enabled on Base");
         assertTrue(MORPHO.isLltvEnabled(LLTV), "62.5% LLTV enabled on Base");
 

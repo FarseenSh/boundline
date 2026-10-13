@@ -125,8 +125,12 @@ pnpm typecheck
 # mainnet-fork suites (live Morpho, Aave V4 spoke, Aerodrome pools), with Base's Foundry for the B20 precompiles:
 #   base-foundryup --install v1.1.0
 BASE_RPC_URL=<archive rpc> FOUNDRY_BASE=true ~/.foundry/bin/base-forge test --root contracts --match-path 'test/fork/*'
-#   then the same with 'test/drills/*' (the Aave hub halt, the bad-debt probe) and 'test/harvest/*' (a real dividend)
+#   then the same with 'test/drills/*' (the Aave hub halt, the bad-debt probe) and 'test/harvest/*' (a real dividend).
+#   Each suite forks the block its evidence was taken at (8 Oct; the replay 7 Oct), because the staged weekend is
+#   9-11 Oct: 25 of 25 fork tests pass on 13 Oct. FORK_BLOCK, DRILL_FORK_BLOCK and REPLAY_FORK_BLOCK override the pins.
 pnpm replay                            # the replay harness (scripts/replay/run.ts), writes docs/evidence/assurance/<date>.*
+# reproduce the 7 Oct replay exactly (every field but the run time, path and candidate source):
+pnpm tsx scripts/replay/run.ts --date 2026-10-07 --block 52295895 --candidates-from docs/evidence/assurance/2026-10-07.json --out /tmp/replay
 ```
 
 ## How it is built

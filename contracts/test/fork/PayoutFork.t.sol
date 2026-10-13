@@ -28,6 +28,9 @@ contract PayoutForkTest is Test {
     /// @dev A USDC-rich contract on Base (the Aerodrome AAPLc/USDC pool) the test borrows 10 USDC from.
     address constant USDC_SOURCE = 0xA3b1E3f9747065e2073722Ff4c9027d3eA4994F0;
     uint256 constant T_SAT = 1_791_640_800; // Sat 2026-10-10 10:00 ET
+    /// @dev The fork block: Thu 8 Oct 2026, before the 9-11 Oct weekend this suite stages, where it passed and the evidence
+    ///      was taken. Forking later would warp back in time past feeds updated since; FORK_BLOCK overrides it.
+    uint256 constant FORK_BLOCK = 52_327_527;
 
     address owner = makeAddr("owner");
     address user = makeAddr("user");
@@ -44,7 +47,7 @@ contract PayoutForkTest is Test {
             vm.skip(true);
             return;
         }
-        vm.createSelectFork(url);
+        vm.createSelectFork(url, vm.envOr("FORK_BLOCK", FORK_BLOCK));
         assertEq(POOL.token0(), EURC, "pool token0 is EURC");
         assertEq(POOL.token1(), USDC, "pool token1 is USDC");
 

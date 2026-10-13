@@ -917,7 +917,11 @@ pnpm test                       # 898 vitest: calendar 106, chain 19, ledger 10,
                                 #   keeper 131, observatory 226, sdk 95, console 46
 pnpm typecheck                  # clean (every package and app)
 BASE_RPC_URL=<alchemy archive> FOUNDRY_BASE=true ~/.foundry/bin/base-forge test --root contracts --match-path 'test/fork/*'
-                                # + test/drills and test/harvest: 8 fork suites (5 in fork/, 2 in drills/, HarvestFork), 42 passed (8 Oct)
+                                # + test/drills and test/harvest: 8 fork suites (5 in fork/, 2 in drills/, HarvestFork), 42 passed (8 Oct:
+                                #   25 fork tests + the 17 harvester unit tests); 13 Oct: 25 of 25 fork tests, each suite pinned to its
+                                #   evidence block (they had forked the head and broke once the staged 9-11 Oct weekend was past)
+pnpm tsx scripts/replay/run.ts --date 2026-10-07 --block 52295895 --candidates-from docs/evidence/assurance/2026-10-07.json --out /tmp/r
+                                # rebuilds the 7 Oct replay: identical but for ranAt, artifact, candidatesSource and the hash
 scripts/drills/run-fork-drills.sh [--only venue-halt|bad-debt-probe]   # writes docs/evidence/drills/{venue-halt,bad-debt-probe}.json
 contracts/script/deploy-mainnet.sh rehearse                            # 50 txs, ~51M gas, 33/33 checks on a base-anvil fork (re-run 12 Oct: 0.00031456 ETH)
 KEEPER=0x82093784Ade31543404b8AD949E49F314af7612c contracts/script/deploy-mainnet.sh check   # 33/33 against Base mainnet (13 Oct)

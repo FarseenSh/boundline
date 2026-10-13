@@ -4,12 +4,16 @@
 // Observatory's KV namespace as `assurance-latest`, where /v1/assurance serves it.
 //
 //   pnpm tsx scripts/replay/run.ts [--date YYYY-MM-DD] [--block N] [--kv] [--out docs/evidence/assurance]
+//                                  [--candidates-from docs/evidence/assurance/<date>.json]
+//
+// The Aave candidates come from the indexer's live borrower list unless --candidates-from names an earlier
+// evidence file: with its --block, that replays the same positions (the indexer's list grows over time).
 //
 // Needs BASE_RPC_URL (an archive endpoint; the free Alchemy tier works) or BOUNDLINE_ALCHEMY_API_KEY, and
 // base-forge at ~/.foundry/bin/base-forge (B20 transfers happen in every sale and liquidation). The RPC
 // URL never reaches the evidence or the logs.
 import { spawnSync } from "node:child_process";
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { resolve } from "node:path";
 import { keccak256, stringToHex } from "viem";
@@ -26,6 +30,7 @@ interface Args {
   kv: boolean;
   out: string;
   forgeLog: string | null;
+  candidatesFrom: string | null;
 }
 
 function args(): Args {
@@ -41,6 +46,7 @@ function args(): Args {
     kv: a.includes("--kv"),
     out: get("--out") ?? "docs/evidence/assurance",
     forgeLog: get("--forge-log") ?? null,
+    candidatesFrom: get("--candidates-from") ?? null,
   };
 }
 
@@ -63,6 +69,13 @@ async function candidates(): Promise<string[]> {
   if (!res.ok) throw new Error(`indexer ${res.status}`);
   const body = (await res.json()) as { borrowers: { address: string }[] };
   return body.borrowers.map((b) => b.address);
+}
+
+/** The candidate list an earlier evidence file recorded, so a run at its fork block replays the same positions. */
+function candidatesFrom(path: string): string[] {
+  const doc = JSON.parse(readFileSync(path, "utf8")) as { candidates?: { address: string }[] };
+  if (!doc.candidates?.length) throw new Error(`${path} lists no candidates`);
+  return doc.candidates.map((c) => c.address);
 }
 
 interface Meta {
@@ -281,7 +294,8 @@ async function main() {
     candidatesSource = `replayed from ${a.forgeLog}`;
   } else {
     const url = rpcUrl();
-    const cands = await candidates();
+    const cands = a.candidatesFrom ? candidatesFrom(a.candidatesFrom) : await candidates();
+    if (a.candidatesFrom) candidatesSource = `the candidates of ${a.candidatesFrom}`;
     const block = a.block ?? Number(BigInt(await rpc<string>(url, "eth_blockNumber", [])));
     const forge = `${homedir()}/.foundry/bin/base-forge`;
     forgeVersion = spawnSync(forge, ["--version"], { encoding: "utf8" }).stdout.trim().split("\n")[0] ?? "";

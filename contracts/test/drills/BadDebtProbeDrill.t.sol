@@ -82,7 +82,7 @@ contract BadDebtProbeDrillTest is DrillBase {
     uint256 p0;
 
     function setUp() public {
-        if (!_fork("bad-debt-probe")) return;
+        if (!_fork("bad-debt-probe", 52_327_527)) return;
         borrower = vm.envOr("BADDEBT_BORROWER", address(0x8E8745Acd6fbE3e70Afc96042c7F3eC84B1f0e9f));
         mp = MORPHO.idToMarketParams(MARKET);
         require(mp.collateralToken == AAPLC && mp.loanToken == USDC && mp.lltv == LLTV, "Steakhouse AAPLc market");

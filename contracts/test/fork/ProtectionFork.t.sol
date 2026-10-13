@@ -45,6 +45,9 @@ contract ProtectionForkTest is Test {
     uint256 constant LLTV = 0.625e18;
     uint256 constant TARGET_VENUE_LTV = 0.595e18; // where the position is staged: inside the band at the shadow price
     uint256 constant T_SAT = 1_791_640_800; // Sat 2026-10-10 10:00 ET
+    /// @dev The fork block: Thu 8 Oct 2026, before the 9-11 Oct weekend this suite stages, where it passed and the evidence
+    ///      was taken. Forking later would warp back in time past feeds updated since; FORK_BLOCK overrides it.
+    uint256 constant FORK_BLOCK = 52_327_527;
 
     address owner = makeAddr("owner");
     address keeper = makeAddr("keeper");
@@ -65,7 +68,7 @@ contract ProtectionForkTest is Test {
             vm.skip(true);
             return;
         }
-        vm.createSelectFork(url);
+        vm.createSelectFork(url, vm.envOr("FORK_BLOCK", FORK_BLOCK));
         mp = MORPHO.idToMarketParams(MARKET);
         assertEq(mp.collateralToken, AAPLC, "Steakhouse AAPLc market");
         assertEq(mp.loanToken, USDC);

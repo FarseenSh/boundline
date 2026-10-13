@@ -44,16 +44,18 @@ abstract contract DrillBase is Test {
     uint80 internal heldRound;
     bool internal b20Live;
 
-    /// @dev Selects the fork (DRILL_FORK_BLOCK pins it) and checks the B20 precompiles answer. Returns false and
-    ///      marks the test skipped when there is no RPC or the build cannot run Base precompiles.
-    function _fork(string memory id) internal returns (bool) {
+    /// @dev Selects the fork at `evidenceBlock` (the block the drill's evidence file records; DRILL_FORK_BLOCK overrides it,
+    ///      0 = latest; a block after the staged 9-11 Oct weekend would warp back past its feeds) and checks the B20
+    ///      precompiles answer. Returns false and marks the test skipped when there is no RPC or the build cannot run
+    ///      Base precompiles.
+    function _fork(string memory id, uint256 evidenceBlock) internal returns (bool) {
         drillId = id;
         string memory url = vm.envOr("BASE_RPC_URL", string(""));
         if (bytes(url).length == 0) {
             vm.skip(true);
             return false;
         }
-        uint256 pinned = vm.envOr("DRILL_FORK_BLOCK", uint256(0));
+        uint256 pinned = vm.envOr("DRILL_FORK_BLOCK", evidenceBlock);
         if (pinned == 0) vm.createSelectFork(url);
         else vm.createSelectFork(url, pinned);
         forkBlock = block.number;

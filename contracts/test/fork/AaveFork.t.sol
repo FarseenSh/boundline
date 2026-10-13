@@ -43,6 +43,9 @@ contract AaveForkTest is Test {
     uint256 constant USDC_RESERVE = 7;
     bytes32 constant PARTNER = "boundline-app";
     uint256 constant T_SAT = 1_791_640_800; // Sat 2026-10-10 10:00 ET
+    /// @dev The fork block: Thu 8 Oct 2026, before the 9-11 Oct weekend this suite stages, where it passed and the evidence
+    ///      was taken. Forking later would warp back in time past feeds updated since; FORK_BLOCK overrides it.
+    uint256 constant FORK_BLOCK = 52_327_527;
     uint256 constant WAD = 1e18;
 
     address owner = makeAddr("owner");
@@ -62,7 +65,7 @@ contract AaveForkTest is Test {
             vm.skip(true);
             return;
         }
-        vm.createSelectFork(url);
+        vm.createSelectFork(url, vm.envOr("FORK_BLOCK", FORK_BLOCK));
         borrower = vm.envOr("AAVE_FORK_BORROWER", address(0xC9Bc5Cab29dC93A9D2ea16Ef38620598FAd5ca66));
 
         // Live facts the desk relies on.

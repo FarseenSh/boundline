@@ -9,10 +9,12 @@ The latest JSON is also published to the Observatory's KV as `assurance-latest` 
 
 ## What a run does
 
-1. **Fork** Base mainnet at a pinned block (`REPLAY_FORK_BLOCK`, else the head at start) through an
-   archive RPC (the Alchemy free tier is enough: everything after the fork point is local).
+1. **Fork** Base mainnet at a pinned block (the driver's `--block`, else the head at start; run directly under forge, the
+   test defaults to the 7 Oct evidence block 52,295,895) through an archive RPC (the Alchemy free tier is enough:
+   everything after the fork point is local).
 2. **Positions.** The Morpho Steakhouse AAPLc/USDC borrower from the protection fork test, and the
-   real Aave V4 MAG7 borrowers the indexer has seen (`/v1/venues/aave/borrowers`): every candidate is
+   real Aave V4 MAG7 borrowers the indexer has seen (`/v1/venues/aave/borrowers`, or an earlier evidence file's list with
+   `--candidates-from`, since the indexer's list grows): every candidate is
    read on the fork and the largest USDC debt and the lowest health above 1.0 with AAPLc collateral
    are kept. Each venue also gets a **staged** row: the same real position brought to the edge of the
    band at Friday's close (Morpho: venue LTV 0.56; Aave: health 1.05) with a borrow on the fork, so
@@ -93,3 +95,15 @@ numbers as decimal strings; `∞` in the tables is a position without debt.
 
 The same document is the KV value Lane E's Observatory panel renders; extra keys beyond the panel's
 schema are informational.
+
+## Reproducing the 7 Oct run
+
+```sh
+BASE_RPC_URL=<archive rpc> pnpm tsx scripts/replay/run.ts --date 2026-10-07 --block 52295895 \
+  --candidates-from docs/evidence/assurance/2026-10-07.json --out /tmp/replay
+```
+
+Checked 13 Oct 2026: of the 598 fields of `2026-10-07.json`, the rebuilt file differs only in `ranAt`, `artifact`,
+`method.candidatesSource` and the `evidenceHash` computed over them; every position, scenario and outcome is identical
+(raw venues 3 liquidations, Boundline 0). Without `--candidates-from` the same block replays the indexer's current
+borrowers (121 on 13 Oct against the 31 of 7 Oct) and picks other Aave positions.

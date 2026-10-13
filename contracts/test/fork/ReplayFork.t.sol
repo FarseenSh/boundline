@@ -132,7 +132,10 @@ contract ReplayForkTest is Test {
             vm.skip(true);
             return;
         }
-        uint256 pinned = vm.envOr("REPLAY_FORK_BLOCK", uint256(0));
+        // The 7 Oct evidence's fork block (docs/evidence/assurance/2026-10-07.json) by default, so a run reproduces it; the
+        // gap is staged on the 9-11 Oct weekend, so a later block would warp back past its feeds. REPLAY_FORK_BLOCK=0 forks
+        // the latest block.
+        uint256 pinned = vm.envOr("REPLAY_FORK_BLOCK", uint256(52_295_895));
         if (pinned == 0) vm.createSelectFork(url);
         else vm.createSelectFork(url, pinned);
         forkBlock = block.number;

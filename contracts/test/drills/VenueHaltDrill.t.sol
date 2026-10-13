@@ -87,7 +87,7 @@ contract VenueHaltDrillTest is DrillBase {
     uint256 lineId;
 
     function setUp() public {
-        if (!_fork("venue-halt")) return;
+        if (!_fork("venue-halt", 52_327_962)) return;
         borrower = vm.envOr("AAVE_FORK_BORROWER", address(0xC9Bc5Cab29dC93A9D2ea16Ef38620598FAd5ca66));
         require(SPOKE.getReserve(AAPL_RESERVE).underlying == AAPLC, "reserve 0 is AAPLc");
         require(SPOKE.getReserve(USDC_RESERVE).underlying == USDC, "reserve 7 is USDC");
