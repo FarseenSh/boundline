@@ -406,7 +406,7 @@ footer { padding: 56px 0 64px; border-top: 1px solid var(--seam); color: var(--i
       <a href="#proof">Proof</a>
       <a href="#developers">Developers</a>
     </nav>
-    <a class="btn btn-hot" data-link="app" href="https://boundline-app.papermind-ai.workers.dev">Open the app</a>
+    <a class="btn btn-hot" data-link="app" href="https://app.boundline.xyz">Open the app</a>
   </div>
 </header>
 
@@ -417,8 +417,8 @@ footer { padding: 56px 0 64px; border-top: 1px solid var(--seam); color: var(--i
         <h1 id="hero-title">The price stops at 8&nbsp;p.m. Friday. Liquidation doesn’t.</h1>
         <p class="lede">Coinbase’s tokenized stocks trade on Base around the clock. Their Chainlink price feeds hold Friday’s close until Sunday 8&nbsp;p.m., and the lending markets for them keep pricing loans on that number, with liquidation open all weekend. Boundline is the credit layer that refuses a frozen price and protects your position at the live one.</p>
         <div class="cta">
-          <a class="btn btn-hot btn-lg" data-link="app" href="https://boundline-app.papermind-ai.workers.dev">Open the app</a>
-          <a class="btn btn-line btn-lg" data-link="observatory" href="https://boundline-observatory.papermind-ai.workers.dev">Open the Observatory</a>
+          <a class="btn btn-hot btn-lg" data-link="app" href="https://app.boundline.xyz">Open the app</a>
+          <a class="btn btn-line btn-lg" data-link="observatory" href="https://observatory.boundline.xyz">Open the Observatory</a>
         </div>
         <p class="deployed"><b>Deployed on Base mainnet on Monday 12 October, 20:24 ET.</b> Protection, credit lines and payouts run end to end on Base Sepolia, on real B20 test stocks whose feeds mirror mainnet. <a href="#proof">Every claim has a hash</a></p>
       </div>
@@ -445,7 +445,7 @@ footer { padding: 56px 0 64px; border-top: 1px solid var(--seam); color: var(--i
         </div>
         <div class="board-foot">
           <span class="age-key"><span class="age-bar" aria-hidden="true"><i></i></span>Bar: hours since the last print, to 60; the tick marks 48.</span>
-          <a data-link="obsTokens" href="https://boundline-observatory.papermind-ai.workers.dev/v1/tokens">Read by the Observatory every minute</a>
+          <a data-link="obsTokens" href="https://observatory.boundline.xyz/v1/tokens">Read by the Observatory every minute</a>
         </div>
       </section>
     </div>
@@ -564,24 +564,24 @@ footer { padding: 56px 0 64px; border-top: 1px solid var(--seam); color: var(--i
         <div>
           <div class="code">
             <div class="code-head"><span>The session, feed liveness and the next freeze</span><button class="copy" type="button" data-copy="c1">Copy</button></div>
-            <pre id="c1"><span class="p">$ </span>curl -s https://boundline-observatory.papermind-ai.workers.dev/v1/sessions</pre>
+            <pre id="c1"><span class="p">$ </span>curl -s https://observatory.boundline.xyz/v1/sessions</pre>
           </div>
           <div class="code">
             <div class="code-head"><span>Every Coinbase stock feed against the 24/7 price</span><button class="copy" type="button" data-copy="c2">Copy</button></div>
-            <pre id="c2"><span class="p">$ </span>curl -s https://boundline-observatory.papermind-ai.workers.dev/v1/tokens</pre>
+            <pre id="c2"><span class="p">$ </span>curl -s https://observatory.boundline.xyz/v1/tokens</pre>
           </div>
           <div class="code">
             <div class="code-head"><span>A keyless call answers 402 and asks for $0.01 over x402</span><button class="copy" type="button" data-copy="c3">Copy</button></div>
-            <pre id="c3"><span class="p">$ </span>curl -si https://boundline-api.papermind-ai.workers.dev/v1/positions/\
+            <pre id="c3"><span class="p">$ </span>curl -si https://api.boundline.xyz/v1/positions/\
 0xB789aD318945B37566E2549F65526Cc269a482Fc/shadow | head -1</pre>
           </div>
           <h3 style="margin-top:30px">MCP tools for agents with wallets</h3>
           <p class="subnote">Read-only: they return plans and calldata, and the agent’s own wallet signs.</p>
           <div class="tools"><code>session</code><code>positions</code><code>shadowHealth</code><code>quote</code><code>protect</code><code>route</code></div>
           <div class="links-row">
-            <a data-link="api" href="https://boundline-api.papermind-ai.workers.dev/health">Partner API</a>
-            <a data-link="agent" href="https://boundline-agent.papermind-ai.workers.dev/v1/tools">Agent tools</a>
-            <a data-link="console" href="https://boundline-console.papermind-ai.workers.dev">Partner console</a>
+            <a data-link="api" href="https://api.boundline.xyz/health">Partner API</a>
+            <a data-link="agent" href="https://agent.boundline.xyz/v1/tools">Agent tools</a>
+            <a data-link="console" href="https://console.boundline.xyz">Partner console</a>
             <a data-link="keeper" href="https://boundline-keeper.papermind-ai.workers.dev/v1/protect">Keeper</a>
             <a data-link="indexer" href="https://boundline-indexer.papermind-ai.workers.dev/v1/sources">Indexer</a>
             <a data-repo hidden href="#">Code on GitHub</a>
@@ -600,8 +600,8 @@ footer { padding: 56px 0 64px; border-top: 1px solid var(--seam); color: var(--i
     <div class="wrap">
       <p>Borrow against your stocks on Base. Paid in your currency. Never liquidated while Wall Street is closed.</p>
       <div class="cta">
-        <a class="btn btn-hot btn-lg" data-link="borrow" href="https://boundline-app.papermind-ai.workers.dev/borrow">Borrow on Base Sepolia</a>
-        <a class="btn btn-line btn-lg" data-link="console" href="https://boundline-console.papermind-ai.workers.dev">Open the partner console</a>
+        <a class="btn btn-hot btn-lg" data-link="borrow" href="https://app.boundline.xyz/borrow">Borrow on Base Sepolia</a>
+        <a class="btn btn-line btn-lg" data-link="console" href="https://console.boundline.xyz">Open the partner console</a>
       </div>
     </div>
   </section>
@@ -617,17 +617,17 @@ footer { padding: 56px 0 64px; border-top: 1px solid var(--seam); color: var(--i
     <div>
       <h3>Product</h3>
       <ul>
-        <li><a data-link="app" href="https://boundline-app.papermind-ai.workers.dev">App on Base Sepolia</a></li>
-        <li><a data-link="observatory" href="https://boundline-observatory.papermind-ai.workers.dev">Observatory</a></li>
-        <li><a data-link="console" href="https://boundline-console.papermind-ai.workers.dev">Partner console</a></li>
-        <li><a data-link="drills" href="https://boundline-console.papermind-ai.workers.dev/drills">Drills</a></li>
+        <li><a data-link="app" href="https://app.boundline.xyz">App on Base Sepolia</a></li>
+        <li><a data-link="observatory" href="https://observatory.boundline.xyz">Observatory</a></li>
+        <li><a data-link="console" href="https://console.boundline.xyz">Partner console</a></li>
+        <li><a data-link="drills" href="https://console.boundline.xyz/drills">Drills</a></li>
       </ul>
     </div>
     <div>
       <h3>Developers</h3>
       <ul>
-        <li><a data-link="api" href="https://boundline-api.papermind-ai.workers.dev/health">Partner API</a></li>
-        <li><a data-link="agent" href="https://boundline-agent.papermind-ai.workers.dev/v1/tools">Agent (MCP)</a></li>
+        <li><a data-link="api" href="https://api.boundline.xyz/health">Partner API</a></li>
+        <li><a data-link="agent" href="https://agent.boundline.xyz/v1/tools">Agent (MCP)</a></li>
         <li><a data-link="keeper" href="https://boundline-keeper.papermind-ai.workers.dev/v1/protect">Keeper</a></li>
         <li><a data-link="indexer" href="https://boundline-indexer.papermind-ai.workers.dev/v1/sources">Indexer</a></li>
       </ul>
@@ -637,7 +637,7 @@ footer { padding: 56px 0 64px; border-top: 1px solid var(--seam); color: var(--i
       <ul>
         <li><a id="f-desk" href="https://basescan.org/address/0x1671166DB8B93057Fa9a95b052b86c30E7B6a7Dd">CreditDesk on Base</a></li>
         <li><a id="f-cal" href="https://basescan.org/address/0xb45cE0AEAAaADc68D5EbD9573FD8bFA91c1f79e5">MarketCalendar on Base</a></li>
-        <li><a data-link="obsAssurance" href="https://boundline-observatory.papermind-ai.workers.dev/v1/assurance">The latest replay</a></li>
+        <li><a data-link="obsAssurance" href="https://observatory.boundline.xyz/v1/assurance">The latest replay</a></li>
         <li><a data-repo hidden href="#">Code on GitHub</a></li>
       </ul>
     </div>
@@ -811,20 +811,20 @@ var BLCal = (function () {
 // Inline the parts a page uses. It defines one global: BL.
 var BL = {
   links: {
-    app: "https://boundline-app.papermind-ai.workers.dev",
-    borrow: "https://boundline-app.papermind-ai.workers.dev/borrow",
-    protect: "https://boundline-app.papermind-ai.workers.dev/protect",
-    observatory: "https://boundline-observatory.papermind-ai.workers.dev",
-    console: "https://boundline-console.papermind-ai.workers.dev",
-    drills: "https://boundline-console.papermind-ai.workers.dev/drills",
-    api: "https://boundline-api.papermind-ai.workers.dev/health",
-    agent: "https://boundline-agent.papermind-ai.workers.dev/v1/tools",
+    app: "https://app.boundline.xyz",
+    borrow: "https://app.boundline.xyz/borrow",
+    protect: "https://app.boundline.xyz/protect",
+    observatory: "https://observatory.boundline.xyz",
+    console: "https://console.boundline.xyz",
+    drills: "https://console.boundline.xyz/drills",
+    api: "https://api.boundline.xyz/health",
+    agent: "https://agent.boundline.xyz/v1/tools",
     keeper: "https://boundline-keeper.papermind-ai.workers.dev/v1/protect",
     indexer: "https://boundline-indexer.papermind-ai.workers.dev/v1/sources",
-    obsTokens: "https://boundline-observatory.papermind-ai.workers.dev/v1/tokens",
-    obsSessions: "https://boundline-observatory.papermind-ai.workers.dev/v1/sessions",
-    obsAssurance: "https://boundline-observatory.papermind-ai.workers.dev/v1/assurance",
-    obsCaptures: "https://boundline-observatory.papermind-ai.workers.dev/v1/captures",
+    obsTokens: "https://observatory.boundline.xyz/v1/tokens",
+    obsSessions: "https://observatory.boundline.xyz/v1/sessions",
+    obsAssurance: "https://observatory.boundline.xyz/v1/assurance",
+    obsCaptures: "https://observatory.boundline.xyz/v1/captures",
     // The public GitHub repository is not published yet. Leave "" and every element with [data-repo] stays hidden.
     repo: ""
   },

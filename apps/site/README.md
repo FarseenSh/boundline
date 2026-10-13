@@ -1,6 +1,6 @@
 # @boundline/site
 
-The landing page at https://boundline-site.papermind-ai.workers.dev: one self-contained static page
+The landing page at https://boundline.xyz: one self-contained static page
 (`public/index.html`, its CSS and JS inline) plus its icons and link-preview card (`favicon.ico`,
 `apple-touch-icon.png`, `og.png`, all from `docs/brand/`), served as Cloudflare Workers assets with no build step.
 The Worker in `worker/index.js` runs only for `/obs/*` and `/live/*`, the read-only bridges to the Observatory and the
@@ -17,4 +17,6 @@ copied from `deployments/`, `docs/evidence/` and `docs/submission/SUBMISSION.md`
 no invented traction. Opened as a local file it shows a labelled snapshot instead of live numbers.
 
 Deploy: `pnpm --filter @boundline/site deploy` (or `pnpm exec wrangler deploy` here). The custom domain
-boundline.xyz still serves the old site; pointing it here is a human decision (`routes` in `wrangler.jsonc`).
+The page answers at boundline.xyz and www.boundline.xyz (custom domains on the Worker, attached in the dashboard)
+and at boundline-site.papermind-ai.workers.dev; boundline.app redirects to boundline.xyz. The other services have
+their own subdomains (app, console, observatory, api, agent), declared in each Worker's `wrangler.jsonc`.

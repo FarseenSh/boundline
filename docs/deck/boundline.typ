@@ -217,7 +217,7 @@
   note[#text(fill: ink, weight: "bold")[Console + agents] \ Obligations, timelines, policy editor, drills, reconciliation, evidence with the hash recomputed in the page. An *MCP* server: session, positions, shadow health, quote, protect, route.],
 )
 #v(10pt)
-#text(size: 10.5pt, fill: ink2)[Live: #link("https://boundline-app.papermind-ai.workers.dev")[app] · #link("https://boundline-console.papermind-ai.workers.dev")[console] · #link("https://boundline-api.papermind-ai.workers.dev/health")[API] · #link("https://boundline-agent.papermind-ai.workers.dev/v1/tools")[agent]]
+#text(size: 10.5pt, fill: ink2)[Live: #link("https://app.boundline.xyz")[app] · #link("https://console.boundline.xyz")[console] · #link("https://api.boundline.xyz/health")[API] · #link("https://agent.boundline.xyz/v1/tools")[agent]]
 #pagebreak()
 
 // ───────────────────────────────────────────── 10 · public goods
@@ -244,7 +244,7 @@
     #v(3pt)
     #text(size: 10.5pt)[Farseen Shaikh, incoming MSc Data Science, TU Berlin · #todo[second developer, one line each]]
     #v(3pt)
-    #text(size: 9.5pt, fill: ink2)[110 commits from 3 to 13 Oct, 264 Foundry + 898 TypeScript tests, eight mainnet-fork suites, eight services live, the footprint on Base mainnet.]
+    #text(size: 9.5pt, fill: ink2)[111 commits from 3 to 13 Oct, 264 Foundry + 898 TypeScript tests, eight mainnet-fork suites, eight services live, the footprint on Base mainnet.]
   ],
   block[
     #text(font: mono, size: 8pt, fill: coral, tracking: 1.6pt)[THE ASK]
@@ -271,10 +271,10 @@
 #text(size: 14pt, fill: ink2)[Never liquidated while Wall Street is closed.]
 #v(12pt)
 #tbl((auto, 1fr),
-  [*Observatory*], [#link("https://boundline-observatory.papermind-ai.workers.dev")],
-  [*App*], [#link("https://boundline-app.papermind-ai.workers.dev")],
-  [*Console*], [#link("https://boundline-console.papermind-ai.workers.dev")],
-  [*Site*], [#link("https://boundline-site.papermind-ai.workers.dev")],
+  [*Observatory*], [#link("https://observatory.boundline.xyz")],
+  [*App*], [#link("https://app.boundline.xyz")],
+  [*Console*], [#link("https://console.boundline.xyz")],
+  [*Site*], [#link("https://boundline.xyz")],
   [*Code*], [#todo[public GitHub URL] · MIT],
   [*Every claim*], [`docs/submission/SUBMISSION.md` → evidence index; `deployments/base-sepolia.json`],
 )

@@ -49,7 +49,7 @@ We replay real Aave V4 and Morpho positions on a mainnet fork through −3%, −
 
 Raw venues: 3 liquidations at the reopen, all on the staged positions. With Boundline: 0.
 
-https://boundline-observatory.papermind-ai.workers.dev/v1/assurance
+https://observatory.boundline.xyz/v1/assurance
 
 **7/8** [218]
 
@@ -58,13 +58,13 @@ Public goods, MIT, live now:
 - an onchain NYSE calendar
 - SessionGuard and ShadowGuard, drop-in oracles for any curator
 
-https://boundline-observatory.papermind-ai.workers.dev
+https://observatory.boundline.xyz
 
 **8/8** [239]
 
 Borrow against your stocks on Base. Paid in your currency. Never liquidated while Wall Street is closed.
 
-Try it on Base Sepolia: https://boundline-app.papermind-ai.workers.dev
+Try it on Base Sepolia: https://app.boundline.xyz
 Code: https://github.com/TODO-HUMAN/boundline
 
 Built for Colosseum's Crypto World's Fair, Base track.

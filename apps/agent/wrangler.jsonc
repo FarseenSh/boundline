@@ -1,6 +1,11 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "boundline-agent",
+  // Served at https://agent.boundline.xyz (a Workers Custom Domain on the boundline.xyz zone); workers.dev stays on.
+  "routes": [{ "pattern": "agent.boundline.xyz", "custom_domain": true }],
+  // Keep the workers.dev URL: the submission, the docs and the other services link to it. Without this line,
+  // declaring a route turns workers.dev off.
+  "workers_dev": true,
   "main": "src/index.ts",
   "compatibility_date": "2026-09-01",
   "compatibility_flags": ["nodejs_compat"],

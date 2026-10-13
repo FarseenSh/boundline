@@ -9,10 +9,11 @@
 <meta property="og:type" content="website" />
 <meta property="og:title" content="Boundline" />
 <meta property="og:description" content="Borrow against your stocks on Base. Paid in your currency. Never liquidated while Wall Street is closed." />
-<meta property="og:image" content="https://boundline-site.papermind-ai.workers.dev/og.png" />
-<meta property="og:url" content="https://boundline-site.papermind-ai.workers.dev/" />
+<meta property="og:image" content="https://boundline.xyz/og.png" />
+<meta property="og:url" content="https://boundline.xyz/" />
+<link rel="canonical" href="https://boundline.xyz/" />
 <meta name="twitter:card" content="summary_large_image" />
-<meta name="twitter:image" content="https://boundline-site.papermind-ai.workers.dev/og.png" />
+<meta name="twitter:image" content="https://boundline.xyz/og.png" />
 <meta name="theme-color" content="#FF6B57" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -270,7 +271,7 @@ p { margin: 0; }
       <a class="link" href="#how">How it works</a>
       <a class="link" href="#partners">Partners</a>
       <a class="link" href="#proof">Proof</a>
-      <a class="btn btn--ink" data-link="app" href="https://boundline-app.papermind-ai.workers.dev">Open the app</a>
+      <a class="btn btn--ink" data-link="app" href="https://app.boundline.xyz">Open the app</a>
     </nav>
   </header>
 
@@ -281,7 +282,7 @@ p { margin: 0; }
         <h1 id="hero-title"><span>Borrow against your stocks.</span><span>Sleep through the weekend.</span></h1>
         <p class="lede">Coinbase's tokenized stocks trade on Base all weekend, but their price feeds stop at 8&nbsp;p.m. Friday, New York time. Boundline lets you borrow against them, paid in your own currency, and never be liquidated while Wall Street is closed.</p>
         <div class="btns">
-          <a class="btn btn--ink" data-link="borrow" href="https://boundline-app.papermind-ai.workers.dev/borrow">Borrow on Base Sepolia</a>
+          <a class="btn btn--ink" data-link="borrow" href="https://app.boundline.xyz/borrow">Borrow on Base Sepolia</a>
           <a class="btn btn--line" href="#weekend">Watch a weekend</a>
         </div>
       </div>
@@ -360,7 +361,7 @@ p { margin: 0; }
       </div>
       <p class="health-note">Health is the lending market's own measure: below 1, anyone can liquidate the loan. Boundline watches the Aerodrome price less 2%, the same price its onchain ShadowGuard uses.</p>
       <ol class="log" id="log" aria-label="What happened, hour by hour"></ol>
-      <p class="caption">Start, end and amounts come from Boundline's replay of 7 Oct 2026 on a fork of Base mainnet at block 52,295,895: a real Morpho AAPLc position, staged near its limit, taken through a 15% weekend gap. On the lending market alone it was liquidated at the reopen; on Boundline's path it was not. The path between Friday and Sunday is illustrative. Evidence hash <a class="hash" href="https://boundline-observatory.papermind-ai.workers.dev/v1/assurance" data-link="obsAssurance">0xa626f099…793c45</a>.</p>
+      <p class="caption">Start, end and amounts come from Boundline's replay of 7 Oct 2026 on a fork of Base mainnet at block 52,295,895: a real Morpho AAPLc position, staged near its limit, taken through a 15% weekend gap. On the lending market alone it was liquidated at the reopen; on Boundline's path it was not. The path between Friday and Sunday is illustrative. Evidence hash <a class="hash" href="https://observatory.boundline.xyz/v1/assurance" data-link="obsAssurance">0xa626f099…793c45</a>.</p>
     </div>
   </div>
 </section>
@@ -419,10 +420,10 @@ p { margin: 0; }
 });
 <span class="c">// authorise, add collateral, draw, swap: one batch</span>
 <span class="k">await</span> wallet.sendCalls(boundline.buildSendCalls(calls));</code></pre>
-        <div class="btns"><a class="btn btn--ink" data-link="console" href="https://boundline-console.papermind-ai.workers.dev">Open the partner console</a></div>
+        <div class="btns"><a class="btn btn--ink" data-link="console" href="https://console.boundline.xyz">Open the partner console</a></div>
         <div class="textlinks">
-          <a data-link="api" href="https://boundline-api.papermind-ai.workers.dev/health">Partner API</a>
-          <a data-link="agent" href="https://boundline-agent.papermind-ai.workers.dev/v1/tools">Agent tools (MCP)</a>
+          <a data-link="api" href="https://api.boundline.xyz/health">Partner API</a>
+          <a data-link="agent" href="https://agent.boundline.xyz/v1/tools">Agent tools (MCP)</a>
           <a data-repo hidden href="#">Code on GitHub</a>
         </div>
       </div>
@@ -448,12 +449,12 @@ p { margin: 0; }
       <article>
         <h3>Watched every minute.</h3>
         <p>The Boundline Observatory reads every Coinbase stock feed, registry flag and real Aave and Morpho position on Base mainnet, and records each weekend's reopen as it happens.</p>
-        <div class="textlinks"><a data-link="observatory" href="https://boundline-observatory.papermind-ai.workers.dev">Open the Observatory</a></div>
+        <div class="textlinks"><a data-link="observatory" href="https://observatory.boundline.xyz">Open the Observatory</a></div>
       </article>
       <article>
         <h3>Tested.</h3>
         <p><span id="b-foundry">264</span> Foundry tests and <span id="b-ts">898</span> TypeScript tests, plus <span id="b-fork">8</span> suites that run against forks of Base mainnet: the live Morpho, Aave V4's stock spoke and the Aerodrome pools.</p>
-        <div class="textlinks"><a data-link="drills" href="https://boundline-console.papermind-ai.workers.dev/drills">Drills with recorded runs</a></div>
+        <div class="textlinks"><a data-link="drills" href="https://console.boundline.xyz/drills">Drills with recorded runs</a></div>
       </article>
     </div>
     <h3 class="record-title" id="record-title">The record on Base Sepolia</h3>
@@ -465,8 +466,8 @@ p { margin: 0; }
   <div class="wrap">
     <h2 id="close-title">Try a loan that knows when Wall Street is closed.</h2>
     <div class="btns">
-      <a class="btn btn--ink" data-link="borrow" href="https://boundline-app.papermind-ai.workers.dev/borrow">Borrow on Base Sepolia</a>
-      <a class="btn btn--line" data-link="observatory" href="https://boundline-observatory.papermind-ai.workers.dev">Open the Observatory</a>
+      <a class="btn btn--ink" data-link="borrow" href="https://app.boundline.xyz/borrow">Borrow on Base Sepolia</a>
+      <a class="btn btn--line" data-link="observatory" href="https://observatory.boundline.xyz">Open the Observatory</a>
     </div>
     <footer class="foot">
       <div>
@@ -478,17 +479,17 @@ p { margin: 0; }
       <div>
         <h4>Use it</h4>
         <ul>
-          <li><a data-link="app" href="https://boundline-app.papermind-ai.workers.dev">App on Base Sepolia</a></li>
-          <li><a data-link="observatory" href="https://boundline-observatory.papermind-ai.workers.dev">Observatory</a></li>
-          <li><a data-link="console" href="https://boundline-console.papermind-ai.workers.dev">Partner console</a></li>
+          <li><a data-link="app" href="https://app.boundline.xyz">App on Base Sepolia</a></li>
+          <li><a data-link="observatory" href="https://observatory.boundline.xyz">Observatory</a></li>
+          <li><a data-link="console" href="https://console.boundline.xyz">Partner console</a></li>
           <li><a data-repo hidden href="#">Code on GitHub</a></li>
         </ul>
       </div>
       <div>
         <h4>Build on it</h4>
         <ul>
-          <li><a data-link="api" href="https://boundline-api.papermind-ai.workers.dev/health">Partner API</a></li>
-          <li><a data-link="agent" href="https://boundline-agent.papermind-ai.workers.dev/v1/tools">Agent tools (MCP)</a></li>
+          <li><a data-link="api" href="https://api.boundline.xyz/health">Partner API</a></li>
+          <li><a data-link="agent" href="https://agent.boundline.xyz/v1/tools">Agent tools (MCP)</a></li>
           <li><a data-link="keeper" href="https://boundline-keeper.papermind-ai.workers.dev/v1/protect">Keeper</a></li>
           <li><a data-link="indexer" href="https://boundline-indexer.papermind-ai.workers.dev/v1/sources">Indexer</a></li>
         </ul>
@@ -664,16 +665,16 @@ var BLCal = (function () {
 // Boundline landing-page facts (the parts this page uses), copied from the repository's evidence and deployment records.
 var BL = {
   links: {
-    app: "https://boundline-app.papermind-ai.workers.dev",
-    borrow: "https://boundline-app.papermind-ai.workers.dev/borrow",
-    observatory: "https://boundline-observatory.papermind-ai.workers.dev",
-    console: "https://boundline-console.papermind-ai.workers.dev",
-    drills: "https://boundline-console.papermind-ai.workers.dev/drills",
-    api: "https://boundline-api.papermind-ai.workers.dev/health",
-    agent: "https://boundline-agent.papermind-ai.workers.dev/v1/tools",
+    app: "https://app.boundline.xyz",
+    borrow: "https://app.boundline.xyz/borrow",
+    observatory: "https://observatory.boundline.xyz",
+    console: "https://console.boundline.xyz",
+    drills: "https://console.boundline.xyz/drills",
+    api: "https://api.boundline.xyz/health",
+    agent: "https://agent.boundline.xyz/v1/tools",
     keeper: "https://boundline-keeper.papermind-ai.workers.dev/v1/protect",
     indexer: "https://boundline-indexer.papermind-ai.workers.dev/v1/sources",
-    obsAssurance: "https://boundline-observatory.papermind-ai.workers.dev/v1/assurance",
+    obsAssurance: "https://observatory.boundline.xyz/v1/assurance",
     // The public GitHub repository is not published yet. Leave "" and every element with [data-repo] stays hidden.
     repo: ""
   },

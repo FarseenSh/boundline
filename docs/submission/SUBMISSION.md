@@ -150,7 +150,7 @@ evidence index below):
   market is unseeded and no mainnet borrower has opted into protection yet, so nothing has been lent or protected on
   mainnet; the product runs on Base Sepolia.
 
-**Built in the window:** 110 commits from Sat 3 Oct to Tue 13 Oct 2026 in a new repository; 264 Foundry tests (unit,
+**Built in the window:** 111 commits from Sat 3 Oct to Tue 13 Oct 2026 in a new repository; 264 Foundry tests (unit,
 fuzz, invariant, differential) plus eight mainnet-fork suites that run against an archive RPC; 898 TypeScript tests;
 eight Cloudflare Workers live; the footprint deployed on Base mainnet.
 `TODO-HUMAN: if you commit again before submitting, bump the commit count (git rev-list --count HEAD).`
@@ -281,7 +281,7 @@ third venue.
 
 Boundline's public infrastructure is MIT-licensed, deployed, and usable by anyone without asking us:
 
-- **The B20 Credit Observatory** (https://boundline-observatory.papermind-ai.workers.dev): every Coinbase stock feed,
+- **The B20 Credit Observatory** (https://observatory.boundline.xyz): every Coinbase stock feed,
   session, registry flag, DEX price and real Aave and Morpho position on Base, minute by minute, with an open JSON API
   (`/v1/tokens`, `/v1/sessions`, `/v1/venues/morpho/markets`, `/v1/venues/aave/positions`, `/v1/gaps`, `/v1/assurance`).
 - **`MarketCalendar`**: an onchain NYSE calendar (sessions, holidays, early closes, daylight saving), verified against
@@ -323,18 +323,18 @@ code was carried over.
 
 | What | URL |
 | --- | --- |
-| Site | https://boundline-site.papermind-ai.workers.dev |
-| App (partner #1, Base Sepolia) | https://boundline-app.papermind-ai.workers.dev |
-| Observatory (Base mainnet, live) | https://boundline-observatory.papermind-ai.workers.dev |
-| Partner console | https://boundline-console.papermind-ai.workers.dev |
-| Partner API | https://boundline-api.papermind-ai.workers.dev/health |
-| Agent surface (MCP) | https://boundline-agent.papermind-ai.workers.dev/v1/tools |
+| Site | https://boundline.xyz |
+| App (partner #1, Base Sepolia) | https://app.boundline.xyz |
+| Observatory (Base mainnet, live) | https://observatory.boundline.xyz |
+| Partner console | https://console.boundline.xyz |
+| Partner API | https://api.boundline.xyz/health |
+| Agent surface (MCP) | https://agent.boundline.xyz/v1/tools |
 | Keeper (live sizing) | https://boundline-keeper.papermind-ai.workers.dev/v1/protect |
 | Indexer | https://boundline-indexer.papermind-ai.workers.dev/v1/sources |
 | Repository | `TODO-HUMAN` |
 | X | `TODO-HUMAN` |
 
-`TODO-HUMAN: if boundline.xyz is repointed to the site, replace the workers.dev links.`
+Every service also still answers on its original workers.dev URL (for example https://boundline-app.papermind-ai.workers.dev); boundline.app redirects to boundline.xyz.
 
 ## Evidence index
 
@@ -345,7 +345,7 @@ Every row can be checked by a stranger: open the link or run the command. Base S
 | --- | --- |
 | Debt priced at frozen feeds each Saturday: 0.51M → 1.23M → 1.56M USDC (26 Sep, 3 Oct, 10 Oct); no weekend liquidation in 720,001 blocks; two Aave liquidations in market hours | `docs/evidence/liquidations-2026-09-25-to-10-12.md` (+ .json): `0xeae435367fbfdd29003822bce54b02f1bb692a412d0790fbcc6400dc7dcfa035`, `0x98dbba0de970f877cb0410d7c762ac1370d5451802f66419cf770c3b21228538` (Base mainnet) |
 | Zero rounds on ten feeds through the 48 h closed window of 2–4 Oct, first prints 23–53 s after 20:00 ET | `docs/evidence/reopen-2026-10-04.md` (rebuild: `python3 scripts/reopen-evidence.py`) |
-| The same on 9–11 Oct, captured live by the Observatory and matched field for field from the chain; first prints 21–53 s after 20:00 ET | `docs/evidence/reopen-2026-10-11.md`; e.g. AAPLc's first print `0x3be1174f22e542c01b640815c9950f9f9913e5ea0bfab7fb4c635e35ecd32533` (Base mainnet block 52,486,952); live capture at `https://boundline-observatory.papermind-ai.workers.dev/v1/captures` |
+| The same on 9–11 Oct, captured live by the Observatory and matched field for field from the chain; first prints 21–53 s after 20:00 ET | `docs/evidence/reopen-2026-10-11.md`; e.g. AAPLc's first print `0x3be1174f22e542c01b640815c9950f9f9913e5ea0bfab7fb4c635e35ecd32533` (Base mainnet block 52,486,952); live capture at `https://observatory.boundline.xyz/v1/captures` |
 | A borrow on a SessionGuard market reverts on the weekend | `cast call --rpc-url https://sepolia.base.org --block 47634983 0x1589aAb40fF0b2E0C4c679e70865eb97A24e5854 "price()(uint256)"` → `MarketClosed(5)` = `0x3e363de9…05` |
 | Collateral can still be added on the weekend | `0x01191a773774584bdbf4a72aff4397c870bf455c3277d7d0adf8396a42cb760b` (block 47,634,983) |
 | The same oracle prices in session | `cast call --rpc-url https://sepolia.base.org 0x1589aAb40fF0b2E0C4c679e70865eb97A24e5854 "price()(uint256)"` on a weekday |

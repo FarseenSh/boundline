@@ -33,12 +33,12 @@ signature.
 
 | Service | URL |
 | --- | --- |
-| Site | https://boundline-site.papermind-ai.workers.dev |
-| App (partner #1, Base Sepolia) | https://boundline-app.papermind-ai.workers.dev |
-| Observatory (Base mainnet) | https://boundline-observatory.papermind-ai.workers.dev |
-| Partner console | https://boundline-console.papermind-ai.workers.dev |
-| Partner API | https://boundline-api.papermind-ai.workers.dev/health |
-| Agent surface (MCP + REST) | https://boundline-agent.papermind-ai.workers.dev/v1/tools |
+| Site | https://boundline.xyz |
+| App (partner #1, Base Sepolia) | https://app.boundline.xyz |
+| Observatory (Base mainnet) | https://observatory.boundline.xyz |
+| Partner console | https://console.boundline.xyz |
+| Partner API | https://api.boundline.xyz/health |
+| Agent surface (MCP + REST) | https://agent.boundline.xyz/v1/tools |
 | Keeper (live protection sizing) | https://boundline-keeper.papermind-ai.workers.dev/v1/protect |
 | Indexer | https://boundline-indexer.papermind-ai.workers.dev/v1/sources |
 
@@ -97,11 +97,11 @@ Every address and every other hash: [`deployments/base-sepolia.json`](deployment
 **4. The data.**
 
 ```sh
-curl -s https://boundline-observatory.papermind-ai.workers.dev/v1/sessions          # session, feed liveness, next transition
-curl -s https://boundline-observatory.papermind-ai.workers.dev/v1/tokens            # every Coinbase stock feed vs the DEX
-curl -s https://boundline-observatory.papermind-ai.workers.dev/v1/venues/aave/positions   # real Aave V4 positions, shadow health
-curl -s https://boundline-observatory.papermind-ai.workers.dev/v1/assurance         # the latest replay result and its hash
-curl -si https://boundline-api.papermind-ai.workers.dev/v1/positions/0xB789aD318945B37566E2549F65526Cc269a482Fc/shadow | head -1   # HTTP 402: x402-metered without a key
+curl -s https://observatory.boundline.xyz/v1/sessions          # session, feed liveness, next transition
+curl -s https://observatory.boundline.xyz/v1/tokens            # every Coinbase stock feed vs the DEX
+curl -s https://observatory.boundline.xyz/v1/venues/aave/positions   # real Aave V4 positions, shadow health
+curl -s https://observatory.boundline.xyz/v1/assurance         # the latest replay result and its hash
+curl -si https://api.boundline.xyz/v1/positions/0xB789aD318945B37566E2549F65526Cc269a482Fc/shadow | head -1   # HTTP 402: x402-metered without a key
 ```
 
 **5. The evidence files.**
