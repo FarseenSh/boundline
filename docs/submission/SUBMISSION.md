@@ -150,7 +150,7 @@ evidence index below):
   market is unseeded and no mainnet borrower has opted into protection yet, so nothing has been lent or protected on
   mainnet; the product runs on Base Sepolia.
 
-**Built in the window:** 112 commits from Sat 3 Oct to Tue 13 Oct 2026 in a new repository; 264 Foundry tests (unit,
+**Built in the window:** 113 commits from Sat 3 Oct to Tue 13 Oct 2026 in a new repository; 264 Foundry tests (unit,
 fuzz, invariant, differential) plus eight mainnet-fork suites that run against an archive RPC; 898 TypeScript tests;
 eight Cloudflare Workers live; the footprint deployed on Base mainnet.
 `TODO-HUMAN: if you commit again before submitting, bump the commit count (git rev-list --count HEAD).`
@@ -329,8 +329,8 @@ code was carried over.
 | Partner console | https://console.boundline.xyz |
 | Partner API | https://api.boundline.xyz/health |
 | Agent surface (MCP) | https://agent.boundline.xyz/v1/tools |
-| Keeper (live sizing) | https://boundline-keeper.papermind-ai.workers.dev/v1/protect |
-| Indexer | https://boundline-indexer.papermind-ai.workers.dev/v1/sources |
+| Keeper (live sizing) | https://keeper.boundline.xyz/v1/protect |
+| Indexer | https://indexer.boundline.xyz/v1/sources |
 | Repository | `TODO-HUMAN` |
 | X | `TODO-HUMAN` |
 
@@ -369,7 +369,7 @@ Every row can be checked by a stranger: open the link or run the command. Base S
 | Fork drills: the Aave V4 hub halt replayed; bad debt at a −45% reopen, raw 853.92 USDC, protected 0.00 | `docs/evidence/drills/venue-halt.json` (71 of 71 checks), `docs/evidence/drills/bad-debt-probe.json` (75 of 75); `contracts/test/drills/` |
 | Webhooks delivered HMAC-signed, 84 s and 170 s after the block | `0x5dd9d8df6cac14096e4b0ae3e6eafe6553a0de8a760b271bf0e3438fe91e42b7`, `0xd1687fdf25da3e4aeed84fde4d731431d35ccd4304ac02d9564111eb33202514`; `deployments/base-sepolia.json` (`proofs`) |
 | A dividend harvested into a desk line's loan; the step removed, re-based without a sale | `0xa44b786744d8246b9352914d843ee96723314d5fd74e2fcaecdafcf85624f680`, `0xaa136601955d0db9b78243f2e6ee24cc609c0c53ba3bf5013c060466e7efae66`; `docs/evidence/drills/dividend-harvest.json` |
-| …and by the keeper Worker with no operator, harvest then re-base | `0xb1312b5f7844d1ae1cc2c38e001552f611a457bd605ffb634ffe2d24b1124616`, `0x3827eb336f540895113f3f0d2f66dc3e155fdc3309f32c01c386e0025e47cf2d`; live at `https://boundline-keeper.papermind-ai.workers.dev/v1/harvest` |
+| …and by the keeper Worker with no operator, harvest then re-base | `0xb1312b5f7844d1ae1cc2c38e001552f611a457bd605ffb634ffe2d24b1124616`, `0x3827eb336f540895113f3f0d2f66dc3e155fdc3309f32c01c386e0025e47cf2d`; live at `https://keeper.boundline.xyz/v1/harvest` |
 | Under a staged frozen feed (Sepolia, 12 Oct): the gate answers `FEED_STALE` in session | `0x9d1e1d550847b754de0de3e6257966becd9e6817ecb9adc486c049f4ff81b00b` (the stale round written under a hold of the keeper's mirror); `docs/evidence/feed-outage-rescue-2026-10-12.md` |
 | …the keeper closed out an in-band position at the TWAP shadow price as a validity transaction, in the block after it armed (7 blocks after the DEX price moved) | `0x9774913eecd620da53019d701f10c8e90400cb6497030785a2e374360d280352` (block 48,027,596; 559,715 raw AAPLt seized, 1.745740 USDC repaid; feed slot 5 = the frozen `updatedAt` at inclusion) |
 | …while a plain liquidation on the same market was refused | `cast call --rpc-url https://sepolia.base.org --block 48027596 --from 0x2f0d9B1f16CD702259C6cC259e8D5E5455282a4E 0xBBBBBbbBBb9cC5e90e3b3Af64bdAF62C37EEFFCb "liquidate((address,address,address,address,uint256),address,uint256,uint256,bytes)" "(0x036CbD53842c5426634e7929541eC2318f3dCF7e,0xB2000000000000000000000E063E65377cA34141,0x1589aAb40fF0b2E0C4c679e70865eb97A24e5854,0x46415998764C29aB2a25CbeA6254146D50D22687,625000000000000000)" 0xB789aD318945B37566E2549F65526Cc269a482Fc 1 0 0x` → reverts `0x604190ac…` = `FeedStale(AAPLt, 1791726186, 93600)` |

@@ -18,7 +18,7 @@ So every beat can be recorded in one sitting. Both preconditions of 12 Oct were 
 is on Workers Paid, so D1 no longer runs out of daily reads (it had taken the indexer, the Observatory's position panels,
 the API's obligations, the console's timelines and the app's statements down for a few hours), and the redeployed API
 serves 14 drills with Monday's runs (`protection` 3, `reserve-ladder` 2). A last check before recording:
-`https://boundline-indexer.papermind-ai.workers.dev/v1/sources` and the Observatory's `/v1/positions` answer 200.
+`https://indexer.boundline.xyz/v1/sources` and the Observatory's `/v1/positions` answer 200.
 
 ## Before recording (checklist)
 

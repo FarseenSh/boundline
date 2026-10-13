@@ -39,8 +39,8 @@ signature.
 | Partner console | https://console.boundline.xyz |
 | Partner API | https://api.boundline.xyz/health |
 | Agent surface (MCP + REST) | https://agent.boundline.xyz/v1/tools |
-| Keeper (live protection sizing) | https://boundline-keeper.papermind-ai.workers.dev/v1/protect |
-| Indexer | https://boundline-indexer.papermind-ai.workers.dev/v1/sources |
+| Keeper (live protection sizing) | https://keeper.boundline.xyz/v1/protect |
+| Indexer | https://indexer.boundline.xyz/v1/sources |
 
 ## Verify every claim
 

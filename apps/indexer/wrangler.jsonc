@@ -1,6 +1,10 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "boundline-indexer",
+  // Served at https://indexer.boundline.xyz (a Workers Custom Domain on the boundline.xyz zone). Keep workers.dev too:
+  // declaring a route turns it off otherwise.
+  "routes": [{ "pattern": "indexer.boundline.xyz", "custom_domain": true }],
+  "workers_dev": true,
   "main": "src/index.ts",
   "compatibility_date": "2026-09-01",
   "compatibility_flags": ["nodejs_compat"],
