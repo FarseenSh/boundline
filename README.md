@@ -120,7 +120,7 @@ curl -si https://boundline-api.papermind-ai.workers.dev/v1/positions/0xB789aD318
 ```sh
 pnpm install
 forge test --root contracts            # 264 passed; 8 mainnet-fork tests skip without BASE_RPC_URL
-pnpm test                              # 897 tests across the packages and apps
+pnpm test                              # 898 tests across the packages and apps
 pnpm typecheck
 # mainnet-fork suites (live Morpho, Aave V4 spoke, Aerodrome pools), with Base's Foundry for the B20 precompiles:
 #   base-foundryup --install v1.1.0

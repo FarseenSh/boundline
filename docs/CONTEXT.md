@@ -768,7 +768,8 @@ the site has a bridge Worker (`apps/site/worker/`) with service bindings to the 
 change with `pnpm --filter @boundline/router build` first (`dist/` is gitignored). Last deploys: 9 Oct keeper
 `28fe170c` (vars `HARVESTER`, `HARVEST_TARGETS`), API `6dd36100`; 8 Oct indexer `aba6ef13`, Observatory `326a3f30`,
 agent `f6ec84db`, app `75aa8695`, console `1bfb9a5b`, site `b15a91fe`; 12 Oct Observatory `704e8868` (migration 0004),
-API `41ddd5b4`, site `13123dff`. Checked 12 Oct: the live agent, app and console carry their last commits (each was
+API `41ddd5b4`, site `13123dff`; 13 Oct (after the mainnet deploy, with Farseen's go-ahead) API `930e49a5`, agent
+`07708d61`, site `0e424750`. Checked 12 Oct: the live agent, app and console carry their last commits (each was
 deployed minutes before it was committed; the indexer and keeper likewise by timestamp), so only the Observatory, API and
 site were behind `main`.
 
@@ -1019,9 +1020,9 @@ closed; the Sepolia daily roots from 6 Oct rebuilt (Farseen approved the delete)
 **Done 13 Oct morning:** the mainnet deploy (50 transactions, 16 verified, 33/33 checks) and its wiring in the router,
 SDK and chain packages.
 
-**Next build items (session-doable):** redeploy the API and the agent so `POST /v1/route` and the agent's `route` tool
-mark the three mainnet markets `pre-liquidation` (they bundle `@boundline/router`; needs Farseen's go-ahead); top up the
-MockSwapPool before any further close-out. Not worth the remaining time: the reserve-yield source, other chains, the desk
+**Next build items (session-doable):** top up the MockSwapPool before any further close-out. (The API and agent were
+redeployed on 13 Oct: live `POST /v1/route` sends 1 AAPLc to the Steakhouse AAPLc market as `pre-liquidation`, 187.41 USDC
+of capacity, and 1 NVDAc to the Steakhouse NVDAc market, 77.40 USDC.) Not worth the remaining time: the reserve-yield source, other chains, the desk
 freeze redeploy.
 
 **Human-only**:
