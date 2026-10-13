@@ -1,7 +1,7 @@
 # Boundline build context
 
 Living record of everything built so far, where it lives, how it is verified, and what is open.
-**Start here** in any new session (human or Claude), then `docs/BUILD.md` for the schedule.
+**Start here** in any new session, then `docs/BUILD.md` for the schedule.
 Update this file at the end of every session together with the ledger in `docs/BUILD.md`.
 Last update: **Mon 12 Oct 2026, night IST** (the live reopen capture, the feed-outage rescue, the D1 read budget; see the
 12 Oct entries in sections 5, 6, 8–12).
@@ -66,7 +66,7 @@ is unseeded and nobody has opted in, so nothing has been lent or protected on ma
 | Hackathon | Colosseum Crypto World's Fair, Base track; University and Public Goods prizes also claimed |
 | Deadline | Mon 12 Oct 2026 23:59 PT = **Tue 13 Oct 2026 12:29 IST**; submit Sun 11 Oct evening IST |
 | Feature freeze | Sat 10 Oct 2026 |
-| Team | two developers (Lane A contracts and evidence, Lane B data, UI and business) plus parallel Claude sessions |
+| Team | two developers (Lane A contracts and evidence, Lane B data, UI and business) plus parallel coding sessions |
 | Plan of record | `/Users/farseen/BaseFlow/reports/Boundline v3 full build plan 2026-09-26.md` (mechanics) and `Boundline v3 winning idea plan 2026-09-26.md` (pitch) |
 | Repo | `/Users/farseen/boundline`, local git on `main`, no remote yet (public repo needed before submission; pushing later keeps the dates, never backdate) |
 | Old repo | `/Users/farseen/BaseFlow`: reference and plans only, nothing imported |
@@ -518,7 +518,7 @@ the identical `eth_call`, because base-forge's local simulation runs Beryl preco
 
 **12 Oct 2026 (Monday):**
 
-- **Observatory read budget** (`068d65e`): migration `0004_read_budget.sql` (indexes `positions (chain_id, taken_at)`,
+- **Observatory read budget** (`2e29ef4`): migration `0004_read_budget.sql` (indexes `positions (chain_id, taken_at)`,
   `aave_positions (chain_id, taken_at)`, `snapshots (symbol, feed_updated_at, taken_at)`); the latest-positions views read a
   two-hour range anchored on the newest row with `NOT EXISTS` (a GROUP BY reads the whole history even with an index);
   `lastPositionsTakenAt` is `ORDER BY taken_at DESC LIMIT 1`; `positionsForAddress` uses `address IN (lower, checksum)`
@@ -530,12 +530,12 @@ the identical `eth_call`, because base-forge's local simulation runs Beryl preco
   18:20 UTC** with Farseen's go-ahead, once the account was on Workers Paid: Observatory `704e8868`, migration 0004
   applied remotely; the first idle tick closed both live capture runs (`completedAt` 1791595800 and 1791768600, each the
   run's start + 5400 s).
-- **API drills registry** (`48db571`): 14 drills (new `reserve-ladder`: the 7 Oct operator cycle and the 12 Oct keeper run);
+- **API drills registry** (`3993e27`): 14 drills (new `reserve-ladder`: the 7 Oct operator cycle and the 12 Oct keeper run);
   new runs on `protection` (3), `stale-feed` (2), `weekend-gap` (the 9–11 Oct weekend); the list view is 88.7 KB (guard
   raised to 120 KB). Served after the API is redeployed (runs are bundled at build time).
 - **Scripts:** `scripts/sepolia/outage_rescue.py` (`show`, `pre`, `stale`, `step1`, `step2`, `restore`, `settle`): the
   feed-outage rescue step by step, snapshotting every number into `docs/evidence/feed-outage-rescue-2026-10-12.json`;
-  `forge fmt` clean (`ec86941`).
+  `forge fmt` clean (`580950b`).
 
 ## 6. Deployments and live state
 
@@ -863,7 +863,7 @@ The wrangler OAuth token expires within a day and a KV write then fails `Authent
 `wrangler whoami` refreshes it. Alchemy's Sepolia endpoint answered an `eth_getLogs` range with HTTP 400; the Basescan v2
 logs API (`drills._find_mirror_tx`) works. sepolia.base.org rate-limits **per entry inside a batch** (`-32007`). Line 1
 has about $0.16 of capacity and the policy's smallest draw is $1, so the demo's beat 4 must add shares; more than ~0.013
-AAPLt would push Saturday's step 2 past the ShadowGuard's 30% guard (demo checklist and runbook). The Claude-in-Chrome
+AAPLt would push Saturday's step 2 past the ShadowGuard's 30% guard (demo checklist and runbook). The browser-automation
 extension was not connected, so the front ends were checked over HTTP only (all 200).
 
 **12 Oct facts:** D1's free tier caps the **account** at 5M rows read and 100K rows written a day, resetting at 00:00
@@ -900,7 +900,7 @@ human.
 Operational lessons: a brand-new Worker's cron can take ten minutes to start, and one Worker's cron never
 started at all (drive it from a working cron through a service binding); a fresh workers.dev route can answer
 Cloudflare error 1042 (HTTP 404) for a minute after its first deploy, and the same 1042 is what a Worker gets when
-it fetches another Worker's workers.dev URL (use service bindings); parallel Bash calls in one Claude session
+it fetches another Worker's workers.dev URL (use service bindings); parallel shell calls in one session
 share the shell cwd and the harness resets it between calls even mid-command, so always use absolute paths,
 `forge --root` and `pnpm --filter <pkg> exec`; zsh needs quotes around globs like `--include=*.sol`; a view
 called inside `vm.prank` consumes the prank; `sepolia.base.org` is load-balanced and its nodes
@@ -912,7 +912,7 @@ list; KV on the free tier allows 1,000 writes a day, hence the throttle; macOS h
 
 ```sh
 forge test --root contracts     # 264 passed, 0 failed, 8 skipped (fork suites without BASE_RPC_URL), 29 suites
-forge fmt --root contracts --check   # clean since 12 Oct (ec86941)
+forge fmt --root contracts --check   # clean since 12 Oct (580950b)
 pnpm test                       # 898 vitest: calendar 106, chain 19, ledger 10, router 17, agent 19, api 121, indexer 108,
                                 #   keeper 131, observatory 226, sdk 95, console 46
 pnpm typecheck                  # clean (every package and app)
@@ -1045,80 +1045,87 @@ freeze redeploy.
 
 ## 12. Commit history
 
+The IDs below are current. On 13 Oct 2026 every commit message was rewritten without changing any tree, author or
+date, which gave each commit a new ID. Generated records keep the IDs they were written with: Foundry's `commit` field
+in `contracts/broadcast/`, and the venue-halt drill's finding, whose evidence hash covers its text. Old → new:
+`060f192` → `95dcad4`, `3f33761` → `bb805e3`, `5bcd2f8` → `d9e9f50`, `839fcd9` → `708ffb9` (the mainnet deploy),
+`a1031f4` → `0e61ff1`, `a71e208` → `639f6e3`, `be9cb68` → `8cb05a4`, `c80432e` → `f1d000f`, `e84b860` → `5f10992`,
+`464efe1` → `6efb804` (the venue-halt drill's first run).
+
 | Commit | What |
 | --- | --- |
-| `eeed7bd` | Scaffold the Boundline monorepo |
-| `bb19663` | MarketCalendar: onchain NYSE session calendar in ET |
-| `1c4c48b` | pnpm workspace skeletons for calendar, chain and observatory |
-| `52aa4f6` | SessionGate, SessionGuard and ShadowGuard oracles with simulators |
-| `69b4853` | README and the day-by-day build schedule to 10 Oct |
-| `4ff6009` | TypeScript calendar, 5,643-instant differential fixture, Morpho fork test |
-| `a71e208` | Chain package and the Observatory v0 worker |
-| `48e4847` | CreditDesk: partner-scoped credit lines on Morpho, self-custody mode |
-| `180e6b7` | Build ledger for 3 Oct |
-| `81df4ba` | `.env.example` listing every key and RPC |
-| `da2d27c` | Oracle deploy, session-safe market and Cobalt test-stock scripts |
-| `5bcd2f8` | Test-stock suite runs live under base-forge, Cobalt-only cases skip on Beryl |
-| `93f7bb6` | Sepolia test stocks, oracle stack and session-safe Morpho market deployed |
-| `edd3dd4` | Observatory live on Cloudflare with KV write throttle and RPC fallback |
-| `060f192` | docs/CONTEXT.md, the living build context |
-| `a1031f4` | Keeper Worker: mirror mainnet feed rounds and registry params onto the Sepolia simulators |
-| `e7fe38b` | CreditDesk deployed on Base Sepolia and AAPLt's Cobalt policies wired |
-| `3516b67` | Observatory: reopen capture runs and shadow health for real Morpho positions |
-| `962040d` | Indexer Worker: events into D1 with hash-chained daily roots and Morpho reconciliation |
-| `cf03ac0` | Partner API: lines, quotes, obligations and decisions over the CreditDesk |
-| `be9cb68` | Build context, ledger and deployment record for the five live lanes |
-| `0bec0f4` | API reaches the indexer through a service binding |
-| `bf48607` | Indexer tick driven from the Observatory cron through a service binding |
-| `e964a07` | CreditDesk split into the desk and an external CreditDeskLib (fits EIP-170 at 10,000 runs) |
-| `8c798c1` | Service-binding fallbacks and the live verification of the indexer and API recorded |
-| `c80432e` | Keeper: raw JSON-RPC adapter and one unwaited transaction per tick (Free-plan CPU cap); first in-session draw and repay; the 2 to 4 Oct weekend reconstructed |
-| `15177f2` | NVDAt and TSLAt markets registered on the desk and wired, lines 2 and 3, first validity transaction |
-| `69a4fe0` | `@boundline/sdk` and the Boundline app live on Workers |
-| `86ec1f1` | Protected mode on Morpho: Protector, vendored pre-liquidation, AAPLt ShadowGuard live on Sepolia |
-| `ea98c12` | Keeper protection job arming the Protector's action as a validity transaction |
-| `ae7d1ff` | Indexer phase 2 (five mainnet sources) and the API served from it |
-| `2830003` | Aave V4: AaveDesk, ProtectionVault, enrolment helper, proven on the live MAG7 spoke |
-| `7013265` | Automated protection drill recorded; SDK config carries the pre-liquidation and the new markets |
-| `8ff5873`…`d9d77b0` | 6 Oct evening: Observatory diet, validity-tx loop fixes, the `!=` validity transaction's evidence |
-| `82fe341` | Keeper: `MIRROR_HOLD_FEED`/`REGISTRY`; lane-e/lane-f forge profiles |
-| `7226360` | Runbook for the 9–11 Oct Saturday rescue |
-| `591555f` | Architecture doc and threat model |
-| `e84b860` | `@boundline/router` |
-| `a2b5c65` | Agent surface (MCP server) |
-| `682fe8b` | Boundline Reserve and DeskProtectionVault live on Sepolia; ProtectionVault funder; desk `recoverCollateral` |
-| `e5e346b` | Fork replay harness, nightly assurance, `@boundline/ledger` |
-| `3c5de44` | Deployment record: Reserve, vault, line 1 protective repays |
-| `94eb94d` | Partner API: x402 metering, policy versions, drills, reconciliation, evidence export, shadow health |
-| `4344a83` | Local-money payout leg live on Sepolia; SDK payout option; app "Receive as"; landing site |
-| `152d099` | Partner console |
-| `8b70c13`, `549f90c` | Observatory Aave V4 positions, gap panel, assurance status; 7 Oct context and ledger |
-| `fa25261` | 8 Oct: the API depends on `@boundline/router` |
-| `fbfc447` | Submission package: portal text, pitch and demo scripts, deck, logo, checklist, X thread; README |
-| `e460ee4` | Sepolia drills executed live (six) and the second automatic protection recorded |
-| `ead6852` | Saturday rescue staged on line 1 and the drill position; runbook rewritten |
-| `464efe1` | Fork drills: the real 24 Sep Aave hub halt; the bad-debt probe |
-| `d765c10` | DividendHarvester |
-| `ef27a70` | Mainnet in one run: `DeployMainnet`, `deploy-mainnet.sh`, runbook |
-| `f8c9119`, `7784be2`, `b7479d6`, `c246efa` | SDK vault/route/webhooks; app route card and reserve; console webhooks, events, Saturday mode; site bridge Worker |
-| `32d6869` | Aave desk and vault read the hub's halt switch (`VENUE_HALTED`) |
-| `301cca9`, `ad5616e` | Keeper: vault job, simulate before signing, KV hold, events, CPU; the re-arm experiment |
-| `12c9392` | Runbook order rule (top up before moving the TWAP) |
-| `9154059`, `af446a3`, `862c31e` | Router shared candidates; agent x402; partner API route plans, Saturday mode, webhooks, drills registry |
-| `f18311e`, `453dea0` | Indexer CPU diet, protection events, seize watch; Observatory seize-watch panel |
-| `88075ce`, `76fe8ca`, `3f33761` | Keeper drives the API's webhook tick; PatternRouter everywhere; 8 Oct context, webhook proof |
-| `3362abf`, `77270df` | 9 Oct: the API's stored policy version follows the desk; Sepolia scripts off the scratchpad, KV token refresh |
-| `de42ab2` | The self-repaying leg live on Sepolia: harvester deployed, one dividend harvested into line 1 |
-| `ae4057a`, `2c84d51` | Submission, README and deck filled from the evidence; demo beat 4 sizing |
-| `f113c99`, `278dc05` | Keeper harvest job; the Worker harvested and re-based on its own |
-| `3d9d83d`, `f2a770a` | `friday.py`; keeper RPC re-sends a rate-limited batch to the next node |
-| `95bd40d`, `bbd57ac` | 9 Oct context and ledger; the harvest job reads nothing while it could not act |
-| `85a9f56`, `e915fef` | 9 Oct: context for the harvest gate; submission counts |
-| `3dc89f3` | 10 Oct: evidence of the Friday step and the close (the mirror not applied, nothing acted while held) |
-| `068d65e` | 12 Oct: Observatory D1 read budget (migration 0004, bounded latest views) and capture runs that complete |
-| `0ac40b0` | The 9–11 Oct weekend and the Sun 11 Oct reopen, captured live and reconstructed from the chain |
-| `48db571` | The feed-outage rescue on Base Sepolia; drill runs, the `reserve-ladder` drill, the weekend record filled |
-| `ec86941` | `forge fmt` on the payout router and its tests |
+| `85a8fe4` | Scaffold the Boundline monorepo |
+| `111e85e` | MarketCalendar: onchain NYSE session calendar in ET |
+| `9375471` | pnpm workspace skeletons for calendar, chain and observatory |
+| `1244e70` | SessionGate, SessionGuard and ShadowGuard oracles with simulators |
+| `99851ae` | README and the day-by-day build schedule to 10 Oct |
+| `102449e` | TypeScript calendar, 5,643-instant differential fixture, Morpho fork test |
+| `639f6e3` | Chain package and the Observatory v0 worker |
+| `fc0e75b` | CreditDesk: partner-scoped credit lines on Morpho, self-custody mode |
+| `8663f35` | Build ledger for 3 Oct |
+| `955628c` | `.env.example` listing every key and RPC |
+| `564dfde` | Oracle deploy, session-safe market and Cobalt test-stock scripts |
+| `d9e9f50` | Test-stock suite runs live under base-forge, Cobalt-only cases skip on Beryl |
+| `a5a8191` | Sepolia test stocks, oracle stack and session-safe Morpho market deployed |
+| `669aac2` | Observatory live on Cloudflare with KV write throttle and RPC fallback |
+| `95dcad4` | docs/CONTEXT.md, the living build context |
+| `0e61ff1` | Keeper Worker: mirror mainnet feed rounds and registry params onto the Sepolia simulators |
+| `54497e8` | CreditDesk deployed on Base Sepolia and AAPLt's Cobalt policies wired |
+| `623f863` | Observatory: reopen capture runs and shadow health for real Morpho positions |
+| `9f24713` | Indexer Worker: events into D1 with hash-chained daily roots and Morpho reconciliation |
+| `573f551` | Partner API: lines, quotes, obligations and decisions over the CreditDesk |
+| `8cb05a4` | Build context, ledger and deployment record for the five live lanes |
+| `2aa04a0` | API reaches the indexer through a service binding |
+| `f4b3061` | Indexer tick driven from the Observatory cron through a service binding |
+| `10891e6` | CreditDesk split into the desk and an external CreditDeskLib (fits EIP-170 at 10,000 runs) |
+| `8d95de7` | Service-binding fallbacks and the live verification of the indexer and API recorded |
+| `f1d000f` | Keeper: raw JSON-RPC adapter and one unwaited transaction per tick (Free-plan CPU cap); first in-session draw and repay; the 2 to 4 Oct weekend reconstructed |
+| `fd52449` | NVDAt and TSLAt markets registered on the desk and wired, lines 2 and 3, first validity transaction |
+| `1ce0dd3` | `@boundline/sdk` and the Boundline app live on Workers |
+| `02c4b92` | Protected mode on Morpho: Protector, vendored pre-liquidation, AAPLt ShadowGuard live on Sepolia |
+| `c647f55` | Keeper protection job arming the Protector's action as a validity transaction |
+| `bb39eff` | Indexer phase 2 (five mainnet sources) and the API served from it |
+| `ae49803` | Aave V4: AaveDesk, ProtectionVault, enrolment helper, proven on the live MAG7 spoke |
+| `637592a` | Automated protection drill recorded; SDK config carries the pre-liquidation and the new markets |
+| `48ed6c6`…`fcf5205` | 6 Oct evening: Observatory diet, validity-tx loop fixes, the `!=` validity transaction's evidence |
+| `97daf41` | Keeper: `MIRROR_HOLD_FEED`/`REGISTRY`; lane-e/lane-f forge profiles |
+| `b00a44c` | Runbook for the 9–11 Oct Saturday rescue |
+| `fa82f3e` | Architecture doc and threat model |
+| `5f10992` | `@boundline/router` |
+| `b331d91` | Agent surface (MCP server) |
+| `2311867` | Boundline Reserve and DeskProtectionVault live on Sepolia; ProtectionVault funder; desk `recoverCollateral` |
+| `edb9761` | Fork replay harness, nightly assurance, `@boundline/ledger` |
+| `a6f38a0` | Deployment record: Reserve, vault, line 1 protective repays |
+| `eae7047` | Partner API: x402 metering, policy versions, drills, reconciliation, evidence export, shadow health |
+| `b186f31` | Local-money payout leg live on Sepolia; SDK payout option; app "Receive as"; landing site |
+| `f96ee12` | Partner console |
+| `04c97d3`, `99b1db7` | Observatory Aave V4 positions, gap panel, assurance status; 7 Oct context and ledger |
+| `549aab4` | 8 Oct: the API depends on `@boundline/router` |
+| `8963e58` | Submission package: portal text, pitch and demo scripts, deck, logo, checklist, X thread; README |
+| `64d3df2` | Sepolia drills executed live (six) and the second automatic protection recorded |
+| `a595324` | Saturday rescue staged on line 1 and the drill position; runbook rewritten |
+| `6efb804` | Fork drills: the real 24 Sep Aave hub halt; the bad-debt probe |
+| `c1a20a0` | DividendHarvester |
+| `20e956b` | Mainnet in one run: `DeployMainnet`, `deploy-mainnet.sh`, runbook |
+| `d9f215f`, `e0b7986`, `1aea462`, `dd8c541` | SDK vault/route/webhooks; app route card and reserve; console webhooks, events, Saturday mode; site bridge Worker |
+| `ab03d3f` | Aave desk and vault read the hub's halt switch (`VENUE_HALTED`) |
+| `f7fcc01`, `0ad81d6` | Keeper: vault job, simulate before signing, KV hold, events, CPU; the re-arm experiment |
+| `06b0e75` | Runbook order rule (top up before moving the TWAP) |
+| `68ad850`, `effdd7f`, `b27aa88` | Router shared candidates; agent x402; partner API route plans, Saturday mode, webhooks, drills registry |
+| `3b7b6ea`, `7a48159` | Indexer CPU diet, protection events, seize watch; Observatory seize-watch panel |
+| `008a651`, `34bb043`, `bb805e3` | Keeper drives the API's webhook tick; PatternRouter everywhere; 8 Oct context, webhook proof |
+| `c42ab27`, `c28d32e` | 9 Oct: the API's stored policy version follows the desk; Sepolia scripts off the scratchpad, KV token refresh |
+| `9c07842` | The self-repaying leg live on Sepolia: harvester deployed, one dividend harvested into line 1 |
+| `67db6a6`, `fd834b1` | Submission, README and deck filled from the evidence; demo beat 4 sizing |
+| `40f6932`, `a3daa19` | Keeper harvest job; the Worker harvested and re-based on its own |
+| `9b2181a`, `9ba6358` | `friday.py`; keeper RPC re-sends a rate-limited batch to the next node |
+| `ff49c32`, `4a83c08` | 9 Oct context and ledger; the harvest job reads nothing while it could not act |
+| `8fcbd13`, `b497e99` | 9 Oct: context for the harvest gate; submission counts |
+| `9ce7b08` | 10 Oct: evidence of the Friday step and the close (the mirror not applied, nothing acted while held) |
+| `2e29ef4` | 12 Oct: Observatory D1 read budget (migration 0004, bounded latest views) and capture runs that complete |
+| `22edc2f` | The 9–11 Oct weekend and the Sun 11 Oct reopen, captured live and reconstructed from the chain |
+| `3993e27` | The feed-outage rescue on Base Sepolia; drill runs, the `reserve-ladder` drill, the weekend record filled |
+| `580950b` | `forge fmt` on the payout router and its tests |
 
 ## 13. How to keep this file true
 
