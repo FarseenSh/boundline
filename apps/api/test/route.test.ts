@@ -214,7 +214,8 @@ describe("POST /v1/route on Base mainnet", () => {
     expect((value * 550_000_000_000_000_000n) / 10n ** 18n).toBe(184_625_650n);
     expect(json.plan.chosen.capacity).toBe("150000000");
     expect(json.plan.chosen.notes).toContain("LIQUIDITY_LIMITED");
-    expect(json.policySource).toMatch(/no Boundline desk on Base mainnet/);
+    expect(json.policySource).toMatch(/mainnet routes use a default policy/);
+    expect(json.notes).toContain("Base mainnet: 1 of 1 markets carry a Boundline pre-liquidation (protected mode, opted into with Morpho.setAuthorization); the rest show protection none");
     expect(json.typedData.domain.verifyingContract).toBe("0x0000000000000000000000000000000000000000");
   });
 

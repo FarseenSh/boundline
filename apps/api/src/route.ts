@@ -413,13 +413,21 @@ export async function mainnetRoute(deps: MainnetRouteDeps, input: RouteInput): P
   }
   const built = buildCandidates(input.symbol, { tokens, mainnetMarkets, mainnetRates: rates, sepoliaRates: [] });
   const policy = defaultPolicy(input.maxLtvBps ?? 5_500);
+  const candidates = built.candidates.filter((c) => c.chainId === CHAIN_MAINNET);
+  const protectedCount = candidates.filter((c) => c.protection === "pre-liquidation").length;
   return {
-    candidates: built.candidates.filter((c) => c.chainId === CHAIN_MAINNET),
+    candidates,
     policy,
-    policySource: `default: ${(Number(policy.maxLtvWad) / 1e16).toFixed(2)}% max LTV (no Boundline desk on Base mainnet yet; maxLtvBps tightens it)`,
+    policySource: `default: ${(Number(policy.maxLtvWad) / 1e16).toFixed(2)}% max LTV (mainnet routes use a default policy, not the mainnet desk's; maxLtvBps tightens it)`,
     deskPolicyVersion: null,
     blockNumber: null,
-    notes: [...notes, ...built.notes, "Base mainnet: no Boundline pre-liquidation is deployed yet, so these markets show protection none"],
+    notes: [
+      ...notes,
+      ...built.notes,
+      protectedCount > 0
+        ? `Base mainnet: ${protectedCount} of ${candidates.length} markets carry a Boundline pre-liquidation (protected mode, opted into with Morpho.setAuthorization); the rest show protection none`
+        : "Base mainnet: no Boundline pre-liquidation on these markets, so they show protection none",
+    ],
   };
 }
 
