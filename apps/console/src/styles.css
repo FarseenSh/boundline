@@ -74,8 +74,9 @@ button, input { font: inherit; color: inherit; }
 
 .shell { max-width: var(--maxw); margin: 0 auto; padding: 20px 16px 64px; }
 header.top { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
-.wordmark { font-family: var(--serif); font-size: 30px; line-height: 1; letter-spacing: -0.01em; text-decoration: none; }
-.wordmark i { color: var(--coral); font-style: normal; }
+/* The brand lockup (docs/brand): the coral tile, then "boundline" typed live in Archivo at width 125, weight 800. */
+.wordmark { display: inline-flex; align-items: center; gap: 10px; font-family: "Archivo", var(--sans); font-stretch: 125%; font-weight: 800; font-size: 23px; line-height: 1; letter-spacing: -0.012em; text-decoration: none; }
+.wordmark img { width: 30px; height: 30px; flex: none; }
 nav.primary { display: flex; gap: 18px; margin: 14px 0 18px; flex-wrap: wrap; }
 nav.primary a { text-decoration: none; color: var(--ink-2); padding: 2px 0; border-bottom: 2px solid transparent; }
 nav.primary a[aria-current="page"] { color: var(--ink); border-bottom-color: var(--coral); }

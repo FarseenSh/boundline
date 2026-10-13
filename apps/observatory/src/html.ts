@@ -132,7 +132,7 @@ export function renderPage(s: Snapshot, extras: PageExtras = { capture: null, ne
   const rows = s.tokens.map(row).join("\n");
   return `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Boundline Observatory · B20 credit on Base</title><style>${CSS}</style></head>
+<title>Boundline Observatory · B20 credit on Base</title><link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3CclipPath id='tc'%3E%3Crect width='64' height='64' rx='14'/%3E%3C/clipPath%3E%3Cg clip-path='url%28%23tc%29'%3E%3Crect width='64' height='64' fill='%23FF6B57'/%3E%3Cpath d='M11.71 14.2 V39.6' stroke='%2315171C' stroke-width='10.4' stroke-linecap='round' fill='none'/%3E%3Ccircle cx='21.91' cy='39.6' r='10.2' stroke='%2315171C' stroke-width='10.4' fill='none'/%3E%3Cpath d='M45.71 14.2 V49.8' stroke='%2315171C' stroke-width='10.4' stroke-linecap='round' fill='none'/%3E%3CclipPath id='tb'%3E%3Crect x='50.91' y='0' width='13.09' height='64'/%3E%3C/clipPath%3E%3Cpath clip-path='url%28%23tb%29' d='M-11.59 64 L52.41 0 M-1.39 64 L62.61 0 M8.81 64 L72.81 0 M19.01 64 L83.01 0 M29.21 64 L93.21 0 M39.41 64 L103.41 0 M49.61 64 L113.61 0 M59.81 64 L123.81 0 M70.01 64 L134.01 0' stroke='%2315171C' stroke-width='4.6' fill='none'/%3E%3C/g%3E%3C/svg%3E"><style>${CSS}</style></head>
 <body>
 <h1><span>Boundline</span> Observatory</h1>
 <p class="sub">Every Coinbase tokenized stock on Base: Chainlink feed, Coinbase OracleRegistry, issuer pause, 24/7 Aerodrome price and the gap the feed will print at the reopen. Block ${s.block} · taken ${escapeHtml(fmtEt(s.takenAt, true))}.</p>

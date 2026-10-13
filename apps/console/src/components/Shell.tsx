@@ -34,7 +34,8 @@ export function Shell({ children }: { children: ReactNode }) {
     <div className="shell">
       <header className="top">
         <Link to="/" className="wordmark">
-          Boundline<i>.</i> <span className="product">Console</span>
+          <img src="/icon.svg" alt="" width="30" height="30" />
+          boundline <span className="product">Console</span>
         </Link>
         <WalletButton />
       </header>
