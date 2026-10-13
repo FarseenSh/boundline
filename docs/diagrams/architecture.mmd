@@ -1,0 +1,14 @@
+flowchart LR
+  feed["Chainlink feed<br/>+ Coinbase OracleRegistry"] --> gate{"SessionGate<br/>is this price live?"}
+  cal["MarketCalendar<br/>NYSE sessions in ET"] --> gate
+  gate -- "yes, in session" --> open["SessionGuard prices the market<br/>borrow · repay · liquidate as usual"]
+  gate -- "no: weekend, holiday, stale feed" --> held["SessionGuard refuses to price<br/>no new borrowing, no liquidation<br/>repay and add-collateral still work"]
+  gate -- "no, and the loan is near its limit" --> shadow["ShadowGuard reads the live DEX price<br/>the keeper pre-liquidates or repays<br/>as a Cobalt validity transaction"]
+  classDef core fill:#FF6B57,stroke:#15171C,stroke-width:2px,color:#15171C
+  classDef ok fill:#E6F5EC,stroke:#15171C,stroke-width:1.5px,color:#15171C
+  classDef stop fill:#FDECEC,stroke:#15171C,stroke-width:1.5px,color:#15171C
+  classDef ext fill:#FFFFFF,stroke:#15171C,stroke-width:1.5px,color:#15171C
+  class gate,shadow core
+  class open ok
+  class held stop
+  class feed,cal ext

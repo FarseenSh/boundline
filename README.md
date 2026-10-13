@@ -95,24 +95,9 @@ signature.
 
 ## How it works
 
-```mermaid
-flowchart LR
-  feed["Chainlink feeds +<br/>Coinbase OracleRegistry"] --> gate
-  cal["MarketCalendar<br/>NYSE sessions in ET"] --> gate["SessionGate<br/>one verdict per stock"]
-  gate --> guard["SessionGuard<br/>Morpho oracle: no price while held"]
-  gate --> shadow["ShadowGuard<br/>live price: Aerodrome TWAP while held"]
-  guard --> morpho[("Morpho markets")]
-  shadow --> pre["Pre-liquidation + Protector"]
-  pre --> morpho
-  desk["CreditDesk · AaveDesk<br/>partner lines, decision hashes"] --> morpho
-  desk --> aave[("Aave V4 spoke")]
-  keeper["Keeper<br/>Cobalt validity transactions"] --> pre
-  keeper --> vault["Protection vaults"]
-  vault --> reserve["BoundlineReserve<br/>ERC-4626"]
-  api["Partner API · SDK · x402"] --> desk
-  apps["App · Console · Agent (MCP)"] --> api
-  obs["Observatory · Indexer"] -. reads .-> morpho
-```
+<img src="docs/diagrams/architecture.png" alt="SessionGate decides whether a stock's price is live. In session the SessionGuard prices the market; while the feed is held it refuses to price, and for a loan near its limit the ShadowGuard's live DEX price lets the keeper protect it as a Cobalt validity transaction." width="100%">
+
+<sub>Source: <a href="docs/diagrams/architecture.mmd">docs/diagrams/architecture.mmd</a> (Mermaid).</sub>
 
 | Layer | Component | Decides |
 | --- | --- | --- |
