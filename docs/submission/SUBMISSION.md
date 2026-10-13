@@ -150,7 +150,7 @@ evidence index below):
   market is unseeded and no mainnet borrower has opted into protection yet, so nothing has been lent or protected on
   mainnet; the product runs on Base Sepolia.
 
-**Built in the window:** 111 commits from Sat 3 Oct to Tue 13 Oct 2026 in a new repository; 264 Foundry tests (unit,
+**Built in the window:** 112 commits from Sat 3 Oct to Tue 13 Oct 2026 in a new repository; 264 Foundry tests (unit,
 fuzz, invariant, differential) plus eight mainnet-fork suites that run against an archive RPC; 898 TypeScript tests;
 eight Cloudflare Workers live; the footprint deployed on Base mainnet.
 `TODO-HUMAN: if you commit again before submitting, bump the commit count (git rev-list --count HEAD).`

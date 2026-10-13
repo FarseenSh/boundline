@@ -114,6 +114,7 @@ p { margin: 0; }
 .dial-day { font-size: 14px; font-weight: 600; font-stretch: 104%; }
 .dial-clock { font-size: clamp(38px, 4vw, 52px); font-weight: 800; line-height: 1; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; margin-top: 4px; }
 .dial-clock small { font-size: 0.32em; font-weight: 700; letter-spacing: 0; margin-left: 3px; vertical-align: 0.9em; }
+.dial-clock .dial-sec { font-size: 0.46em; font-weight: 700; letter-spacing: -0.01em; opacity: .72; }
 .dial-pill { margin-top: 10px; display: inline-flex; align-items: center; gap: 7px; padding: 5px 12px; border-radius: 999px; background: var(--ink); color: #FFFFFF; font-size: 13px; font-weight: 600; white-space: nowrap; }
 .dial-pill i { width: 8px; height: 8px; border-radius: 50%; background: #6EE7A2; display: inline-block; }
 .dial-pill.held i { background: var(--coral); }
@@ -791,7 +792,7 @@ var BL = {
 
   // ---------------------------------------------------------------- the week dial (live, from BLCal)
   var DIAL = { c: 250, r: 172, w: 28 };
-  var dialWeek = null, dialNeedle = null, dialMarker = null;
+  var dialWeek = null, dialNeedle = null, dialMarker = null, dialSec = null;
   function polar(a, r) { var rad = (a - 90) * Math.PI / 180; return [DIAL.c + r * Math.cos(rad), DIAL.c + r * Math.sin(rad)]; }
   function arcPath(a0, a1, r) {
     var p0 = polar(a0, r), p1 = polar(a1, r), large = a1 - a0 > 180 ? 1 : 0;
@@ -844,6 +845,8 @@ var BL = {
     // the needle crosses the ring at now; its marker sits on the ring
     dialNeedle = el("line", { stroke: "#15171C", "stroke-width": "4", "stroke-linecap": "round" }, svg);
     dialMarker = el("circle", { r: "11", fill: "#FF6B57", stroke: "#15171C", "stroke-width": "4" }, svg);
+    // a seconds dot that goes round the inside of the hour track once a minute, so the clock visibly runs
+    dialSec = el("circle", { r: "4.6", fill: "#15171C" }, svg);
     dialWeek = week;
   }
   function tickDial() {
@@ -855,15 +858,16 @@ var BL = {
     dialNeedle.setAttribute("x2", p1[0].toFixed(2)); dialNeedle.setAttribute("y2", p1[1].toFixed(2));
     dialMarker.setAttribute("cx", m[0].toFixed(2)); dialMarker.setAttribute("cy", m[1].toFixed(2));
     var z = BLCal.zone(now), sess = BLCal.sessionAt(now), live = BLCal.isFeedLive(now), nx = BLCal.nextFeedChange(now);
+    var sp = polar(z.s * 6, 126); dialSec.setAttribute("cx", sp[0].toFixed(2)); dialSec.setAttribute("cy", sp[1].toFixed(2));
     var days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
     var pad = function (n) { return (n < 10 ? "0" : "") + n; };
     $("dial-day").textContent = days[z.wd] + " in New York";
-    $("dial-clock").innerHTML = pad(z.h) + ":" + pad(z.mi) + "<small>ET</small>";
+    $("dial-clock").innerHTML = pad(z.h) + ":" + pad(z.mi) + '<span class="dial-sec">:' + pad(z.s) + "</span><small>ET</small>";
     var pill = $("dial-pill");
     pill.className = "dial-pill" + (live ? "" : " held");
     pill.querySelector("span").textContent = BLCal.NAMES[sess] + ", feeds " + (live ? "live" : "held");
     if (nx.at) {
-      $("dial-next").textContent = (nx.kind === "close" ? "They freeze in " : "They reopen in ") + BLCal.fmtDur(nx.at - now);
+      $("dial-next").textContent = (nx.kind === "close" ? "They freeze in " : "They reopen in ") + BLCal.fmtDur(nx.at - now, true);
     } else { $("dial-next").textContent = ""; }
     var face = $("dial-face");
     if (z.s === 0 || !face.getAttribute("data-labelled")) {
