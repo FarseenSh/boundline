@@ -13,7 +13,7 @@
 [![Tests](https://img.shields.io/badge/tests-264_Foundry_%C2%B7_25_fork_%C2%B7_898_TypeScript-15171C)](#build-and-test)
 [![Licence: MIT](https://img.shields.io/badge/licence-MIT-15171C)](LICENSE)
 
-[**Website**](https://boundline.xyz) · [**App**](https://app.boundline.xyz) · [**Observatory**](https://observatory.boundline.xyz) · [**Partner console**](https://console.boundline.xyz) · [**Deck (PDF)**](docs/deck/boundline.pdf)
+[**Website**](https://boundline.xyz) · [**App**](https://app.boundline.xyz) · [**Observatory**](https://observatory.boundline.xyz) · [**Partner console**](https://console.boundline.xyz) · [**Deck (PDF)**](docs/deck/boundline.pdf) · [**Pitch video**](https://youtu.be/jmGnSiZyS_4) · [**Demo video**](https://youtu.be/1sdkFiwOMYk)
 
 <br>
 

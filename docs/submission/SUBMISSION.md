@@ -150,7 +150,7 @@ evidence index below):
   market is unseeded and no mainnet borrower has opted into protection yet, so nothing has been lent or protected on
   mainnet; the product runs on Base Sepolia.
 
-**Built in the window:** 122 commits from Sat 3 Oct to Tue 13 Oct 2026 in a new repository; 264 Foundry tests (unit,
+**Built in the window:** 123 commits from Sat 3 Oct to Tue 13 Oct 2026 in a new repository; 264 Foundry tests (unit,
 fuzz, invariant, differential) plus eight mainnet-fork suites that run against an archive RPC; 898 TypeScript tests;
 eight Cloudflare Workers live; the footprint deployed on Base mainnet.
 `TODO-HUMAN: if you commit again before submitting, bump the commit count (git rev-list --count HEAD).`
@@ -209,11 +209,11 @@ https://github.com/FarseenSh/boundline (MIT).
 
 ## Presentation video (2:00)
 
-`TODO-HUMAN: unlisted YouTube link, tested logged out`. Script: `docs/submission/pitch-2min.md`.
+https://youtu.be/jmGnSiZyS_4 (1:59, unlisted). Script: `docs/submission/pitch-2min.md`.
 
 ## Product demo (≤ 3:00)
 
-`TODO-HUMAN: unlisted YouTube link, tested logged out`. Script: `docs/submission/demo-3min.md`.
+https://youtu.be/1sdkFiwOMYk (2:53, unlisted). Script: `docs/submission/demo-3min.md`.
 
 ## Tracks
 
