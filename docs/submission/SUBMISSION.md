@@ -150,7 +150,7 @@ evidence index below):
   market is unseeded and no mainnet borrower has opted into protection yet, so nothing has been lent or protected on
   mainnet; the product runs on Base Sepolia.
 
-**Built in the window:** 123 commits from Sat 3 Oct to Tue 13 Oct 2026 in a new repository; 264 Foundry tests (unit,
+**Built in the window:** 124 commits from Sat 3 Oct to Tue 13 Oct 2026 in a new repository; 264 Foundry tests (unit,
 fuzz, invariant, differential) plus eight mainnet-fork suites that run against an archive RPC; 898 TypeScript tests;
 eight Cloudflare Workers live; the footprint deployed on Base mainnet.
 `TODO-HUMAN: if you commit again before submitting, bump the commit count (git rev-list --count HEAD).`
@@ -183,14 +183,10 @@ eight Cloudflare Workers live; the footprint deployed on Base mainnet.
 
 ## Team
 
-`TODO-HUMAN: confirm the roster. Colosseum requires the roster to match who did the work, and every member must be
-registered on the Arena before the deadline. As of 12 Oct every commit in the repository is by Farseen Shaikh; a second
-developer must have commits under their own GitHub identity before submission, or the roster lists Farseen alone.`
+Solo: Farseen Shaikh built Boundline alone, and every commit in the repository is his.
 
-- **Farseen Shaikh**, `TODO-HUMAN: role` · builder of Boundline's contracts, keeper and data plane ·
-  admitted to the MSc Data Science at TU Berlin (incoming) · GitHub `FarseenSh` ·
+- **Farseen Shaikh**, Research Engineer · builder of Boundline's contracts, keeper and data plane · GitHub `FarseenSh` ·
   `TODO-HUMAN: two lines of background (prior work, why this problem)`
-- `TODO-HUMAN: second developer — name, role, background, GitHub`
 
 ## Team location
 

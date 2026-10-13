@@ -242,9 +242,9 @@
     #v(8pt)
     #text(font: mono, size: 8pt, fill: coral, tracking: 1.6pt)[TEAM]
     #v(3pt)
-    #text(size: 10.5pt)[Farseen Shaikh, incoming MSc Data Science, TU Berlin]
+    #text(size: 10.5pt)[Farseen Shaikh, Research Engineer]
     #v(3pt)
-    #text(size: 9.5pt, fill: ink2)[123 commits from 3 to 13 Oct, 264 Foundry + 898 TypeScript tests, eight mainnet-fork suites, eight services live, the footprint on Base mainnet.]
+    #text(size: 9.5pt, fill: ink2)[124 commits from 3 to 13 Oct, 264 Foundry + 898 TypeScript tests, eight mainnet-fork suites, eight services live, the footprint on Base mainnet.]
   ],
   block[
     #text(font: mono, size: 8pt, fill: coral, tracking: 1.6pt)[THE ASK]
