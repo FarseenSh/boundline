@@ -38,7 +38,7 @@ git log --all -p --no-color | grep -c -E "^\+.*(DEPLOYER_KEY|KEEPER_KEY|PROTECT_
 ```
 
 Where the real secrets live (never in the repo): `~/.boundline/` on the deployer's machine (Sepolia test keys, the API
-partner key, the Cloudflare internal token, and the mainnet keys once created) and Cloudflare Worker secrets. `.gitignore`
+partner key, the Cloudflare internal token, and the mainnet keys in `~/.boundline/base-mainnet.env`, created 13 Oct) and Cloudflare Worker secrets. `.gitignore`
 already excludes `.env*` (except `.env.example`, which holds names only), `.dev.vars*`, `*.pem`, `*.key`, `.wrangler/`,
 Foundry `out*/` and `cache*/`, and `broadcast/**/dry-run/`. The committed `contracts/broadcast/` records hold
 transactions and addresses, no keys.

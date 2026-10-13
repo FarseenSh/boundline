@@ -27,7 +27,7 @@ signature.
 | Network | What |
 | --- | --- |
 | **Base Sepolia** | Everything that writes: three real B20 test stocks issued through the B20 factory precompile with Cobalt composite policies, their feeds mirrored from mainnet every minute, session-safe Morpho markets, the CreditDesk with live lines, protected mode (pre-liquidation + Protector), the Reserve and the desk-side protection vault, the payout router. Every contract is verified on sepolia.basescan.org. |
-| **Base mainnet** | Read live every minute by the Observatory (ten Coinbase stock feeds, the OracleRegistry, every Morpho B20 market, the Aave V4 MAG7 spoke, Aerodrome pools; on 12 Oct the stock spoke carried 1,729,470 USDC of debt against $5.14M of tokenized-stock collateral and the 14 Morpho B20 markets 16,315.76 USDC); every mechanism proven against the live contracts on mainnet forks; the replay harness. Nothing is deployed on mainnet yet: the whole footprint is one rehearsed command (`contracts/script/deploy-mainnet.sh`, 50 transactions). |
+| **Base mainnet** | Read live every minute by the Observatory (ten Coinbase stock feeds, the OracleRegistry, every Morpho B20 market, the Aave V4 MAG7 spoke, Aerodrome pools; on 12 Oct the stock spoke carried 1,729,470 USDC of debt against $5.14M of tokenized-stock collateral and the 14 Morpho B20 markets 16,315.76 USDC); every mechanism proven against the live contracts on mainnet forks; the replay harness. Boundline's whole footprint deployed on 13 Oct by one command (`contracts/script/deploy-mainnet.sh`: 50 transactions, 16 contracts verified on Basescan, 33 of 33 checks; `deployments/base-mainnet.json`); the session-safe market is unseeded and no mainnet borrower has opted in yet. |
 
 ## Live
 

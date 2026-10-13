@@ -184,11 +184,11 @@
   [Dividend → loan], [a dividend multiplier step swept into a desk line's debt: flash loan, repay first, sell only the dividend collateral], [#hx[0xa44b7867…f680]],
 )
 #v(3pt)
-#text(size: 8pt, fill: mute)[Every contract verified on sepolia.basescan.org; addresses and full hashes in `deployments/base-sepolia.json`. Nothing is deployed on mainnet yet: the deploy is one rehearsed command.]
+#text(size: 8pt, fill: mute)[Every Sepolia contract verified on sepolia.basescan.org (`deployments/base-sepolia.json`). The same footprint is on Base mainnet since 13 Oct: 50 transactions, 16 contracts verified on basescan.org, 33 of 33 checks (`deployments/base-mainnet.json`); its market is unseeded and nobody has opted in yet.]
 #pagebreak()
 
 // ───────────────────────────────────────────── 8 · mainnet
-#head[base mainnet][Read live every minute, proven on forks, replayed through weekend gaps.]
+#head[base mainnet][Deployed 13 Oct; read live every minute, proven on forks, replayed through weekend gaps.]
 #grid(columns: (1fr, 1fr), column-gutter: 16pt,
   block[
     #grid(columns: (1fr, 1fr), column-gutter: 10pt, row-gutter: 10pt,

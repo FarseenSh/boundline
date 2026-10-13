@@ -207,8 +207,9 @@ FOUNDRY_OPTIMIZER_RUNS=200 base-forge script script/DeployCreditDesk.s.sol --tc 
 ```
 
 `--verify` submits the settings of the same invocation, so the override must be on the verify run too.
-Every other contract keeps the project default; only the desk is compiled differently, and the
-mainnet deploy will need the same override until the desk is split.
+Every other contract keeps the project default; only the Sepolia desk of 3 Oct is compiled differently. The mainnet
+desk (13 Oct, `deploy-mainnet.sh`) was compiled with the project default: 20,437 bytes of runtime code, under EIP-170's
+24,576.
 
 ### Wire step: `wire-sepolia.sh`
 

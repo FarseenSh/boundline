@@ -141,11 +141,14 @@ evidence index below):
   with no operator: the keeper Worker found the replayed step and harvested it three blocks later (`0xb1312b5f…4616`),
   and re-based on its own when the step was removed (`0x3827eb33…cf2d`). Base's Tokenized Stocks request asks for
   "self-repaying structures".
-- **Mainnet, one command away:** the whole footprint (calendar, gate and guards on the ten Coinbase feeds, the
-  session-safe AAPLc market, the desk, the Protector and pre-liquidations on the Steakhouse AAPLc and NVDAc markets, the
-  Aave desk, both vaults, the Reserve, the payout router and the harvester) is one ordered, resumable script, rehearsed
-  on a fork of mainnet on 12 Oct: 50 transactions, 33 of 33 post-deploy checks, 0.00031 ETH (about $0.79) of gas. It is
-  not deployed on mainnet yet.
+- **On Base mainnet since 13 Oct:** the whole footprint (calendar, the gate bound to all ten Coinbase feeds,
+  SessionGuards and ShadowGuards on AAPLc and NVDAc, the session-safe AAPLc market, the desk, the Protector and
+  pre-liquidations on the Steakhouse AAPLc and NVDAc markets and the session-safe one, the Aave desk, both vaults, the
+  Reserve, the payout router and the harvester) went out through one ordered, resumable script from a fresh key: 50
+  transactions in blocks 52,530,874–52,530,925 (00:24–00:26 UTC), 0.00031 ETH (about $0.78) of gas, every address as
+  rehearsed on a fork, 16 contracts verified on Basescan, 33 of 33 post-deploy checks against mainnet. The session-safe
+  market is unseeded and no mainnet borrower has opted into protection yet, so nothing has been lent or protected on
+  mainnet; the product runs on Base Sepolia.
 
 **Built in the window:** 98 commits from Sat 3 Oct to Mon 12 Oct 2026 in a new repository; 264 Foundry tests (unit,
 fuzz, invariant, differential) plus eight mainnet-fork suites that run against an archive RPC; 897 TypeScript tests;
@@ -157,7 +160,7 @@ eight Cloudflare Workers live.
 | Integration | What Boundline does with it |
 | --- | --- |
 | **Base Sepolia** | The product sandbox: every contract deployed and verified on sepolia.basescan.org, live lines, live protection, drills |
-| **Base mainnet** | Live reads every minute (feeds, registry, every Morpho B20 market, Aave V4 MAG7 spoke, Aerodrome pools); the live reopen capture; mainnet-fork proofs; the replay harness; the deploy script rehearsed against today's state |
+| **Base mainnet** | Live reads every minute (feeds, registry, every Morpho B20 market, Aave V4 MAG7 spoke, Aerodrome pools); the live reopen capture; mainnet-fork proofs; the replay harness; Boundline's footprint deployed on 13 Oct (`deployments/base-mainnet.json`, 16 contracts verified on Basescan) |
 | **B20 assets (Coinbase tokenized stocks)** | Collateral; `isPaused` transfer-pause reads; `isAuthorized` preflight on both legs of every transfer; UI multiplier and scheduled `newUIMultiplier`/`effectiveAt` reads for the corporate-action haircut |
 | **B20 factory precompile (Cobalt)** | Issued the three test stocks with roles, a supply cap, an allowlist and a blocklist policy |
 | **Cobalt composite policies and seize-exempt lists** | `INTERSECT(issuer blocklist, partner allowlist)` on the receiver scope of each test stock; the venues listed on `SEIZE_EXEMPT_POLICY` |
@@ -251,8 +254,9 @@ Base.
 
 1. *Protected mode for existing borrowers, one signature.* Every borrower on the Morpho B20 markets can opt into
    protection by authorising Morpho's own audited pre-liquidation contract; the Observatory already lists each of them
-   with the health they would have at the weekend DEX price, which is the opt-in list. On mainnet this needs the
-   pre-liquidation contracts the deploy script creates on Morpho's official factory for the Steakhouse markets.
+   with the health they would have at the weekend DEX price, which is the opt-in list. On mainnet those pre-liquidation
+   contracts exist since 13 Oct, created on Morpho's official factory for both Steakhouse markets (AAPLc
+   `0x50353Fd5…7e2F`, NVDAc `0x8d2573D1…Cc8f`).
 2. *The Observatory as the public artifact.* Live weekend data nobody else publishes (feed age, DEX gap, positions at
    risk, the reopen capture), shared every weekend; it is how venues, curators and issuers find Boundline.
 3. *Partner embed.* A partner API, an SDK and a reference app; a wallet integrates in a day and keeps its own brand.
@@ -333,7 +337,7 @@ code was carried over.
 ## Evidence index
 
 Every row can be checked by a stranger: open the link or run the command. Base Sepolia transactions are at
-`https://sepolia.basescan.org/tx/<hash>`.
+`https://sepolia.basescan.org/tx/<hash>`, Base mainnet ones at `https://basescan.org/tx/<hash>`.
 
 | Claim | Evidence |
 | --- | --- |
@@ -358,7 +362,7 @@ Every row can be checked by a stranger: open the link or run the command. Base S
 | The session-safe Morpho market | `0x9ac34b99a822927dc8219aa8292b4781c4afc9e84251f073a988006dff62b0a9` (id `0x4a03b124…8047`) |
 | Replay of 7 Oct: the raw venues liquidated the two staged positions 3 times, Boundline 0; the three positions as they stood stayed healthy at −15% | `docs/evidence/assurance/2026-10-07.md`, hash `0xa626f0997c74896d125080de615e1407fdc4abb6d8f8296ce62caabbc8793c45`; live at `/v1/assurance` |
 | Mainnet-fork proofs | `contracts/test/fork/` (`SessionGuardMorpho`, `ProtectionFork`, `AaveFork`, `PayoutFork`, `ReplayFork`); run with an archive RPC (README) |
-| Every contract address | `deployments/base-sepolia.json`, `docs/CONTEXT.md` §6.1 |
+| Every contract address | `deployments/base-sepolia.json` and `deployments/base-mainnet.json`, `docs/CONTEXT.md` §6.1–6.2 |
 | Drills: stale feed, registry pause, issuer transfer pause, scheduled multiplier, ineligible receiver, keeper hold | `docs/evidence/drills/*.json`, live at `/v1/drills` (with a partner key); e.g. stale feed `0x84064c22e3ba4b33456c4a04721c66070a88a2c19fd67811072a5ccaecad8429`, registry pause `0x7b9fc996d3c579a68d6e7eb0b98a851f8c46f4f93c9172d09cef60a2f75b53cb`, issuer pause `0x73a518fa185fa8217aefd78f99ab51b677e8ae98c14024fa7f184d33f0c17bc7`, keeper hold `0x7c11ac686dff9ad21b4dbe647dc3d8abb76b808e87af8ccaecd2905d3bb39ef1` and the repay that landed while held `0x1ad33de32096ff96df24df5184a74d006db9764bedcb2c8d30d81c4f308642f3` |
 | Fork drills: the Aave V4 hub halt replayed; bad debt at a −45% reopen, raw 853.92 USDC, protected 0.00 | `docs/evidence/drills/venue-halt.json` (71 of 71 checks), `docs/evidence/drills/bad-debt-probe.json` (75 of 75); `contracts/test/drills/` |
 | Webhooks delivered HMAC-signed, 84 s and 170 s after the block | `0x5dd9d8df6cac14096e4b0ae3e6eafe6553a0de8a760b271bf0e3438fe91e42b7`, `0xd1687fdf25da3e4aeed84fde4d731431d35ccd4304ac02d9564111eb33202514`; `deployments/base-sepolia.json` (`proofs`) |
@@ -368,4 +372,4 @@ Every row can be checked by a stranger: open the link or run the command. Base S
 | …the keeper closed out an in-band position at the TWAP shadow price as a validity transaction, in the block after it armed (7 blocks after the DEX price moved) | `0x9774913eecd620da53019d701f10c8e90400cb6497030785a2e374360d280352` (block 48,027,596; 559,715 raw AAPLt seized, 1.745740 USDC repaid; feed slot 5 = the frozen `updatedAt` at inclusion) |
 | …while a plain liquidation on the same market was refused | `cast call --rpc-url https://sepolia.base.org --block 48027596 --from 0x2f0d9B1f16CD702259C6cC259e8D5E5455282a4E 0xBBBBBbbBBb9cC5e90e3b3Af64bdAF62C37EEFFCb "liquidate((address,address,address,address,uint256),address,uint256,uint256,bytes)" "(0x036CbD53842c5426634e7929541eC2318f3dCF7e,0xB2000000000000000000000E063E65377cA34141,0x1589aAb40fF0b2E0C4c679e70865eb97A24e5854,0x46415998764C29aB2a25CbeA6254146D50D22687,625000000000000000)" 0xB789aD318945B37566E2549F65526Cc269a482Fc 1 0 0x` → reverts `0x604190ac…` = `FeedStale(AAPLt, 1791726186, 93600)` |
 | …and repaid a desk line down the funding ladder (user reserve, then a Reserve advance), settled and harvested in session | `0x47ac5279c4804e73d05f1e8d813775514e4f8b8b09c6ffc7b014fac1956e1d24` (0.40 + 0.14 USDC, 54.00% → 44.90%); settle `0x7b71e812afff01285f20eb4af568a334834dda6b463e5242cd8da7fc8636df9f`; harvest `0x5b6874d4c3b9bf415e453c0f1d199a5b406c1b163b5a5e4404815602e8ab11c3`; `docs/evidence/drills/reserve-ladder.json` |
-| The mainnet deploy, rehearsed on a fork of today's mainnet | `contracts/script/deploy-mainnet.sh rehearse`: 50 transactions, 33/33 checks, 0.00031 ETH (12 Oct); `docs/runbooks/mainnet-deploy.md` |
+| Boundline on Base mainnet: 50 transactions on 13 Oct, 16 contracts verified, 33 of 33 checks against mainnet | `deployments/base-mainnet.json`; the desk `https://basescan.org/address/0x1671166DB8B93057Fa9a95b052b86c30E7B6a7Dd#code`, created in `0x6ca4ed1683471fe9810dc1a7260d19bf00d6c01e0e36b4a51a23d3d7fcbf1f40`; the session-safe AAPLc market `0xb50ecaba…1d28`, created in `0xf2bc11d1eeba35e4335929034a042334d797dda50b7c5d5a74f764da406b4ff7`; rerun the checks: `KEEPER=0x82093784Ade31543404b8AD949E49F314af7612c contracts/script/deploy-mainnet.sh check`; `docs/runbooks/mainnet-deploy.md` |

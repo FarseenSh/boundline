@@ -31,6 +31,7 @@ them. A pool (or another live price) comes first.
 | --- | --- | --- | --- | --- |
 | Rehearsal 1, fork block 52,327,262 | 50 | 50,982,984 | base 0.005 gwei, priority 0.001 gwei | 0.00030824 ETH ($0.79 at ETH $2,571.12) |
 | Rehearsal 2 through `deploy-mainnet.sh rehearse`, block 52,327,370 | 50 | 50,982,984 | base 0.005009 gwei (max of 20 blocks), priority 0.001046 gwei (median) | 0.00031116 ETH ($0.80) |
+| **The real deploy**, 13 Oct 2026 00:24:55–00:26:37 UTC, blocks 52,530,874–52,530,925 | 50 (50 succeeded) | 51,466,140 | 0.006045 gwei average effective; L1 data 0.00000014 ETH | **0.00031127 ETH** ($0.78) |
 
 The L1 data fee is included as `GasPriceOracle.getL1FeeUpperBound` per transaction: 0.00000249 ETH for 214,400 bytes
 of calldata. forge's own pre-flight estimate is 67,492,795 gas (it pads by 30%). **Fund the deployer with 0.005 ETH**

@@ -54,7 +54,10 @@ out the drill position at the TWAP shadow price and repaid desk line 1 down the 
 transaction on the frozen feed slot, while a raw `Morpho.liquidate` was refused `FeedStale`; the advance was settled and
 harvested in session. The same evening the Cloudflare account was found over **D1's free daily read quota** (one unindexed
 query: 4.21M of 5M reads a day), which had also cost both live capture runs their before-phase; fixed in code, and
-deployed at 18:20 UTC once the account was on Workers Paid (migration 0004 applied, both capture runs closed).
+deployed at 18:20 UTC once the account was on Workers Paid (migration 0004 applied, both capture runs closed). On
+**13 Oct at 00:24–00:26 UTC Boundline went to Base mainnet**: the whole footprint from a fresh key in 50 transactions,
+every address as rehearsed, 16 contracts verified on Basescan, 33 of 33 checks against mainnet; the session-safe market
+is unseeded and nobody has opted in, so nothing has been lent or protected on mainnet.
 
 ## 2. Frame
 
@@ -697,12 +700,34 @@ signed nothing; the recorded Saturday rescues were not run. The keeper mirrored 
 
 ### 6.2 Base mainnet (chain 8453)
 
-Nothing deployed yet: on 12 Oct Farseen agreed to fund a fresh deployer (0.005 ETH) and keeper (0.002 ETH) kept in
-`~/.boundline/base-mainnet.env` (created by him; the session cannot write keys). Re-rehearsed 12 Oct on a fork of the
-then-current mainnet: 50 transactions, 0 failed, 51,023,874 gas, 33/33 checks, 0.00031456 ETH ($0.79). **Since 8 Oct the whole footprint is one command**
-(`contracts/script/deploy-mainnet.sh broadcast`, runbook `docs/runbooks/mainnet-deploy.md`): 50 transactions, about 51M
-gas, 0.00031 ETH at 8 Oct fees (about $0.80); fund the deployer with 0.005 ETH and a keeper key with 0.002 ETH. METAc and
-GOOGLc get no pre-liquidation (no 24/7 pool in the address book). Constants the code relies on: Morpho
+**Deployed 13 Oct 2026, 00:24:55–00:26:37 UTC** (blocks 52,530,874–52,530,925) by `contracts/script/deploy-mainnet.sh
+broadcast` (runbook `docs/runbooks/mainnet-deploy.md`) from a fresh deployer `0x55463704EB58d25f239A8f353Af2EBE4fe242431`:
+50 transactions, 50 succeeded, 51,466,140 gas, 0.00031127 ETH; every address equal to the fork rehearsal run at 00:21 IST
+with the same deployer and keeper; 16 contracts verified on Basescan; `deploy-mainnet.sh check` 33 of 33 against mainnet;
+first transaction `0x3b1343ef4fc50ae161551014b6df3c8d34992a8690ca2a6825b82d8a4ae6240e`, last
+`0x155cc53c1388a863dbee44ffb0b6962f6e8abeb2f9f9a4aef30474d59a3a5a4c`. The session created both keys at Farseen's request
+into `~/.boundline/base-mainnet.env` (0600, addresses only printed) and he funded the deployer with 0.005 ETH (0.00469
+left). The deployer owns every contract (no `FINAL_OWNER`); the keeper `0x82093784Ade31543404b8AD949E49F314af7612c`
+holds the keeper role and no ETH, and no mainnet keeper job runs (nobody has opted in). The session-safe market is
+unseeded. Record: `deployments/base-mainnet.json`; broadcast `contracts/broadcast/DeployMainnet.s.sol/8453/`.
+
+| Contract | Address |
+| --- | --- |
+| MarketCalendar | `0xb45cE0AEAAaADc68D5EbD9573FD8bFA91c1f79e5` |
+| SessionGate (all ten Coinbase feeds bound) | `0x327895dA0fe53e18A8af5E98Bc749223B5227Ec6` |
+| SessionGuard AAPLc / NVDAc | `0xf94C3C8aEb3E79376868a23f42a31Cb3B6a3F132` / `0x8ffE3c46D677ee3b8CE1773C22607aA340e1fc8E` |
+| ShadowGuard AAPLc / NVDAc | `0xaBF4E1Fb06a7d8D56099ff285f2c066B88d04760` / `0xed7DFF91124403E606ff443306643eD2a621769B` |
+| Session-safe AAPLc/USDC market (62.5%) | id `0xb50ecaba0652b5a51bde9a747e9b7a2075c7ab68fd3c6ef7c05eabf6bb0f1d28`, created in `0xf2bc11d1eeba35e4335929034a042334d797dda50b7c5d5a74f764da406b4ff7` |
+| CreditDesk | `0x1671166DB8B93057Fa9a95b052b86c30E7B6a7Dd` (created in `0x6ca4ed1683471fe9810dc1a7260d19bf00d6c01e0e36b4a51a23d3d7fcbf1f40`) |
+| Protector | `0x3D620E6F0d20d5BcC8dbf2d30c81af17AB2932D5` |
+| Pre-liquidations: Steakhouse AAPLc / Steakhouse NVDAc / session-safe AAPLc | `0x50353Fd5D28cD5b1481Dd96b0074655484447e2F` / `0x8d2573D18E07186CC87B61ac1593bC293d9ECc8f` / `0x1D6B5C5134C1450f9F07272106aE47637EbFCAFb` |
+| AaveDesk / Aave protection vault | `0x405dD60f038D5Aa2C411787113BeF2911F2e783A` / `0xDD17651338D948e8Ec2e1D830EF7705A30DC0800` |
+| Reserve / desk protection vault | `0xc4d5d866E9b5aDf35B4FD750fb192d99e20da1B4` / `0x0828f1aDADaf7C1f44B3425337ebE7189c7B1cD9` |
+| LocalPayoutRouter / DividendHarvester | `0xFC18E12929a3763476c13463fb05106F6F226112` / `0x10f07f1e905Ff1205B1d6e39CEBe91fF0076E8Ce` |
+
+Wired the same morning: `MAINNET_PRE_LIQUIDATIONS` and `MAINNET_SESSION_SAFE_MARKETS` in `packages/router` (routes to the
+three markets say `pre-liquidation`; the session-safe one never gets Saturday mode), `BASE_MAINNET` in `packages/sdk`,
+`LOCAL_PAYOUT.mainnetRouter` in `packages/chain`. METAc and GOOGLc get no pre-liquidation (no 24/7 pool in the address book). Constants the code relies on: Morpho
 `0xBBBBBbbBBb9cC5e90e3b3Af64bdAF62C37EEFFCb`, AdaptiveCurveIrm
 `0x46415998764C29aB2a25CbeA6254146D50D22687`, OracleRegistry
 `0x3f3E8cf41cdd3b1D118c16471aB0113DfDDd5CaD`, USDC `0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913`,
@@ -887,13 +912,14 @@ list; KV on the free tier allows 1,000 writes a day, hence the throttle; macOS h
 ```sh
 forge test --root contracts     # 264 passed, 0 failed, 8 skipped (fork suites without BASE_RPC_URL), 29 suites
 forge fmt --root contracts --check   # clean since 12 Oct (ec86941)
-pnpm test                       # 897 vitest: calendar 106, chain 19, ledger 10, router 16, agent 19, api 121, indexer 108,
+pnpm test                       # 898 vitest: calendar 106, chain 19, ledger 10, router 17, agent 19, api 121, indexer 108,
                                 #   keeper 131, observatory 226, sdk 95, console 46
 pnpm typecheck                  # clean (every package and app)
 BASE_RPC_URL=<alchemy archive> FOUNDRY_BASE=true ~/.foundry/bin/base-forge test --root contracts --match-path 'test/fork/*'
                                 # + test/drills and test/harvest: 8 fork suites (5 in fork/, 2 in drills/, HarvestFork), 42 passed (8 Oct)
 scripts/drills/run-fork-drills.sh [--only venue-halt|bad-debt-probe]   # writes docs/evidence/drills/{venue-halt,bad-debt-probe}.json
 contracts/script/deploy-mainnet.sh rehearse                            # 50 txs, ~51M gas, 33/33 checks on a base-anvil fork (re-run 12 Oct: 0.00031456 ETH)
+KEEPER=0x82093784Ade31543404b8AD949E49F314af7612c contracts/script/deploy-mainnet.sh check   # 33/33 against Base mainnet (13 Oct)
 python3 -I scripts/sepolia/twap.py show                                # the Saturday numbers, live
 python3 -I scripts/sepolia/outage_rescue.py show                       # every number the feed-outage rescue reads, live
 ```
@@ -976,6 +1002,10 @@ chain by the lane that wrote it (K1: 123 transactions, all status 1).
   regardless of the plan, and Farseen takes Workers Paid; mainnet: Farseen funds fresh deployer and keeper keys himself;
   the public repository stays local until he publishes it (his call, 12 Oct); claims in the submission carry the replay's
   "staged" caveat and say "replay", not "nightly".
+- **13 Oct**: the mainnet keys were created by the session at Farseen's request (only the addresses printed) and he
+  funded the deployer; the deploy broadcast once funded, as he approved; the deployer keeps ownership (no `FINAL_OWNER`);
+  the keeper key holds the role with no ETH and no mainnet job (nobody has opted in); the session-safe market stays
+  unseeded; the router keeps Saturday mode off mainnet session-safe markets (their SessionGuard refuses while closed).
 
 ## 11. Open items
 
@@ -986,15 +1016,18 @@ was not applied (recorded), the Saturday rescues were not run on the weekend (re
 **Done 12 Oct night:** Workers Paid active; Observatory (migration 0004), API and site deployed; both capture runs
 closed; the Sepolia daily roots from 6 Oct rebuilt (Farseen approved the delete).
 
-**Next build items (session-doable):** the mainnet deploy the moment the keys are funded (`deploy-mainnet.sh broadcast`,
-then `check`, Basescan verification, and the apps' config: `MAINNET_PRE_LIQUIDATIONS` in `packages/router`, SDK `mainnet`
-desk, API `MARKETS`, Observatory/agent pre-liquidation flags); top up the MockSwapPool before any further close-out. Not
-worth the remaining time: the reserve-yield source, other chains, the desk freeze redeploy.
+**Done 13 Oct morning:** the mainnet deploy (50 transactions, 16 verified, 33/33 checks) and its wiring in the router,
+SDK and chain packages.
+
+**Next build items (session-doable):** redeploy the API and the agent so `POST /v1/route` and the agent's `route` tool
+mark the three mainnet markets `pre-liquidation` (they bundle `@boundline/router`; needs Farseen's go-ahead); top up the
+MockSwapPool before any further close-out. Not worth the remaining time: the reserve-yield source, other chains, the desk
+freeze redeploy.
 
 **Human-only**:
 - **Route signer key** for the API (typed data only, unfunded), or a decision to keep plans unsigned.
-- **Mainnet keys**: deployer 0.005 ETH, keeper 0.002 ETH (about $20), agreed 12 Oct; the key file `~/.boundline/base-mainnet.env`
-  did not exist yet at 23:41 IST. Optional: a USDC seed and each developer's AAPLc position.
+- Optional on mainnet: a USDC seed for the session-safe market, each developer's AAPLc position, and handing ownership
+  from the hot deployer key to a hardware wallet (`acceptOwnership()` flow, `FINAL_OWNER`).
 - **Arena project with both developers registered**; the second developer's own commits (all commits so far are
   Farseen's, and the roster must match who did the work); a **public GitHub repo** (`docs/submission/PUBLIC-REPO-CHECKLIST.md`).
 - The `TODO-HUMAN` fields in `docs/submission/SUBMISSION.md` (backgrounds, teammate, GitHub URL, X handle, University

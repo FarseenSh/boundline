@@ -118,8 +118,8 @@ export const FEED = { decimals: 8, heartbeatSeconds: 24 * 3600, deviationBps: 50
  * lives on Uniswap v4 (PoolManager), which the router does not route to. Sepolia addresses are in @boundline/sdk's config.
  */
 export const LOCAL_PAYOUT = {
-  /** Not on mainnet yet; deployed on Base Sepolia at 0x1a6Dbc873F32f3dcE7719F213cf81842856F6354. */
-  mainnetRouter: null as Address | null,
+  /** deployments/base-mainnet.json (13 Oct 2026) and deployments/base-sepolia.json (7 Oct 2026). */
+  mainnetRouter: "0xFC18E12929a3763476c13463fb05106F6F226112" as Address | null,
   sepoliaRouter: "0x1a6Dbc873F32f3dcE7719F213cf81842856F6354" as Address,
   pools: {
     EURC: { token: MAINNET.eurc, pool: MAINNET.aerodromeEurcUsdc, kind: "cl", tokenIsToken0: true, tickSpacing: 50, feePips: 76 },

@@ -35,7 +35,7 @@ forwarded: `x-correlation-id`, `x-policy-version`, `x-quote-hash`, `x-idempotent
 
 | Variable | Default | Meaning |
 | --- | --- | --- |
-| `VITE_CHAIN_ID` | `84532` | `84532` Base Sepolia (live desk) or `8453` Base (no desk yet; the SDK's config carries both). |
+| `VITE_CHAIN_ID` | `84532` | `84532` Base Sepolia (live desk) or `8453` Base (the 13 Oct mainnet desk, over an unseeded market; the SDK's config carries both). |
 | `VITE_PAYMASTER_URL` | unset | ERC-7677 paymaster URL (a server-side proxy to the CDP paymaster). Set → `capabilities.paymasterService` on the batch, gas sponsored. Unset → the user pays gas. |
 | `VITE_BUILDER_CODE` | unset | Builder Code from dashboard.base.org. Set → ERC-8021 `capabilities.dataSuffix` on the batch (and appended to each call in the sequential fallback). |
 | `VITE_PRELIQUIDATION` | unset | Morpho pre-liquidation contract for protected mode; enables the opt-in button on `/protect`. |
