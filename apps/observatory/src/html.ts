@@ -8,49 +8,71 @@ import type { SeizeWatchBody } from "./seize.js";
 import type { Snapshot, TokenRow } from "./snapshot.js";
 import type { CaptureRunRecord } from "./stores.js";
 
-// The brand (docs/brand): coral #FF6B57, ink #15171C, paper #F4F5F7, Archivo wide and heavy for display. The Observatory
-// keeps a dark ground, the brand's ink; "held" (a frozen feed, a closed session) wears the same diagonal hatch as the site.
+// The landing page's theme (apps/site/public/index.html, docs/brand): one light theme, white paper and ink text, Archivo
+// throughout, a coral band for the header and the footer, cards framed by a 2px ink border, the landing page's status
+// chips, and the coral diagonal hatch wherever a feed or a session is held.
 const CSS = `
-:root{color-scheme:dark;--bg:#15171C;--panel:#1B1E25;--panel-2:#22262F;--line:#2D323C;--fg:#F4F5F7;--fg-2:#C8CDD6;--mute:#8F97A4;
---coral:#FF6B57;--ok:#5BD69B;--ok-line:rgba(91,214,155,.38);--ok-bg:rgba(91,214,155,.10);--warn:#F5B454;--warn-line:rgba(245,180,84,.4);--warn-bg:rgba(245,180,84,.10);
---bad:#FF8A7A;--bad-line:rgba(255,107,87,.5);
---display:"Archivo","Helvetica Neue",Arial,sans-serif;--ui:"Archivo","Helvetica Neue",Arial,sans-serif;--mono:ui-monospace,"SF Mono",Menlo,monospace}
+:root{color-scheme:light;--coral:#FF6B57;--ink:#15171C;--ink-2:#474C57;--mute:#6B7280;--paper:#FFFFFF;--fog:#F1F3F5;--rule:#DADDE2;
+--loss:#E5484D;--loss-text:#C42B31;--loss-bg:#FDECEC;--safe:#12A150;--safe-text:#0E7C3D;--safe-bg:#E6F5EC;
+--warn:#E8A100;--warn-text:#7A4A00;--warn-bg:#FFF3D6;--gutter:clamp(16px,4vw,40px);
+--sans:"Archivo",ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;--mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace}
 *{box-sizing:border-box}html{-webkit-text-size-adjust:100%}
-body{margin:0;background:var(--bg);color:var(--fg);font:14.5px/1.5 var(--ui);font-stretch:100%;font-variant-numeric:tabular-nums;-webkit-font-smoothing:antialiased}
-a{color:var(--fg)}a:hover{color:var(--coral)}:focus-visible{outline:2px solid var(--coral);outline-offset:2px;border-radius:4px}
-.shell{max-width:1240px;margin:0 auto;padding:22px 28px 72px}
-.top{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding-bottom:22px;border-bottom:1px solid var(--line)}
-.brand{display:inline-flex;align-items:center;gap:10px;text-decoration:none;color:var(--fg)}
-.brand svg{width:34px;height:34px;flex:none}.brand .word{font-family:var(--display);font-stretch:125%;font-weight:800;font-size:25px;letter-spacing:-.012em;line-height:1}
-.product{font-family:var(--display);font-stretch:112%;font-weight:700;font-size:15px;color:var(--fg-2);padding:4px 10px;border:1px solid var(--line);border-radius:999px}
-.top nav{margin-left:auto;display:flex;gap:18px;flex-wrap:wrap;font-size:14px}.top nav a{color:var(--fg-2);text-decoration:none}.top nav a:hover{color:var(--fg)}
-h1{font-family:var(--display);font-stretch:118%;font-weight:800;font-size:clamp(30px,4.4vw,52px);line-height:1.02;letter-spacing:-.025em;margin:40px 0 14px;max-width:18ch;text-wrap:balance}
-h2{font-family:var(--display);font-stretch:116%;font-weight:800;font-size:clamp(21px,2.4vw,27px);line-height:1.1;letter-spacing:-.018em;margin:52px 0 14px}
-.sub{color:var(--fg-2);margin:0 0 26px;max-width:82ch;font-size:15.5px;overflow-wrap:anywhere}
-.banner{position:relative;display:block;background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:16px 20px 16px 24px;margin:0 0 22px;font-size:15.5px;overflow:hidden}
-.banner::before{content:"";position:absolute;left:0;top:0;bottom:0;width:6px;background:var(--ok)}
-.banner.held::before{width:14px;background:repeating-linear-gradient(135deg,var(--coral) 0 4px,transparent 4px 9px)}.banner.held{padding-left:32px}
-.banner b{color:var(--fg);font-weight:700}
-table{width:100%;border-collapse:separate;border-spacing:0;background:var(--panel);border:1px solid var(--line);border-radius:16px;overflow:hidden}
-th,td{padding:12px 14px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}
-th{color:var(--mute);font-weight:600;font-size:12.5px;letter-spacing:0;background:var(--panel-2)}
-td{font-size:14.5px}td b{font-family:var(--display);font-stretch:110%;font-weight:700}
-td:first-child,th:first-child{text-align:left}tr:last-child td{border-bottom:0}tbody tr:hover td{background:rgba(255,255,255,.025)}
-.tag{display:inline-block;padding:2px 10px;border-radius:999px;font-size:12px;font-weight:600;line-height:1.5;border:1px solid var(--line);color:var(--fg-2)}
-.tag.ok{color:var(--ok);border-color:var(--ok-line);background:var(--ok-bg)}
-.tag.warn{color:var(--warn);border-color:var(--warn-line);background:var(--warn-bg)}
-.tag.bad{color:#FFD3CC;border-color:var(--bad-line);background:repeating-linear-gradient(135deg,rgba(255,107,87,.30) 0 3px,rgba(255,107,87,.10) 3px 7px)}
-.neg{color:var(--bad)}.pos{color:var(--ok)}.mute{color:var(--mute)}
-footer{color:var(--mute);margin-top:56px;padding-top:20px;border-top:1px solid var(--line);font-size:13px;line-height:1.9;overflow-wrap:anywhere}footer a{color:var(--fg-2)}
-.panel{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:18px 20px;margin:0 0 14px;min-width:0}.panel p{margin:0 0 10px;max-width:110ch;overflow-wrap:anywhere}
-.panel table{background:var(--bg);border-radius:12px;margin-top:6px}.panel th{background:transparent}
-.panel .wrap + p{margin-top:26px}.panel .wrap + p + p{margin-top:0}
-.wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}code{font-family:var(--mono);font-size:12.5px;color:var(--mute)}
-@media(max-width:760px){.shell{padding:16px 16px 56px}.top nav{margin-left:0;width:100%}h1{margin-top:28px}th,td{padding:10px 12px}.banner{font-size:14.5px}}
+body{margin:0;background:var(--paper);color:var(--ink);font:400 16px/1.55 var(--sans);font-stretch:100%;font-variant-numeric:tabular-nums;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+a{color:inherit;text-decoration-thickness:1px;text-underline-offset:3px}a:hover{text-decoration-thickness:2px}
+:focus-visible{outline:3px solid var(--ink);outline-offset:3px;border-radius:6px}
+.shell{max-width:1240px;margin:0 auto;padding:0 var(--gutter)}
+.band{background:var(--coral);color:var(--ink)}
+.top{display:flex;align-items:center;justify-content:space-between;gap:14px 24px;flex-wrap:wrap;padding:22px 0}
+.brandbox{display:inline-flex;align-items:center;gap:12px;flex-wrap:wrap}
+.brand{display:inline-flex;align-items:center;gap:12px;text-decoration:none;color:var(--ink)}
+.brand svg{width:34px;height:34px;flex:none}.brand .word{font-weight:800;font-stretch:125%;font-size:23px;letter-spacing:-.012em;line-height:1}
+.product{display:inline-flex;align-items:center;min-height:30px;padding:0 12px;border:2px solid var(--ink);border-radius:999px;font-weight:700;font-stretch:106%;font-size:14px;line-height:1}
+.top nav{display:flex;align-items:center;gap:22px;flex-wrap:wrap}
+.top nav a{text-decoration:none;font-weight:500;font-size:16px}.top nav a:hover{text-decoration:underline}
+.btn{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:0 20px;border-radius:999px;border:2px solid var(--ink);background:var(--ink);color:#FFFFFF!important;font:600 15.5px/1 var(--sans);font-stretch:104%;text-decoration:none!important;white-space:nowrap}
+.btn:hover{background:#2A2E37;border-color:#2A2E37}
+.hero{padding:30px 0 64px}
+h1{font-weight:800;font-stretch:118%;font-size:clamp(36px,6vw,76px);line-height:.98;letter-spacing:-.025em;margin:0 0 20px;max-width:15ch;text-wrap:balance}
+.sub{margin:0;max-width:68ch;font-size:clamp(16px,1.6vw,18px);overflow-wrap:anywhere}
+main.shell{padding-top:48px;padding-bottom:88px}
+h2{font-weight:800;font-stretch:112%;font-size:clamp(26px,3.2vw,38px);line-height:1.04;letter-spacing:-.02em;margin:72px 0 18px;text-wrap:balance}
+.banner{display:flex;align-items:center;flex-wrap:wrap;gap:10px 14px;background:var(--paper);border:2px solid var(--ink);border-radius:22px;padding:16px 22px;margin:0 0 22px;font-size:17px}
+.banner.held{background:repeating-linear-gradient(-45deg,rgba(255,107,87,.16) 0 7px,var(--paper) 7px 14px)}
+.banner b{font-weight:700}
+.state{display:inline-flex;align-items:center;gap:8px;padding:6px 13px;border-radius:999px;font-size:14px;font-weight:700;font-stretch:106%;line-height:1.2;background:var(--fog);color:var(--ink);white-space:nowrap}
+.state i{width:9px;height:9px;border-radius:50%;background:var(--ink);display:inline-block;flex:none}
+.state.ok{background:var(--safe-bg);color:var(--safe-text)}.state.ok i{background:var(--safe)}
+.state.bad{background:var(--loss-bg);color:var(--loss-text)}.state.bad i{background:var(--loss)}
+.wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;max-width:100%}
+table{width:100%;border-collapse:separate;border-spacing:0;background:var(--paper);border:2px solid var(--ink);border-radius:22px;overflow:hidden}
+th,td{padding:13px 16px;text-align:right;border-bottom:1px solid var(--rule);white-space:nowrap;vertical-align:middle}
+th{color:var(--ink-2);font-weight:600;font-size:13px;background:var(--fog);border-bottom:2px solid var(--ink)}
+td{font-size:15px}td b{font-weight:800;font-stretch:110%}
+td:first-child,th:first-child{text-align:left;padding-left:20px}td:last-child,th:last-child{padding-right:20px}
+tr:last-child td{border-bottom:0}tbody tr:hover td{background:#FAFAFB}
+.tag{display:inline-flex;align-items:center;gap:6px;padding:3px 11px;border-radius:999px;font-size:12.5px;font-weight:700;font-stretch:104%;line-height:1.5;background:var(--fog);color:var(--ink-2);white-space:nowrap}
+.tag::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor;opacity:.9;flex:none}
+.tag.ok{background:var(--safe-bg);color:var(--safe-text)}
+.tag.warn{background:var(--warn-bg);color:var(--warn-text)}
+.tag.bad{color:var(--loss-text);background:repeating-linear-gradient(-45deg,rgba(255,107,87,.26) 0 5px,var(--loss-bg) 5px 10px)}
+.neg{color:var(--loss-text)}.pos{color:var(--safe-text)}.mute{color:var(--mute)}
+.panel{background:var(--paper);border:2px solid var(--ink);border-radius:22px;padding:22px 24px;margin:0 0 16px;min-width:0}
+.panel p{margin:0 0 12px;max-width:110ch;overflow-wrap:anywhere}.panel p.mute{color:var(--ink-2)}
+.panel table{border:1px solid var(--rule);border-radius:16px;margin-top:8px}.panel th{border-bottom:1px solid var(--rule)}
+.panel th,.panel td{padding:10px 10px}.panel td{font-size:14.5px}.panel td:first-child,.panel th:first-child{padding-left:16px}.panel td:last-child,.panel th:last-child{padding-right:16px}
+.panel td.mute{white-space:normal;min-width:9.5em}.panel td.wide{white-space:normal;min-width:11em;max-width:20em;text-align:left}
+.panel .wrap + p{margin-top:28px}.panel .wrap + p + p{margin-top:0}
+code{font-family:var(--mono);font-size:12.5px;color:var(--ink-2)}
+footer.band{margin-top:0}footer .shell{padding-top:36px;padding-bottom:44px;font-size:14px;line-height:1.9;overflow-wrap:anywhere}
+footer .brand .word{font-size:20px}footer .brand svg{width:28px;height:28px}footer p{margin:14px 0 0;max-width:120ch}
+@media(max-width:860px){.top nav{gap:16px}.top nav a.hide-sm{display:none}}
+@media(max-width:600px){.hero{padding:16px 0 44px}main.shell{padding-top:32px}th,td{padding:11px 12px}td:first-child,th:first-child{padding-left:14px}.banner{font-size:15.5px;padding:14px 16px}.panel{padding:18px 16px}h2{margin-top:56px}}
 `;
 
-// The brand tile (docs/brand/svg/boundline-tile.svg), its clip ids namespaced for this page.
-const TILE = `<svg viewBox="0 0 64 64" aria-hidden="true" focusable="false"><clipPath id="obs-tc"><rect width="64" height="64" rx="14"/></clipPath><g clip-path="url(#obs-tc)"><rect width="64" height="64" fill="#FF6B57"/><path d="M13.41 14.3 V39.7" stroke="#15171C" stroke-width="8.6" stroke-linecap="round" fill="none"/><circle cx="23.41" cy="39.7" r="10" stroke="#15171C" stroke-width="8.6" fill="none"/><path d="M45.71 14.3 V49.7" stroke="#15171C" stroke-width="8.6" stroke-linecap="round" fill="none"/><clipPath id="obs-tb"><rect x="50.01" y="0" width="13.99" height="64"/></clipPath><path clip-path="url(#obs-tb)" d="M-13.99 64 L50.01 0 M-6.19 64 L57.81 0 M1.61 64 L65.61 0 M9.41 64 L73.41 0 M17.21 64 L81.21 0 M25.01 64 L89.01 0 M32.81 64 L96.81 0 M40.61 64 L104.61 0 M48.41 64 L112.41 0 M56.21 64 L120.21 0 M64.01 64 L128.01 0" stroke="#15171C" stroke-width="3.5" fill="none"/></g></svg>`;
+// The ink tile (docs/brand/svg/boundline-tile-ink.svg): the coral tile disappears on the coral header band. Clip ids are
+// namespaced for this page; the footer reuses the same symbol.
+const TILE = `<svg viewBox="0 0 64 64" aria-hidden="true" focusable="false"><clipPath id="obs-tc"><rect width="64" height="64" rx="14"/></clipPath><g clip-path="url(#obs-tc)"><rect width="64" height="64" fill="#15171C"/><path d="M13.41 14.3 V39.7" stroke="#FF6B57" stroke-width="8.6" stroke-linecap="round" fill="none"/><circle cx="23.41" cy="39.7" r="10" stroke="#FF6B57" stroke-width="8.6" fill="none"/><path d="M45.71 14.3 V49.7" stroke="#FF6B57" stroke-width="8.6" stroke-linecap="round" fill="none"/><clipPath id="obs-tb"><rect x="50.01" y="0" width="13.99" height="64"/></clipPath><path clip-path="url(#obs-tb)" d="M-13.99 64 L50.01 0 M-6.19 64 L57.81 0 M1.61 64 L65.61 0 M9.41 64 L73.41 0 M17.21 64 L81.21 0 M25.01 64 L89.01 0 M32.81 64 L96.81 0 M40.61 64 L104.61 0 M48.41 64 L112.41 0 M56.21 64 L120.21 0 M64.01 64 L128.01 0" stroke="#FF6B57" stroke-width="3.5" fill="none"/></g></svg>`;
+const TILE_FOOT = TILE.replaceAll("obs-tc", "obs-fc").replaceAll("obs-tb", "obs-fb");
 
 export interface PageExtras {
   /** The armed, recording or latest completed capture run. */
@@ -157,17 +179,20 @@ ${body}
 export function renderPage(s: Snapshot, extras: PageExtras = { capture: null, nextTransition: null, positions: null }): string {
   const closed = s.session.state === "WEEKEND" || s.session.state === "HOLIDAY";
   const banner = closed
-    ? `<div class="banner held">Feeds frozen since <b>${escapeHtml(fmtEt(s.session.lastFeedUpdateAt))}</b> · next reopen <b>${escapeHtml(fmtEt(s.session.nextTransition.at))}</b> · session <b>${escapeHtml(s.session.state)}</b>. Both live credit venues still price collateral at the held value.</div>`
-    : `<div class="banner">Session <b>${escapeHtml(s.session.state)}</b> · next transition <b>${escapeHtml(fmtEt(s.session.nextTransition.at))}</b> (${escapeHtml(s.session.nextTransition.to)}).</div>`;
+    ? `<div class="banner held"><span class="state bad"><i></i>Feeds held</span><span>Feeds frozen since <b>${escapeHtml(fmtEt(s.session.lastFeedUpdateAt))}</b> · next reopen <b>${escapeHtml(fmtEt(s.session.nextTransition.at))}</b> · session <b>${escapeHtml(s.session.state)}</b>. Both live credit venues still price collateral at the held value.</span></div>`
+    : `<div class="banner"><span class="state ok"><i></i>Feeds live</span><span>Session <b>${escapeHtml(s.session.state)}</b> · next transition <b>${escapeHtml(fmtEt(s.session.nextTransition.at))}</b> (${escapeHtml(s.session.nextTransition.to)}).</span></div>`;
   const rows = s.tokens.map(row).join("\n");
   return `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Boundline Observatory · B20 credit on Base</title><link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3CclipPath id='tc'%3E%3Crect width='64' height='64' rx='14'/%3E%3C/clipPath%3E%3Cg clip-path='url%28%23tc%29'%3E%3Crect width='64' height='64' fill='%23FF6B57'/%3E%3Cpath d='M11.71 14.2 V39.6' stroke='%2315171C' stroke-width='10.4' stroke-linecap='round' fill='none'/%3E%3Ccircle cx='21.91' cy='39.6' r='10.2' stroke='%2315171C' stroke-width='10.4' fill='none'/%3E%3Cpath d='M45.71 14.2 V49.8' stroke='%2315171C' stroke-width='10.4' stroke-linecap='round' fill='none'/%3E%3CclipPath id='tb'%3E%3Crect x='50.91' y='0' width='13.09' height='64'/%3E%3C/clipPath%3E%3Cpath clip-path='url%28%23tb%29' d='M-11.59 64 L52.41 0 M-1.39 64 L62.61 0 M8.81 64 L72.81 0 M19.01 64 L83.01 0 M29.21 64 L93.21 0 M39.41 64 L103.41 0 M49.61 64 L113.61 0 M59.81 64 L123.81 0 M70.01 64 L134.01 0' stroke='%2315171C' stroke-width='4.6' fill='none'/%3E%3C/g%3E%3C/svg%3E"><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@100..125,400..800&display=swap" rel="stylesheet"><style>${CSS}</style></head>
-<body><div class="shell">
-<header class="top"><a class="brand" href="https://boundline.xyz" aria-label="Boundline home">${TILE}<span class="word">boundline</span></a><span class="product">Observatory</span>
-<nav aria-label="Boundline"><a href="https://boundline.xyz">Site</a><a href="https://app.boundline.xyz">App</a><a href="https://console.boundline.xyz">Console</a><a href="/v1/tokens">JSON</a></nav></header>
-<h1>Tokenized-stock credit on Base, live.</h1>
-<p class="sub">Every Coinbase tokenized stock on Base: Chainlink feed, Coinbase OracleRegistry, issuer pause, 24/7 Aerodrome price and the gap the feed will print at the reopen. Block ${s.block} · taken ${escapeHtml(fmtEt(s.takenAt, true))}.</p>
+<body>
+<div class="band"><div class="shell">
+<header class="top"><div class="brandbox"><a class="brand" href="https://boundline.xyz" aria-label="Boundline home">${TILE}<span class="word">boundline</span></a><span class="product">Observatory</span></div>
+<nav aria-label="Boundline"><a class="hide-sm" href="https://boundline.xyz">Site</a><a class="hide-sm" href="https://console.boundline.xyz">Console</a><a href="/v1/tokens">JSON</a><a class="btn" href="https://app.boundline.xyz">Open the app</a></nav></header>
+<div class="hero"><h1>Tokenized-stock credit on Base, live.</h1>
+<p class="sub">Every Coinbase tokenized stock on Base: Chainlink feed, Coinbase OracleRegistry, issuer pause, 24/7 Aerodrome price and the gap the feed will print at the reopen. Block ${s.block} · taken ${escapeHtml(fmtEt(s.takenAt, true))}.</p></div>
+</div></div>
+<main class="shell">
 ${banner}
 <div class="wrap"><table>
 <thead><tr><th>Token</th><th>Feed (USD)</th><th>Feed updated (ET)</th><th>Age</th><th>Session</th><th>Registry ×</th><th>Transfer</th><th>DEX 1h TWAP</th><th>DEX vs feed</th></tr></thead>
@@ -180,8 +205,10 @@ ${positionsPanel(extras.positions)}
 ${aavePanel(extras.aave ?? null)}
 ${assurancePanel(extras.assurance ?? null)}
 ${seizePanel(extras.seize ?? null)}
-<footer>Calendar: ${escapeHtml(s.session.calendarSource)} · JSON: <a href="/v1/tokens">/v1/tokens</a> · <a href="/v1/sessions">/v1/sessions</a> · <a href="/v1/captures">/v1/captures</a> · <a href="/v1/gaps">/v1/gaps</a> · <a href="/v1/positions">/v1/positions</a> · <a href="/v1/venues/morpho/markets">/v1/venues/morpho/markets</a> · <a href="/v1/venues/aave/positions">/v1/venues/aave/positions</a> · <a href="/v1/assurance">/v1/assurance</a> · <a href="/v1/seize-watch">/v1/seize-watch</a> · MIT, public good.</footer>
-</div></body></html>`;
+</main>
+<footer class="band"><div class="shell"><a class="brand" href="https://boundline.xyz" aria-label="Boundline home">${TILE_FOOT}<span class="word">boundline</span></a>
+<p>Calendar: ${escapeHtml(s.session.calendarSource)} · JSON: <a href="/v1/tokens">/v1/tokens</a> · <a href="/v1/sessions">/v1/sessions</a> · <a href="/v1/captures">/v1/captures</a> · <a href="/v1/gaps">/v1/gaps</a> · <a href="/v1/positions">/v1/positions</a> · <a href="/v1/venues/morpho/markets">/v1/venues/morpho/markets</a> · <a href="/v1/venues/aave/positions">/v1/venues/aave/positions</a> · <a href="/v1/assurance">/v1/assurance</a> · <a href="/v1/seize-watch">/v1/seize-watch</a> · MIT, public good.</p></div></footer>
+</body></html>`;
 }
 
 // ---------------------------------------------------------------- Aave V4 positions
@@ -201,7 +228,7 @@ export function aavePanel(rows: AavePositionRow[] | null): string {
     .map((p) => {
       const flag = p.protectionCase ? `<span class="tag bad">shadow HF &lt; 1.05</span>` : p.shadowHf === null ? `<span class="tag">no debt</span>` : `<span class="tag ok">ok</span>`;
       const coverage = p.collateral.length === 0 ? "—" : `${Math.round(p.shadowCoverage * 100)}%`;
-      return `<tr><td><code>${escapeHtml(shortAddr(p.address))}</code></td><td>${legsCell(p)}</td><td>${fmtUsd(p.collateralValueUsd)}</td><td>${fmtUsd(Number(p.debtUsdc) / 1e6)}</td><td>${fmtHf(p.venueHf)}</td><td>${fmtHf(p.shadowHf)}</td><td>${coverage}</td><td>${flag}</td></tr>`;
+      return `<tr><td><code>${escapeHtml(shortAddr(p.address))}</code></td><td class="wide">${legsCell(p)}</td><td>${fmtUsd(p.collateralValueUsd)}</td><td>${fmtUsd(Number(p.debtUsdc) / 1e6)}</td><td>${fmtHf(p.venueHf)}</td><td>${fmtHf(p.shadowHf)}</td><td>${coverage}</td><td>${flag}</td></tr>`;
     })
     .join("\n");
   const taken = rows.reduce((m, p) => Math.max(m, p.takenAt), 0);
@@ -260,8 +287,8 @@ export function assurancePanel(a: AssuranceStatus | null): string {
       s.positions.map((p) => {
         const rawTag = p.raw.liquidatableAtReopen ? `<span class="tag bad">liquidatable</span>` : `<span class="tag ok">safe</span>`;
         const blTag = p.boundline.liquidatableAtReopen ? `<span class="tag bad">liquidatable</span>` : `<span class="tag ok">safe</span>`;
-        const action = p.boundline.action === "none" ? `<span class="mute">none</span>` : `${escapeHtml(p.boundline.action)} ${escapeHtml(p.boundline.actionAt)} · ${fmtUsd(Number(p.boundline.amountUsdc))} USDC`;
-        return `<tr><td><b>${escapeHtml(s.id)}</b> <span class="mute">${fmtBps(s.gapBps)}</span></td><td>${escapeHtml(p.venue)}</td><td><code>${escapeHtml(shortAddr(p.address))}</code></td><td>${escapeHtml(p.collateralSymbol)}</td><td>${fmtUsd(Number(p.debtUsdc))}</td><td>${escapeHtml(fmtAssuranceHf(p.raw.hfAtReopen))}</td><td>${p.raw.liquidatableSaturday ? `<span class="tag bad">Sat</span> ` : ""}${rawTag}</td><td>${action}</td><td>${escapeHtml(fmtAssuranceHf(p.boundline.hfAfter))}</td><td>${blTag}</td></tr>`;
+        const action = p.boundline.action === "none" ? `<span class="mute">none</span>` : `${escapeHtml(p.boundline.action)} ${escapeHtml(p.boundline.actionAt)} · ${fmtUsd(Number(p.boundline.amountUsdc) / 1e6)} USDC`;
+        return `<tr><td><b>${escapeHtml(s.id)}</b> <span class="mute">${fmtBps(s.gapBps)}</span></td><td>${escapeHtml(p.venue)}</td><td><code>${escapeHtml(shortAddr(p.address))}</code></td><td>${escapeHtml(p.collateralSymbol)}</td><td>${fmtUsd(Number(p.debtUsdc) / 1e6)}</td><td>${escapeHtml(fmtAssuranceHf(p.raw.hfAtReopen))}</td><td>${p.raw.liquidatableSaturday ? `<span class="tag bad">Sat</span> ` : ""}${rawTag}</td><td class="wide">${action}</td><td>${escapeHtml(fmtAssuranceHf(p.boundline.hfAfter))}</td><td>${blTag}</td></tr>`;
       }),
     )
     .join("\n");
