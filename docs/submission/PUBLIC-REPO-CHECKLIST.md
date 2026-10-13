@@ -1,9 +1,8 @@
 # Before the repository goes public
 
-The repo is local git on `main` today. It must be public (or shared with `hackathon@colosseum.com`) before the
-submission. Pushing keeps every commit date; never rewrite or backdate history.
+Published on 13 Oct 2026 at https://github.com/FarseenSh/boundline (public, MIT). Pushing keeps every commit date; never backdate.
 
-## 1. Secrets scan (re-run Mon 12 Oct 2026, base commit `ec86941`)
+## 1. Secrets scan (re-run Mon 12 Oct 2026, base commit `580950b`)
 
 What was scanned: every tracked file, and every line added in every commit on every branch (`git log --all -p`).
 
@@ -73,13 +72,13 @@ that is fine for a build log.
 
 ## 3. Authorship (Colosseum checks who did the work)
 
-All 115 commits (Sat 3 to Tue 13 Oct 2026) are by `Farseen Shaikh <90364321+FarseenSh@users.noreply.github.com>`.
+All 118 commits (Sat 3 to Tue 13 Oct 2026) are by `Farseen Shaikh <90364321+FarseenSh@users.noreply.github.com>`.
 `TODO-HUMAN: if a second developer is on the roster, their work must be in this repository under their own GitHub
 identity before submission; otherwise the roster is Farseen alone.`
 
 ## 4. Publish
 
-1. `TODO-HUMAN:` create the repository (public, MIT, no template files, no README so the local one wins).
+1. Done on 13 Oct 2026: https://github.com/FarseenSh/boundline (public, MIT).
 2. `git remote add origin <url>` and `git push -u origin main` (dates preserved; never rebase or backdate).
 3. Open the repo logged out: the README renders, the Basescan and Workers links open, `docs/submission/` is visible.
 4. Put the URL in `docs/submission/SUBMISSION.md` (GitHub field), the deck's last slide (`docs/deck/boundline.typ`,
@@ -89,9 +88,10 @@ identity before submission; otherwise the roster is Farseen alone.`
 ## 5. CI and the nightly replay need secrets once the remote exists
 
 `.github/workflows/ci.yml` (contracts build/test/fmt, TypeScript build/typecheck/test, a fork job gated on
-`BASE_RPC_URL`) and `.github/workflows/nightly.yml` (the replay at 03:00 UTC) have never run. `forge fmt --check` failed on
+`BASE_RPC_URL`) and `.github/workflows/nightly.yml` (the replay at 03:00 UTC): ci.yml passed on the first push (13 Oct 2026; the fork job
+skips without its secret); nightly.yml has not run yet. `forge fmt --check` failed on
 `src/payout/LocalPayoutRouter.sol`, `test/fork/PayoutFork.t.sol` and `test/payout/LocalPayoutRouter.t.sol` until 12 Oct;
-they were formatted in `ec86941`, so the contracts job's fmt step passes. Repository secrets:
+they were formatted in `580950b`, so the contracts job's fmt step passes. Repository secrets:
 
 | Secret | Used by |
 | --- | --- |

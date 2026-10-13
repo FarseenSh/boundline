@@ -22,7 +22,7 @@ Sun 11 Oct, 20:00 ET: the feeds reopened. The first prints came 21–53 seconds 
 
 Our Observatory captured it live, and the chain agrees field for field, down to the transaction of every first print.
 
-https://github.com/TODO-HUMAN/boundline/blob/main/docs/evidence/reopen-2026-10-11.md
+https://github.com/FarseenSh/boundline/blob/main/docs/evidence/reopen-2026-10-11.md
 
 **3/8** [270]
 
@@ -65,7 +65,7 @@ https://observatory.boundline.xyz
 Borrow against your stocks on Base. Paid in your currency. Never liquidated while Wall Street is closed.
 
 Try it on Base Sepolia: https://app.boundline.xyz
-Code: https://github.com/TODO-HUMAN/boundline
+Code: https://github.com/FarseenSh/boundline
 
 Built for Colosseum's Crypto World's Fair, Base track.
 

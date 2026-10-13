@@ -150,7 +150,7 @@ evidence index below):
   market is unseeded and no mainnet borrower has opted into protection yet, so nothing has been lent or protected on
   mainnet; the product runs on Base Sepolia.
 
-**Built in the window:** 115 commits from Sat 3 Oct to Tue 13 Oct 2026 in a new repository; 264 Foundry tests (unit,
+**Built in the window:** 118 commits from Sat 3 Oct to Tue 13 Oct 2026 in a new repository; 264 Foundry tests (unit,
 fuzz, invariant, differential) plus eight mainnet-fork suites that run against an archive RPC; 898 TypeScript tests;
 eight Cloudflare Workers live; the footprint deployed on Base mainnet.
 `TODO-HUMAN: if you commit again before submitting, bump the commit count (git rev-list --count HEAD).`
@@ -205,7 +205,7 @@ cards, rules) is in `docs/brand/`.
 
 ## GitHub repository
 
-`TODO-HUMAN: public repository URL` (MIT). Before publishing, run `docs/submission/PUBLIC-REPO-CHECKLIST.md`.
+https://github.com/FarseenSh/boundline (MIT).
 
 ## Presentation video (2:00)
 
@@ -331,7 +331,7 @@ code was carried over.
 | Agent surface (MCP) | https://agent.boundline.xyz/v1/tools |
 | Keeper (live sizing) | https://keeper.boundline.xyz/v1/protect |
 | Indexer | https://indexer.boundline.xyz/v1/sources |
-| Repository | `TODO-HUMAN` |
+| Repository | https://github.com/FarseenSh/boundline |
 | X | `TODO-HUMAN` |
 
 Every service also still answers on its original workers.dev URL (for example https://boundline-app.papermind-ai.workers.dev); boundline.app redirects to boundline.xyz.
