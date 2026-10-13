@@ -1,0 +1,1426 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#0B1733">
+<meta name="description" content="Borrow against your stocks on Base. Paid in your currency. Never liquidated while Wall Street is closed. Boundline watches every Coinbase stock feed on Base, refuses a frozen price and protects positions at the live one.">
+<title>Boundline: the price stops at 8 p.m. Friday, liquidation doesn't</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%23FF6B57'/%3E%3Crect x='14' y='18' width='20' height='5' fill='%230E1116'/%3E%3Crect x='14' y='30' width='36' height='5' fill='%230E1116'/%3E%3Crect x='14' y='42' width='28' height='5' fill='%230E1116'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Chivo:wght@400;600;800&family=Chivo+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --night: #0B1733;
+  --deck: #0F1E40;
+  --deck-2: #13264F;
+  --seam: #1C2D57;
+  --seam-2: #2A3F70;
+  --ink: #EAF0FB;
+  --ink-2: #A9B6D3;
+  --mute: #7486AE;
+  --live: #48E2A3;
+  --held: #FFB547;
+  --hot: #FF6B57;
+  --hot-ink: #1A0E0B;
+  --link: #8FB0FF;
+  --aave: #8FB0FF;
+  --morpho: #4E6CB4;
+  --live-bg: rgba(72, 226, 163, 0.10);
+  --held-bg: rgba(255, 181, 71, 0.12);
+  --hot-bg: rgba(255, 107, 87, 0.18);
+  --sans: "Chivo", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --mono: "Chivo Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --maxw: 1240px;
+  --gut: 28px;
+}
+@media (max-width: 640px) { :root { --gut: 16px; } }
+
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; scroll-padding-top: 76px; }
+body {
+  margin: 0;
+  background: var(--night);
+  color: var(--ink);
+  font: 400 17px/1.6 var(--sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+h1, h2, h3, p, dl, dd, figure, ol, ul { margin: 0; }
+ul, ol { padding: 0; list-style: none; }
+a { color: var(--link); text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 3px; text-decoration-color: rgba(143, 176, 255, 0.45); }
+a:hover { text-decoration-color: currentColor; }
+:focus-visible { outline: 2px solid var(--link); outline-offset: 3px; border-radius: 6px; }
+.wrap { max-width: var(--maxw); margin: 0 auto; padding: 0 var(--gut); }
+.num, .mono { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+.muted { color: var(--mute); }
+.sr { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+[hidden] { display: none !important; }
+
+/* ---------- buttons ---------- */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  font: 600 15px/1 var(--sans); letter-spacing: -0.005em;
+  padding: 12px 18px; border-radius: 10px; text-decoration: none; white-space: nowrap;
+  border: 1px solid transparent; transition: background-color .15s ease, border-color .15s ease, color .15s ease;
+}
+.btn-hot { background: var(--hot); color: var(--hot-ink); }
+.btn-hot:hover { background: #FF8270; }
+.btn-line { color: var(--ink); border-color: var(--seam-2); background: transparent; }
+.btn-line:hover { border-color: var(--ink-2); }
+.btn-lg { padding: 15px 22px; font-size: 16px; border-radius: 12px; }
+
+/* ---------- header ---------- */
+.top {
+  position: sticky; top: 0; z-index: 20;
+  background: rgba(11, 23, 51, 0.88);
+  -webkit-backdrop-filter: saturate(140%) blur(10px); backdrop-filter: saturate(140%) blur(10px);
+  border-bottom: 1px solid transparent; transition: border-color .2s ease;
+}
+.top.scrolled { border-bottom-color: var(--seam); }
+.top .bar { display: flex; align-items: center; gap: 28px; height: 68px; }
+.brand { display: inline-flex; align-items: center; gap: 10px; color: var(--ink); text-decoration: none; font: 800 20px/1 var(--sans); letter-spacing: -0.03em; }
+.brand .mark { width: 28px; height: 28px; flex: none; }
+.nav { display: flex; gap: 26px; margin-left: auto; }
+.nav a { color: var(--ink-2); text-decoration: none; font-size: 15px; }
+.nav a:hover { color: var(--ink); }
+.top .btn { padding: 10px 16px; }
+@media (max-width: 880px) { .nav { display: none; } .top .btn { margin-left: auto; } }
+
+/* ---------- hero ---------- */
+.hero { padding: 56px 0 104px; }
+.hero-grid { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 56px; align-items: start; }
+.hero-copy { padding-top: 22px; }
+.hero h1 {
+  font: 800 clamp(42px, 4.7vw, 66px)/0.98 var(--sans); letter-spacing: -0.038em;
+  text-wrap: balance; max-width: 12ch;
+}
+.lede { margin-top: 26px; color: var(--ink-2); font-size: 18px; line-height: 1.62; max-width: 46ch; }
+.cta { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 32px; }
+.deployed { margin-top: 30px; padding-top: 20px; border-top: 1px solid var(--seam); color: var(--ink-2); font-size: 15px; line-height: 1.55; max-width: 46ch; }
+.deployed b { color: var(--ink); font-weight: 600; }
+@media (max-width: 1080px) {
+  .hero-grid { grid-template-columns: minmax(0, 1fr); gap: 44px; }
+  .hero h1 { max-width: 14ch; }
+  .lede, .deployed { max-width: 60ch; }
+}
+@media (max-width: 640px) { .hero { padding: 28px 0 72px; } .hero-copy { padding-top: 0; } .lede { font-size: 17px; } .btn-lg { padding: 14px 18px; font-size: 15px; } }
+
+/* ---------- the board ---------- */
+.board {
+  background: var(--deck); border: 1px solid var(--seam); border-radius: 18px; overflow: hidden;
+  box-shadow: 0 40px 90px -50px rgba(2, 6, 18, 0.9);
+}
+.board-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; padding: 18px 22px 16px; }
+.board-title { font: 600 16px/1.3 var(--sans); letter-spacing: -0.01em; }
+.board-src { margin-top: 4px; font-size: 13px; color: var(--mute); line-height: 1.45; }
+.board-src .num { color: var(--ink-2); }
+.pill {
+  display: inline-flex; align-items: center; gap: 8px; flex: none;
+  padding: 6px 12px 6px 10px; border-radius: 999px; border: 1px solid var(--seam-2);
+  font-size: 13px; line-height: 1.2; color: var(--ink); white-space: nowrap;
+}
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--mute); flex: none; }
+.is-live .dot, .dot.live { background: var(--live); box-shadow: 0 0 0 3px rgba(72, 226, 163, 0.18); }
+.is-held .dot, .dot.held { background: var(--held); box-shadow: 0 0 0 3px rgba(255, 181, 71, 0.18); }
+
+.board-clock { display: flex; align-items: flex-end; justify-content: space-between; gap: 18px 28px; flex-wrap: wrap; padding: 20px 22px 22px; border-top: 1px solid var(--seam); background: var(--deck-2); }
+.clock-field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.clock-digits { font: 500 clamp(34px, 3.6vw, 50px)/1 var(--mono); letter-spacing: -0.07em; word-spacing: -0.1em; font-variant-numeric: tabular-nums; color: var(--ink); white-space: nowrap; }
+.clock-digits.amber { color: var(--held); }
+.clock-cap { font-size: 14px; color: var(--ink-2); line-height: 1.4; }
+.clock-ny { margin-left: auto; text-align: right; font-size: 13px; color: var(--mute); line-height: 1.5; }
+.clock-ny .num { display: block; color: var(--ink-2); font-size: 15px; }
+
+.board-table { font-size: 14px; }
+.row {
+  display: grid; align-items: center; column-gap: 14px;
+  grid-template-columns: 70px minmax(78px, 0.9fr) minmax(150px, 1.5fr) minmax(84px, 0.95fr) 56px 76px;
+  padding: 0 22px; min-height: 47px; border-top: 1px solid var(--seam);
+}
+.row.head { min-height: 40px; color: var(--mute); font-size: 12.5px; line-height: 1.25; }
+.r { text-align: right; }
+.c-sym b { font-weight: 600; letter-spacing: -0.01em; }
+.c-price { color: var(--ink); }
+.c-age { display: flex; flex-direction: column; gap: 6px; padding: 8px 0; }
+.age-t { color: var(--ink-2); font-size: 13px; }
+.age-bar { position: relative; height: 3px; border-radius: 2px; background: var(--seam); overflow: visible; }
+.age-bar i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 2px; background: rgba(72, 226, 163, 0.55); }
+.age-bar.held i { background: var(--held); }
+.age-bar::after { content: ""; position: absolute; left: 80%; top: -3px; width: 1px; height: 9px; background: var(--seam-2); }
+.c-dex { color: var(--ink-2); }
+.c-dex.nopool { color: var(--mute); font-family: var(--sans); font-size: 13px; }
+.c-gap { color: var(--ink-2); }
+.chip { display: inline-flex; align-items: center; gap: 7px; padding: 4px 10px 4px 8px; border-radius: 999px; font-size: 12.5px; line-height: 1.2; font-weight: 600; }
+.chip i { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+.chip.live { color: var(--live); background: var(--live-bg); }
+.chip.held { color: var(--held); background: var(--held-bg); }
+.chip.paused { color: var(--hot); background: var(--hot-bg); }
+.m-only { display: none; }
+.board-foot { display: flex; justify-content: space-between; align-items: center; gap: 10px 16px; flex-wrap: wrap; padding: 14px 22px 16px; border-top: 1px solid var(--seam); color: var(--mute); font-size: 13px; }
+.age-key { display: inline-flex; align-items: center; gap: 8px; }
+.age-key .age-bar { width: 44px; display: inline-block; }
+.age-key .age-bar i { width: 60%; }
+
+@media (max-width: 640px) {
+  .board { border-radius: 14px; }
+  .board-head { padding: 16px 16px 14px; flex-direction: column; gap: 12px; }
+  .board-clock { padding: 18px 16px; }
+  .clock-ny { text-align: left; margin-left: 0; }
+  .row.head { display: none; }
+  .row {
+    grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "sym state" "price age" "dex dex";
+    row-gap: 6px; padding: 12px 16px; min-height: 0;
+  }
+  .c-sym { grid-area: sym; }
+  .c-state { grid-area: state; justify-self: end; }
+  .c-price { grid-area: price; text-align: left; font-size: 15px; }
+  .c-age { grid-area: age; padding: 0; min-width: 132px; }
+  .c-age .age-t { text-align: right; }
+  .c-dex { grid-area: dex; text-align: left; font-size: 13px; }
+  .c-dex.nopool, .c-gap { display: none; }
+  .m-only { display: inline; }
+  .board-foot { padding: 14px 16px; }
+}
+
+/* ---------- sections ---------- */
+.sec { padding: 112px 0; border-top: 1px solid var(--seam); }
+.sec-head { max-width: 760px; margin-bottom: 48px; }
+.sec h2 { font: 800 clamp(32px, 3.6vw, 48px)/1.04 var(--sans); letter-spacing: -0.03em; text-wrap: balance; }
+.sec-head p { margin-top: 18px; color: var(--ink-2); font-size: 18px; line-height: 1.6; max-width: 62ch; }
+.sec h3 { font: 600 20px/1.3 var(--sans); letter-spacing: -0.015em; }
+.src { margin-top: 22px; color: var(--mute); font-size: 14px; line-height: 1.55; max-width: 80ch; }
+@media (max-width: 640px) { .sec { padding: 72px 0; } .sec-head { margin-bottom: 32px; } .sec-head p { font-size: 17px; } }
+
+/* ---------- weekend ---------- */
+.tabs { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 28px; }
+.tab {
+  font: 600 15px/1 var(--sans); color: var(--ink-2); background: transparent; cursor: pointer;
+  border: 1px solid var(--seam-2); border-radius: 999px; padding: 10px 16px;
+}
+.tab:hover { color: var(--ink); border-color: var(--ink-2); }
+.tab[aria-selected="true"] { background: var(--ink); color: var(--night); border-color: var(--ink); }
+.wk-grid { display: grid; grid-template-columns: minmax(0, 1.65fr) minmax(0, 1fr); gap: 56px; align-items: start; }
+.gapchart { background: var(--deck); border: 1px solid var(--seam); border-radius: 16px; padding: 22px 24px 18px; }
+.gc-cap { font-size: 14px; color: var(--ink-2); margin-bottom: 18px; line-height: 1.45; }
+.gc-rows li { display: grid; grid-template-columns: 62px minmax(0, 1fr) 62px; align-items: center; gap: 12px; height: 34px; }
+.gc-sym { font-size: 14px; font-weight: 600; }
+.gc-track { position: relative; height: 100%; }
+.gc-zero { position: absolute; top: -4px; bottom: -4px; width: 1px; background: var(--seam-2); }
+.gc-grid { position: absolute; top: 0; bottom: 0; width: 1px; background: rgba(28, 45, 87, 0.65); }
+.gc-bar { position: absolute; top: 9px; bottom: 9px; min-width: 2px; border-radius: 2px; }
+.gc-bar.up { background: var(--held); }
+.gc-bar.down { background: var(--hot); }
+.gc-val { font-size: 13px; text-align: right; color: var(--ink); }
+.gc-axis { display: grid; grid-template-columns: 62px minmax(0, 1fr) 62px; gap: 12px; margin-top: 8px; }
+.gc-ticks { position: relative; height: 18px; font-size: 12px; color: var(--mute); }
+.gc-ticks span { position: absolute; transform: translateX(-50%); white-space: nowrap; }
+.gc-legend { display: flex; flex-wrap: wrap; gap: 6px 18px; margin-top: 14px; font-size: 13px; color: var(--ink-2); }
+.gc-legend span { display: inline-flex; align-items: center; gap: 8px; }
+.gc-legend i { width: 12px; height: 8px; border-radius: 2px; }
+.wk-facts { display: grid; gap: 0; }
+.wk-facts > div { padding: 18px 0; border-top: 1px solid var(--seam); }
+.wk-facts > div:first-child { border-top: 0; padding-top: 4px; }
+.wk-facts dt { font-size: 14px; color: var(--mute); }
+.wk-facts dd { font: 500 28px/1.15 var(--mono); letter-spacing: -0.03em; margin-top: 6px; font-variant-numeric: tabular-nums; }
+.wk-facts dd small { font: 400 15px/1.5 var(--sans); letter-spacing: 0; color: var(--ink-2); display: block; margin-top: 6px; }
+@media (max-width: 960px) { .wk-grid { grid-template-columns: minmax(0, 1fr); gap: 32px; } }
+@media (max-width: 640px) {
+  .gapchart { padding: 16px 14px 14px; }
+  .gc-rows li, .gc-axis { grid-template-columns: 54px minmax(0, 1fr) 52px; gap: 8px; }
+  .gc-val { font-size: 12px; }
+  .wk-facts dd { font-size: 24px; }
+}
+
+/* ---------- exposure ---------- */
+.expo-grid { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 56px; align-items: end; }
+.expo { background: var(--deck); border: 1px solid var(--seam); border-radius: 16px; padding: 24px 24px 18px; }
+.expo-cols { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px; height: 300px; align-items: end; border-bottom: 1px solid var(--seam-2); }
+.ec { display: flex; flex-direction: column; align-items: stretch; justify-content: flex-end; height: 100%; gap: 10px; }
+.ec-val { font: 500 20px/1 var(--mono); letter-spacing: -0.03em; text-align: center; }
+.ec-stack { display: flex; flex-direction: column-reverse; border-radius: 6px 6px 0 0; overflow: hidden; min-height: 4px; }
+.ec-stack i { display: block; width: 100%; }
+.ec-stack .aave { background: var(--aave); }
+.ec-stack .morpho { background: var(--morpho); }
+.expo-labels { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px; margin-top: 10px; font-size: 13px; color: var(--ink-2); text-align: center; }
+.big-stat { font: 800 clamp(56px, 6vw, 84px)/0.95 var(--sans); letter-spacing: -0.045em; }
+.big-stat-cap { margin-top: 14px; color: var(--ink-2); font-size: 17px; max-width: 40ch; }
+.honest { margin-top: 28px; padding-top: 22px; border-top: 1px solid var(--seam); color: var(--ink-2); font-size: 15.5px; line-height: 1.6; }
+.honest p + p { margin-top: 12px; }
+@media (max-width: 960px) { .expo-grid { grid-template-columns: minmax(0, 1fr); gap: 36px; } }
+@media (max-width: 640px) { .expo { padding: 18px 14px 14px; } .expo-cols, .expo-labels { gap: 14px; } .expo-cols { height: 240px; } .ec-val { font-size: 16px; } }
+
+/* ---------- how ---------- */
+.how-grid { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 56px; align-items: start; }
+.matrix { width: 100%; border-collapse: separate; border-spacing: 0; background: var(--deck); border: 1px solid var(--seam); border-radius: 16px; overflow: hidden; font-size: 15px; }
+.matrix th, .matrix td { padding: 15px 18px; text-align: left; border-top: 1px solid var(--seam); vertical-align: middle; }
+.matrix thead th { border-top: 0; font-size: 13px; font-weight: 600; color: var(--ink-2); background: var(--deck-2); line-height: 1.35; }
+.matrix thead th .sub { display: block; font-weight: 400; color: var(--mute); font-size: 12.5px; margin-top: 2px; }
+.matrix tbody th { font-weight: 600; color: var(--ink); width: 34%; }
+.ok, .no { display: inline-flex; align-items: center; gap: 9px; font-size: 14.5px; }
+.ok { color: var(--ink); }
+.no { color: var(--held); }
+.ok svg, .no svg { width: 18px; height: 18px; flex: none; }
+.matrix .at { color: var(--ink-2); font-size: 14px; }
+.matrix-note { margin-top: 16px; font-size: 14px; color: var(--mute); line-height: 1.55; }
+.verdict h3 { margin-bottom: 8px; }
+.verdict > p { color: var(--ink-2); font-size: 15.5px; }
+.vlist { margin-top: 18px; counter-reset: v; }
+.vlist li { display: grid; grid-template-columns: 26px minmax(0, 1fr); gap: 10px; padding: 12px 0; border-top: 1px solid var(--seam); counter-increment: v; }
+.vlist li::before { content: counter(v); font: 500 13px/1.6 var(--mono); color: var(--mute); }
+.vlist code { font: 500 14px/1.5 var(--mono); color: var(--ink); }
+.vlist li.open code { color: var(--live); }
+.vlist span { display: block; color: var(--ink-2); font-size: 14.5px; line-height: 1.5; }
+.validity { margin-top: 64px; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 56px; padding-top: 40px; border-top: 1px solid var(--seam); }
+.validity p { color: var(--ink-2); font-size: 16.5px; margin-top: 12px; max-width: 58ch; }
+.vtx li { padding: 14px 0; border-top: 1px solid var(--seam); }
+.vtx li:first-child { border-top: 0; padding-top: 0; }
+.vtx b { display: block; font-weight: 600; font-size: 15.5px; }
+.vtx span { display: block; color: var(--ink-2); font-size: 14.5px; margin-top: 2px; }
+.vtx a { font-family: var(--mono); font-size: 13.5px; }
+@media (max-width: 960px) { .how-grid, .validity { grid-template-columns: minmax(0, 1fr); gap: 40px; } }
+@media (max-width: 640px) { .matrix th, .matrix td { padding: 12px 12px; } .matrix { font-size: 14px; } .ok, .no { font-size: 13.5px; gap: 7px; } .validity { margin-top: 48px; } }
+
+/* ---------- replay ---------- */
+.score { display: flex; flex-wrap: wrap; gap: 20px 56px; margin-bottom: 36px; }
+.score div { display: flex; align-items: baseline; gap: 14px; }
+.score b { font: 800 clamp(64px, 7vw, 96px)/0.9 var(--sans); letter-spacing: -0.05em; }
+.score .s-raw b { color: var(--hot); }
+.score .s-bl b { color: var(--live); }
+.score span { color: var(--ink-2); font-size: 16px; max-width: 18ch; line-height: 1.35; }
+.rp-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 24px; }
+.rp { background: var(--deck); border: 1px solid var(--seam); border-radius: 16px; overflow: hidden; }
+.rp-title { padding: 16px 18px; font-weight: 600; font-size: 15.5px; display: flex; justify-content: space-between; gap: 12px; align-items: baseline; border-bottom: 1px solid var(--seam); }
+.rp-title span { color: var(--mute); font-weight: 400; font-size: 13.5px; text-align: right; }
+.rp table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+.rp th, .rp td { padding: 0 10px; height: 64px; border-top: 1px solid var(--seam); font-size: 14px; }
+.rp thead th { height: 38px; border-top: 0; font-size: 12.5px; font-weight: 600; color: var(--mute); text-align: center; }
+.rp thead th:first-child { text-align: left; }
+.rp tbody th { text-align: left; font-weight: 600; line-height: 1.3; padding-left: 18px; font-size: 13.5px; }
+.rp tbody th em { display: block; font-style: normal; font-weight: 400; color: var(--mute); font-size: 12.5px; }
+.rp tbody th .stg { color: var(--held); }
+.rp col.lab { width: 40%; }
+.cell { text-align: center; line-height: 1.25; }
+.cell b { display: block; font: 500 15px/1.2 var(--mono); font-variant-numeric: tabular-nums; }
+.cell small { display: block; font-size: 11.5px; color: var(--mute); margin-top: 3px; }
+.cell.liq { background: var(--hot-bg); }
+.cell.liq b { color: var(--hot); }
+.cell.liq small { color: #FFB0A3; }
+.cell.act small { color: var(--live); }
+@media (max-width: 1080px) { .rp-grid { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 640px) {
+  .rp col.lab { width: 40%; }
+  .rp-title { flex-direction: column; gap: 2px; }
+  .rp-title span { text-align: left; }
+  .rp th, .rp td { padding: 10px 5px; height: auto; }
+  .rp thead th { height: 34px; padding: 0 5px; }
+  .rp tbody th { padding-left: 12px; font-size: 13px; }
+  .cell b { font-size: 13.5px; }
+  .cell small { font-size: 10.5px; }
+  .score b { font-size: 64px; }
+}
+
+/* ---------- proof ---------- */
+.proof-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); gap: 56px; align-items: start; }
+.facts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 24px; margin: 18px 0 8px; }
+.facts div { padding: 14px 0; border-top: 1px solid var(--seam); }
+.facts dt { font-size: 13.5px; color: var(--mute); }
+.facts dd { font: 500 19px/1.3 var(--mono); letter-spacing: -0.02em; margin-top: 4px; font-variant-numeric: tabular-nums; }
+.facts .span { grid-column: 1 / -1; }
+.facts dd.txlinks { font: 400 15px/1.5 var(--sans); letter-spacing: 0; display: flex; flex-wrap: wrap; gap: 4px 18px; }
+.ledger li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 16px; padding: 12px 0; border-top: 1px solid var(--seam); align-items: baseline; }
+.ledger b { font-weight: 600; font-size: 15px; }
+.ledger span { grid-column: 1; color: var(--ink-2); font-size: 14px; line-height: 1.45; }
+.ledger a { grid-column: 2; grid-row: 1; font-family: var(--mono); font-size: 13px; white-space: nowrap; }
+.status { margin-top: 18px; padding: 14px 16px; border: 1px solid var(--seam-2); border-radius: 12px; color: var(--ink-2); font-size: 14.5px; line-height: 1.55; display: flex; gap: 12px; }
+.status .dot { margin-top: 7px; }
+.timeline li { display: grid; grid-template-columns: 150px minmax(0, 1fr); gap: 4px 20px; padding: 16px 0; border-top: 1px solid var(--seam); }
+.timeline time { font: 400 13px/1.6 var(--mono); color: var(--mute); padding-top: 2px; }
+.timeline b { font-weight: 600; font-size: 16px; display: block; }
+.timeline p { color: var(--ink-2); font-size: 14.5px; margin-top: 4px; line-height: 1.5; }
+.timeline a { display: inline-block; margin-top: 6px; font-family: var(--mono); font-size: 13px; }
+.subhead { font: 600 20px/1.3 var(--sans); letter-spacing: -0.015em; }
+.subnote { color: var(--ink-2); font-size: 15px; margin-top: 6px; }
+@media (max-width: 1080px) { .proof-grid { grid-template-columns: minmax(0, 1fr); gap: 64px; } }
+@media (max-width: 640px) {
+  .timeline li { grid-template-columns: minmax(0, 1fr); }
+  .facts dd { font-size: 16px; }
+  .ledger li { grid-template-columns: minmax(0, 1fr); }
+  .ledger a { grid-column: 1; grid-row: auto; }
+}
+
+/* ---------- developers ---------- */
+.dev-grid { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); gap: 56px; align-items: start; }
+.code { margin-bottom: 18px; }
+.code-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 8px; }
+.code-head span { color: var(--ink-2); font-size: 14.5px; }
+.copy { font: 600 13px/1 var(--sans); color: var(--ink-2); background: transparent; border: 1px solid var(--seam-2); border-radius: 8px; padding: 7px 10px; cursor: pointer; }
+.copy:hover { color: var(--ink); border-color: var(--ink-2); }
+pre { margin: 0; background: #091228; border: 1px solid var(--seam); border-radius: 12px; padding: 14px 16px; overflow-x: auto; font: 400 13px/1.6 var(--mono); color: var(--ink); }
+pre .p { color: var(--mute); user-select: none; }
+.tools { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.tools code { font: 500 13px/1 var(--mono); padding: 7px 10px; border-radius: 8px; background: var(--deck); border: 1px solid var(--seam); color: var(--ink); }
+.goods li { padding: 16px 0; border-top: 1px solid var(--seam); }
+.goods li:first-child { border-top: 0; padding-top: 0; }
+.goods b { font-weight: 600; font-size: 16px; }
+.goods p { color: var(--ink-2); font-size: 14.5px; margin-top: 4px; line-height: 1.5; }
+.links-row { display: flex; flex-wrap: wrap; gap: 8px 18px; margin-top: 18px; font-size: 15px; }
+@media (max-width: 960px) { .dev-grid { grid-template-columns: minmax(0, 1fr); gap: 48px; } }
+@media (max-width: 640px) { pre { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 12.5px; } }
+
+/* ---------- closer + footer ---------- */
+.closer { padding: 120px 0; border-top: 1px solid var(--seam); background: var(--deck); }
+.closer p { font: 800 clamp(34px, 4.6vw, 64px)/1.02 var(--sans); letter-spacing: -0.04em; max-width: 20ch; text-wrap: balance; }
+.closer .cta { margin-top: 36px; }
+@media (max-width: 640px) { .closer { padding: 80px 0; } }
+footer { padding: 56px 0 64px; border-top: 1px solid var(--seam); color: var(--ink-2); font-size: 14.5px; }
+.foot { display: grid; grid-template-columns: minmax(0, 1.4fr) repeat(3, minmax(0, 1fr)); gap: 32px; }
+.foot h3 { font: 600 14px/1.3 var(--sans); color: var(--ink); margin-bottom: 12px; }
+.foot li { margin-top: 8px; }
+.foot a { color: var(--ink-2); text-decoration: none; }
+.foot a:hover { color: var(--ink); text-decoration: underline; }
+.foot .brand { margin-bottom: 14px; color: var(--ink); }
+.foot .brand:hover { text-decoration: none; }
+.foot p { max-width: 36ch; line-height: 1.55; }
+.foot .fine { margin-top: 12px; color: var(--mute); font-size: 13.5px; }
+@media (max-width: 880px) { .foot { grid-template-columns: repeat(2, minmax(0, 1fr)); } .foot > div:first-child { grid-column: 1 / -1; } }
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after { transition: none !important; animation: none !important; }
+}
+</style>
+</head>
+<body>
+<header class="top" id="top">
+  <div class="wrap bar">
+    <a class="brand" href="#main" aria-label="Boundline, back to the top">
+      <svg class="mark" viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="12" fill="#FF6B57"/><g fill="#0E1116"><rect x="14" y="18" width="20" height="5"/><rect x="14" y="30" width="36" height="5"/><rect x="14" y="42" width="28" height="5"/></g></svg>
+      <span>Boundline</span>
+    </a>
+    <nav class="nav" aria-label="On this page">
+      <a href="#weekend">The weekend</a>
+      <a href="#how">How it works</a>
+      <a href="#proof">Proof</a>
+      <a href="#developers">Developers</a>
+    </nav>
+    <a class="btn btn-hot" data-link="app" href="https://boundline-app.papermind-ai.workers.dev">Open the app</a>
+  </div>
+</header>
+
+<main id="main">
+  <section class="hero" aria-labelledby="hero-title">
+    <div class="wrap hero-grid">
+      <div class="hero-copy">
+        <h1 id="hero-title">The price stops at 8&nbsp;p.m. Friday. Liquidation doesn’t.</h1>
+        <p class="lede">Coinbase’s tokenized stocks trade on Base around the clock. Their Chainlink price feeds hold Friday’s close until Sunday 8&nbsp;p.m., and the lending markets for them keep pricing loans on that number, with liquidation open all weekend. Boundline is the credit layer that refuses a frozen price and protects your position at the live one.</p>
+        <div class="cta">
+          <a class="btn btn-hot btn-lg" data-link="app" href="https://boundline-app.papermind-ai.workers.dev">Open the app</a>
+          <a class="btn btn-line btn-lg" data-link="observatory" href="https://boundline-observatory.papermind-ai.workers.dev">Open the Observatory</a>
+        </div>
+        <p class="deployed"><b>Deployed on Base mainnet on Monday 12 October, 20:24 ET.</b> Protection, credit lines and payouts run end to end on Base Sepolia, on real B20 test stocks whose feeds mirror mainnet. <a href="#proof">Every claim has a hash</a></p>
+      </div>
+
+      <section class="board" id="board" aria-labelledby="board-title">
+        <div class="board-head">
+          <div>
+            <h2 class="board-title" id="board-title">Coinbase stock feeds on Base</h2>
+            <p class="board-src" id="board-src">Reading the Observatory</p>
+          </div>
+          <p class="pill" id="pill"><span class="dot"></span><span id="pill-text">Reading the calendar</span></p>
+        </div>
+        <div class="board-clock" id="board-clock"></div>
+        <div class="board-table" role="table" aria-label="The ten Coinbase stock feeds: feed price, time since the last print, the Aerodrome price where a 24/7 pool exists, the gap between them, and whether the feed is live or held" aria-describedby="board-src">
+          <div class="row head" role="row">
+            <span role="columnheader">Stock</span>
+            <span role="columnheader" class="r">Feed price</span>
+            <span role="columnheader">Since the last print</span>
+            <span role="columnheader" class="r">Aerodrome</span>
+            <span role="columnheader" class="r">Gap, bps</span>
+            <span role="columnheader">Feed</span>
+          </div>
+          <div id="rows" role="rowgroup"></div>
+        </div>
+        <div class="board-foot">
+          <span class="age-key"><span class="age-bar" aria-hidden="true"><i></i></span>Bar: hours since the last print, to 60; the tick marks 48.</span>
+          <a data-link="obsTokens" href="https://boundline-observatory.papermind-ai.workers.dev/v1/tokens">Read by the Observatory every minute</a>
+        </div>
+      </section>
+    </div>
+  </section>
+
+  <section class="sec" id="weekend" aria-labelledby="h-weekend">
+    <div class="wrap">
+      <div class="sec-head">
+        <h2 id="h-weekend">Last weekend, on the record</h2>
+        <p>From Friday 20:00 ET to Sunday 20:00 ET none of the ten feeds printed a single round, while the stocks kept trading on Aerodrome. Then the whole weekend’s move landed at once, in the first blocks after the reopen.</p>
+      </div>
+      <div class="tabs" role="tablist" aria-label="Weekends" id="wk-tabs"></div>
+      <div id="wk-panel" role="tabpanel" tabindex="0"></div>
+    </div>
+  </section>
+
+  <section class="sec" id="exposure" aria-labelledby="h-exposure">
+    <div class="wrap">
+      <div class="sec-head">
+        <h2 id="h-exposure">The debt sitting on a frozen price</h2>
+        <p>USDC borrowed against tokenized stocks on Base’s two lending markets, read at noon UTC each Saturday, inside the closed window. Every dollar was priced at Friday’s feed, and liquidation was open the whole time.</p>
+      </div>
+      <div class="expo-grid">
+        <figure class="expo" id="expo"></figure>
+        <div>
+          <p class="big-stat num" id="aave-stat">$1.73M</p>
+          <p class="big-stat-cap">borrowed on Aave V4’s stock market on Base on 12 October, against $5.14M of tokenized-stock collateral (Base block 52,517,725).</p>
+          <div class="honest" id="honest"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec" id="how" aria-labelledby="h-how">
+    <div class="wrap">
+      <div class="sec-head">
+        <h2 id="h-how">What Boundline allows, and when</h2>
+        <p>Boundline’s markets check the clock before they trust the price. While the feed is held, anything that needs a price stops. Anything that only makes a loan safer never does.</p>
+      </div>
+      <div class="how-grid">
+        <div>
+          <table class="matrix">
+            <caption class="sr">What a session-safe Boundline market allows while the feed is live and while it is held</caption>
+            <thead>
+              <tr><th scope="col">Action</th><th scope="col">Feed live<span class="sub">pre-market to overnight</span></th><th scope="col">Feed held<span class="sub">weekend, holiday, stale or paused</span></th></tr>
+            </thead>
+            <tbody id="matrix-body"></tbody>
+          </table>
+          <p class="matrix-note">On Boundline’s session-safe Morpho markets the oracle, SessionGuard, reverts while the feed is held, so Morpho itself refuses the borrow, the withdrawal and the liquidation. Repaying and adding collateral never read the oracle, so they always work.</p>
+        </div>
+        <div class="verdict">
+          <h3>A verdict per stock, every block</h3>
+          <p>SessionGate reads the NYSE calendar, the feed, Coinbase’s OracleRegistry and the stock token itself. The first check that applies wins, and any failed read fails closed.</p>
+          <ol class="vlist">
+            <li><div><code>MARKET_CLOSED</code><span>The calendar says the market is shut: a weekend or a holiday.</span></div></li>
+            <li><div><code>FEED_PAUSED</code><span>Coinbase’s OracleRegistry has paused the feed.</span></div></li>
+            <li><div><code>TRANSFER_PAUSED</code><span>The issuer has paused transfers of the stock token.</span></div></li>
+            <li><div><code>FEED_INVALID</code><span>The feed’s answer cannot be used.</span></div></li>
+            <li><div><code>FEED_STALE</code><span>The last print is older than the limit.</span></div></li>
+            <li class="open"><div><code>OPEN</code><span>The price is safe to use.</span></div></li>
+          </ol>
+        </div>
+      </div>
+      <div class="validity">
+        <div>
+          <h3>Base holds the rescue to the frozen price</h3>
+          <p>Each protective action is sent as a Cobalt validity transaction with a condition on the feed’s storage slot. Base includes it only while the feed still shows the round the keeper decided on, so a rescue planned on a frozen price can never land on a different one.</p>
+          <p>While the feed is held, protection prices positions with ShadowGuard: the Aerodrome one-hour average, less 2%. Inside a narrow band below the liquidation line, Morpho’s audited pre-liquidation sells a small slice of collateral and repays the debt; elsewhere a repay runs down a funding ladder: the borrower’s reserve, the partner’s, then a bounded advance from the Boundline Reserve.</p>
+        </div>
+        <ul class="vtx" id="vtx"></ul>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec" id="replay" aria-labelledby="h-replay">
+    <div class="wrap">
+      <div class="sec-head">
+        <h2 id="h-replay">Replayed on a fork of Base mainnet</h2>
+        <p>Five real Aave V4 and Morpho stock positions, three as they stood and two staged near their limit, taken through Friday’s close, a weekend gap and Sunday’s reopen. The same positions and the same gaps, with and without Boundline.</p>
+      </div>
+      <div class="score" id="score"></div>
+      <div class="rp-grid" id="rp-grid"></div>
+      <p class="src" id="rp-src"></p>
+    </div>
+  </section>
+
+  <section class="sec" id="proof" aria-labelledby="h-proof">
+    <div class="wrap">
+      <div class="sec-head">
+        <h2 id="h-proof">Deployed on Base mainnet. Proven on Base Sepolia.</h2>
+        <p>Every contract is on Basescan and every action below is a transaction you can open.</p>
+      </div>
+      <div class="proof-grid">
+        <div>
+          <h3 class="subhead">Base mainnet, one command</h3>
+          <dl class="facts" id="facts"></dl>
+          <ul class="ledger" id="ledger"></ul>
+          <p class="status"><span class="dot held" aria-hidden="true"></span><span>The session-safe market is not seeded yet, and no mainnet borrower has opted in yet. Existing Morpho borrowers can opt in with one signature to Morpho’s own pre-liquidation contract.</span></p>
+        </div>
+        <div>
+          <h3 class="subhead">Base Sepolia, on real B20 test stocks</h3>
+          <p class="subnote">Their feeds mirror mainnet every minute, so the sandbox freezes and reopens when mainnet does.</p>
+          <ol class="timeline" id="timeline"></ol>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec" id="developers" aria-labelledby="h-dev">
+    <div class="wrap">
+      <div class="sec-head">
+        <h2 id="h-dev">Open data, open code</h2>
+        <p>Everything on this page is one request away. The Observatory needs no key; the partner API meters keyless calls over x402; agents get the same data over MCP.</p>
+      </div>
+      <div class="dev-grid">
+        <div>
+          <div class="code">
+            <div class="code-head"><span>The session, feed liveness and the next freeze</span><button class="copy" type="button" data-copy="c1">Copy</button></div>
+            <pre id="c1"><span class="p">$ </span>curl -s https://boundline-observatory.papermind-ai.workers.dev/v1/sessions</pre>
+          </div>
+          <div class="code">
+            <div class="code-head"><span>Every Coinbase stock feed against the 24/7 price</span><button class="copy" type="button" data-copy="c2">Copy</button></div>
+            <pre id="c2"><span class="p">$ </span>curl -s https://boundline-observatory.papermind-ai.workers.dev/v1/tokens</pre>
+          </div>
+          <div class="code">
+            <div class="code-head"><span>A keyless call answers 402 and asks for $0.01 over x402</span><button class="copy" type="button" data-copy="c3">Copy</button></div>
+            <pre id="c3"><span class="p">$ </span>curl -si https://boundline-api.papermind-ai.workers.dev/v1/positions/\
+0xB789aD318945B37566E2549F65526Cc269a482Fc/shadow | head -1</pre>
+          </div>
+          <h3 style="margin-top:30px">MCP tools for agents with wallets</h3>
+          <p class="subnote">Read-only: they return plans and calldata, and the agent’s own wallet signs.</p>
+          <div class="tools"><code>session</code><code>positions</code><code>shadowHealth</code><code>quote</code><code>protect</code><code>route</code></div>
+          <div class="links-row">
+            <a data-link="api" href="https://boundline-api.papermind-ai.workers.dev/health">Partner API</a>
+            <a data-link="agent" href="https://boundline-agent.papermind-ai.workers.dev/v1/tools">Agent tools</a>
+            <a data-link="console" href="https://boundline-console.papermind-ai.workers.dev">Partner console</a>
+            <a data-link="keeper" href="https://boundline-keeper.papermind-ai.workers.dev/v1/protect">Keeper</a>
+            <a data-link="indexer" href="https://boundline-indexer.papermind-ai.workers.dev/v1/sources">Indexer</a>
+            <a data-repo hidden href="#">Code on GitHub</a>
+          </div>
+        </div>
+        <div>
+          <h3>Public goods, MIT</h3>
+          <p class="subnote" style="margin-bottom:18px">Useful to every venue, curator and risk team on Base, whether or not anyone uses Boundline’s credit lines.</p>
+          <ul class="goods" id="goods"></ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="closer" aria-label="Get started">
+    <div class="wrap">
+      <p>Borrow against your stocks on Base. Paid in your currency. Never liquidated while Wall Street is closed.</p>
+      <div class="cta">
+        <a class="btn btn-hot btn-lg" data-link="borrow" href="https://boundline-app.papermind-ai.workers.dev/borrow">Borrow on Base Sepolia</a>
+        <a class="btn btn-line btn-lg" data-link="console" href="https://boundline-console.papermind-ai.workers.dev">Open the partner console</a>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap foot">
+    <div>
+      <a class="brand" href="#main"><svg class="mark" viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="12" fill="#FF6B57"/><g fill="#0E1116"><rect x="14" y="18" width="20" height="5"/><rect x="14" y="30" width="36" height="5"/><rect x="14" y="42" width="28" height="5"/></g></svg><span>Boundline</span></a>
+      <p>The session-aware credit layer for tokenized stocks on Base. Non-custodial: you keep your own Morpho or Aave position and authorise Boundline with one signature.</p>
+      <p class="fine">MIT. Built for Colosseum’s Crypto World’s Fair, Base track.</p>
+    </div>
+    <div>
+      <h3>Product</h3>
+      <ul>
+        <li><a data-link="app" href="https://boundline-app.papermind-ai.workers.dev">App on Base Sepolia</a></li>
+        <li><a data-link="observatory" href="https://boundline-observatory.papermind-ai.workers.dev">Observatory</a></li>
+        <li><a data-link="console" href="https://boundline-console.papermind-ai.workers.dev">Partner console</a></li>
+        <li><a data-link="drills" href="https://boundline-console.papermind-ai.workers.dev/drills">Drills</a></li>
+      </ul>
+    </div>
+    <div>
+      <h3>Developers</h3>
+      <ul>
+        <li><a data-link="api" href="https://boundline-api.papermind-ai.workers.dev/health">Partner API</a></li>
+        <li><a data-link="agent" href="https://boundline-agent.papermind-ai.workers.dev/v1/tools">Agent (MCP)</a></li>
+        <li><a data-link="keeper" href="https://boundline-keeper.papermind-ai.workers.dev/v1/protect">Keeper</a></li>
+        <li><a data-link="indexer" href="https://boundline-indexer.papermind-ai.workers.dev/v1/sources">Indexer</a></li>
+      </ul>
+    </div>
+    <div>
+      <h3>Onchain</h3>
+      <ul>
+        <li><a id="f-desk" href="https://basescan.org/address/0x1671166DB8B93057Fa9a95b052b86c30E7B6a7Dd">CreditDesk on Base</a></li>
+        <li><a id="f-cal" href="https://basescan.org/address/0xb45cE0AEAAaADc68D5EbD9573FD8bFA91c1f79e5">MarketCalendar on Base</a></li>
+        <li><a data-link="obsAssurance" href="https://boundline-observatory.papermind-ai.workers.dev/v1/assurance">The latest replay</a></li>
+        <li><a data-repo hidden href="#">Code on GitHub</a></li>
+      </ul>
+    </div>
+  </div>
+</footer>
+
+<script>
+// Boundline market calendar, browser port of @boundline/calendar (arithmetic zone resolver, NYSE 2026 data).
+// Same rules as the onchain MarketCalendar: sessions in America/New_York; instants at or after 20:00 ET belong to the
+// next exchange date; WEEKEND = Fri 20:00 to Sun 20:00 ET; HOLIDAY from the eve's 20:00; years without data -> UNKNOWN.
+// Inline this whole block into a page's <script>. It defines one global: BLCal.
+var BLCal = (function () {
+  var DAY = 86400, STD = -5 * 3600, DST = -4 * 3600;
+  var PRE_START = 240, REGULAR_OPEN = 570, REGULAR_CLOSE = 960, EARLY_CLOSE = 780, POST_END = 1200, EARLY_POST_END = 1020;
+  var MARKS = [PRE_START, REGULAR_OPEN, EARLY_CLOSE, REGULAR_CLOSE, EARLY_POST_END, POST_END];
+  var YEARS = [2026];
+  var HOLIDAYS = [20260101, 20260119, 20260216, 20260403, 20260525, 20260619, 20260703, 20260907, 20261126, 20261225];
+  var EARLY = [20261127, 20261224];
+  var LIVE = { PRE: 1, REGULAR: 1, POST: 1, OVERNIGHT: 1 };
+  var WD = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  var MO = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+  function daysFromCivil(y, m, d) {
+    y = m <= 2 ? y - 1 : y;
+    var era = Math.floor(y / 400), yoe = y - era * 400, mp = m > 2 ? m - 3 : m + 9;
+    var doy = Math.floor((153 * mp + 2) / 5) + d - 1;
+    var doe = yoe * 365 + Math.floor(yoe / 4) - Math.floor(yoe / 100) + doy;
+    return era * 146097 + doe - 719468;
+  }
+  function civilFromDays(z) {
+    z += 719468;
+    var era = Math.floor(z / 146097), doe = z - era * 146097;
+    var yoe = Math.floor((doe - Math.floor(doe / 1460) + Math.floor(doe / 36524) - Math.floor(doe / 146096)) / 365);
+    var doy = doe - (365 * yoe + Math.floor(yoe / 4) - Math.floor(yoe / 100));
+    var mp = Math.floor((5 * doy + 2) / 153);
+    var d = doy - Math.floor((153 * mp + 2) / 5) + 1, m = mp < 10 ? mp + 3 : mp - 9;
+    return { y: yoe + era * 400 + (m <= 2 ? 1 : 0), m: m, d: d };
+  }
+  function wdOf(days) { return (((days + 4) % 7) + 7) % 7; }
+  function nthSunday(y, m, n) { var f = wdOf(daysFromCivil(y, m, 1)); return 1 + ((7 - f) % 7) + (n - 1) * 7; }
+  function dstWindow(y) {
+    return { start: daysFromCivil(y, 3, nthSunday(y, 3, 2)) * DAY + 7 * 3600, end: daysFromCivil(y, 11, nthSunday(y, 11, 1)) * DAY + 6 * 3600 };
+  }
+  function key(y, m, d) { return y * 10000 + m * 100 + d; }
+
+  /** ET wall-clock fields of a UTC epoch-seconds instant. */
+  function zone(t) {
+    t = Math.floor(t);
+    var sy = civilFromDays(Math.floor((t + STD) / DAY)).y, w = dstWindow(sy);
+    var off = t >= w.start && t < w.end ? DST : STD;
+    var local = t + off, days = Math.floor(local / DAY), sod = local - days * DAY, c = civilFromDays(days);
+    var h = Math.floor(sod / 3600), mi = Math.floor((sod % 3600) / 60);
+    return { y: c.y, m: c.m, d: c.d, h: h, mi: mi, s: sod % 60, wd: wdOf(days), mod: h * 60 + mi, key: key(c.y, c.m, c.d), off: off };
+  }
+  function addDays(y, m, d, n) { var c = civilFromDays(daysFromCivil(y, m, d) + n); return { y: c.y, m: c.m, d: c.d, wd: wdOf(daysFromCivil(c.y, c.m, c.d)), key: key(c.y, c.m, c.d) }; }
+  /** UTC epoch seconds of an ET wall-clock minute on a civil date. */
+  function wallToEpoch(y, m, d, mod) {
+    var naive = daysFromCivil(y, m, d) * DAY + mod * 60, t = naive;
+    for (var i = 0; i < 3; i++) { var c = naive - zone(t).off; if (c === t) return t; t = c; }
+    return t;
+  }
+
+  function describe(t) {
+    var z = zone(t), next = z.mod >= POST_END;
+    var sd = next ? addDays(z.y, z.m, z.d, 1) : { y: z.y, m: z.m, d: z.d, wd: z.wd, key: z.key };
+    var covered = YEARS.indexOf(sd.y) >= 0, early = EARLY.indexOf(sd.key) >= 0, s;
+    if (!covered) s = "UNKNOWN";
+    else if (sd.wd === 0 || sd.wd === 6) s = "WEEKEND";
+    else if (HOLIDAYS.indexOf(sd.key) >= 0) s = "HOLIDAY";
+    else if (next || z.mod < PRE_START) s = "OVERNIGHT";
+    else if (z.mod < REGULAR_OPEN) s = "PRE";
+    else if (z.mod < (early ? EARLY_CLOSE : REGULAR_CLOSE)) s = "REGULAR";
+    else if (z.mod < (early ? EARLY_POST_END : POST_END)) s = "POST";
+    else s = "OVERNIGHT";
+    return { session: s, sessionDate: sd.key, earlyClose: early, dst: z.off === DST, zone: z };
+  }
+  function sessionAt(t) { return describe(t).session; }
+  function isFeedLive(t) { return !!LIVE[sessionAt(t)]; }
+
+  /** First instant after t at which the session changes: { from, to, at } (at = 0 when none within the horizon). */
+  function nextTransition(t, horizonDays) {
+    horizonDays = horizonDays || 14;
+    var now = Math.floor(t), from = sessionAt(now);
+    if (from === "UNKNOWN") return { from: from, to: "UNKNOWN", at: 0 };
+    var z = zone(now);
+    for (var o = 0; o <= horizonDays; o++) {
+      var d = addDays(z.y, z.m, z.d, o);
+      for (var i = 0; i < MARKS.length; i++) {
+        var c = wallToEpoch(d.y, d.m, d.d, MARKS[i]);
+        if (c <= now) continue;
+        var to = sessionAt(c);
+        if (to === "UNKNOWN") return { from: from, to: to, at: 0 };
+        if (to !== from) return { from: from, to: to, at: c };
+      }
+    }
+    return { from: from, to: "UNKNOWN", at: 0 };
+  }
+  /** Next instant the feeds change liveness: { kind: "close"|"reopen", at, to } (at = 0 when none within 21 days). */
+  function nextFeedChange(t) {
+    var live = isFeedLive(t), z = zone(t);
+    for (var o = 0; o <= 21; o++) {
+      var d = addDays(z.y, z.m, z.d, o), c = wallToEpoch(d.y, d.m, d.d, POST_END);
+      if (c <= t) continue;
+      if (isFeedLive(c) !== live) return { kind: live ? "close" : "reopen", at: c, to: sessionAt(c) };
+    }
+    return { kind: live ? "close" : "reopen", at: 0, to: "UNKNOWN" };
+  }
+  /** Most recent instant at or before t at which the feeds changed liveness (same shape as nextFeedChange). */
+  function lastFeedChange(t) {
+    var live = isFeedLive(t), z = zone(t);
+    for (var o = 0; o <= 21; o++) {
+      var d = addDays(z.y, z.m, z.d, -o), c = wallToEpoch(d.y, d.m, d.d, POST_END);
+      if (c > t) continue;
+      if (isFeedLive(c - 1) !== live) return { kind: live ? "reopen" : "close", at: c };
+    }
+    return { kind: live ? "reopen" : "close", at: 0 };
+  }
+  /** Contiguous session segments between two instants: [{ session, from, to }]. */
+  function segments(from, to) {
+    var out = [], t = from, guard = 0;
+    while (t < to && guard++ < 200) {
+      var s = sessionAt(t), n = nextTransition(t, 21), end = n.at && n.at < to ? n.at : to;
+      if (out.length && out[out.length - 1].session === s) out[out.length - 1].to = end;
+      else out.push({ session: s, from: t, to: end });
+      if (!n.at) break;
+      t = end;
+    }
+    return out;
+  }
+  /** The feed week containing t: from the Sunday 20:00 ET that opened it to the next Sunday 20:00 ET. */
+  function feedWeek(t) {
+    var z = zone(t), back = z.wd === 0 && z.mod >= POST_END ? 0 : z.wd === 0 ? 7 : z.wd;
+    var sun = addDays(z.y, z.m, z.d, -back), start = wallToEpoch(sun.y, sun.m, sun.d, POST_END);
+    if (start > t) { sun = addDays(sun.y, sun.m, sun.d, -7); start = wallToEpoch(sun.y, sun.m, sun.d, POST_END); }
+    var nx = addDays(sun.y, sun.m, sun.d, 7);
+    return { from: start, to: wallToEpoch(nx.y, nx.m, nx.d, POST_END) };
+  }
+
+  function pad(n) { return (n < 10 ? "0" : "") + n; }
+  /** "Fri 16 Oct, 20:00 ET" (opts: { date: false } drops the date, { weekday: false } drops the weekday). */
+  function fmtET(t, opts) {
+    opts = opts || {};
+    var z = zone(t), parts = [];
+    if (opts.weekday !== false) parts.push(WD[z.wd]);
+    if (opts.date !== false) parts.push(z.d + " " + MO[z.m - 1]);
+    var head = parts.join(" ");
+    return (head ? head + ", " : "") + pad(z.h) + ":" + pad(z.mi) + (opts.seconds ? ":" + pad(z.s) : "") + " ET";
+  }
+  /** "2d 21h", "3h 05m", "14m", "45s"; clock: true gives "2d 21:47:12" / "21:47:12". */
+  function fmtDur(s, clock) {
+    s = Math.max(0, Math.floor(s));
+    var d = Math.floor(s / 86400), h = Math.floor((s % 86400) / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60;
+    if (clock) return (d ? d + "d " : "") + pad(h) + ":" + pad(m) + ":" + pad(sec);
+    if (d) return d + "d " + h + "h";
+    if (h) return h + "h " + pad(m) + "m";
+    if (m) return m + "m";
+    return sec + "s";
+  }
+  var NAMES = { PRE: "Pre-market", REGULAR: "Regular session", POST: "After-hours", OVERNIGHT: "Overnight", WEEKEND: "Weekend", HOLIDAY: "Market holiday", UNKNOWN: "Calendar not loaded" };
+
+  return {
+    zone: zone, describe: describe, sessionAt: sessionAt, isFeedLive: isFeedLive, nextTransition: nextTransition,
+    nextFeedChange: nextFeedChange, lastFeedChange: lastFeedChange, segments: segments, feedWeek: feedWeek,
+    fmtET: fmtET, fmtDur: fmtDur, NAMES: NAMES, WD: WD, MO: MO
+  };
+})();
+</script>
+<script>
+// Boundline landing-page facts. Every value here is copied from the repository's evidence (docs/evidence/*,
+// deployments/*.json, docs/submission/SUBMISSION.md, README.md) or from a live Observatory read; the source is named.
+// Inline the parts a page uses. It defines one global: BL.
+var BL = {
+  links: {
+    app: "https://boundline-app.papermind-ai.workers.dev",
+    borrow: "https://boundline-app.papermind-ai.workers.dev/borrow",
+    protect: "https://boundline-app.papermind-ai.workers.dev/protect",
+    observatory: "https://boundline-observatory.papermind-ai.workers.dev",
+    console: "https://boundline-console.papermind-ai.workers.dev",
+    drills: "https://boundline-console.papermind-ai.workers.dev/drills",
+    api: "https://boundline-api.papermind-ai.workers.dev/health",
+    agent: "https://boundline-agent.papermind-ai.workers.dev/v1/tools",
+    keeper: "https://boundline-keeper.papermind-ai.workers.dev/v1/protect",
+    indexer: "https://boundline-indexer.papermind-ai.workers.dev/v1/sources",
+    obsTokens: "https://boundline-observatory.papermind-ai.workers.dev/v1/tokens",
+    obsSessions: "https://boundline-observatory.papermind-ai.workers.dev/v1/sessions",
+    obsAssurance: "https://boundline-observatory.papermind-ai.workers.dev/v1/assurance",
+    obsCaptures: "https://boundline-observatory.papermind-ai.workers.dev/v1/captures",
+    // The public GitHub repository is not published yet. Leave "" and every element with [data-repo] stays hidden.
+    repo: ""
+  },
+  sepoliaTx: "https://sepolia.basescan.org/tx/",
+  sepoliaAddr: "https://sepolia.basescan.org/address/",
+  mainnetTx: "https://basescan.org/tx/",
+  mainnetAddr: "https://basescan.org/address/",
+
+  // Live Observatory read at Base mainnet block 52,531,006 (Tue 13 Oct 2026 00:29 UTC = Mon 12 Oct 20:29 ET, OVERNIGHT).
+  // Fallback for /obs/v1/tokens when the page cannot reach the site's bridge (e.g. opened as a local file).
+  tokensSnapshot: {
+    takenAt: 1791851361, block: 52531006, session: "OVERNIGHT",
+    tokens: [
+      { symbol: "AAPLc", name: "Apple", feedPrice: 340.745, feedUpdatedAt: 1791816167, feedLive: true, feedFrozen: false, dexPrice: 341.7588, dexTwap1h: 341.3160, divergenceBps: 16.76 },
+      { symbol: "AMZNc", name: "Amazon", feedPrice: 259.32, feedUpdatedAt: 1791824171, feedLive: true, feedFrozen: false, dexPrice: null, divergenceBps: null },
+      { symbol: "GOOGLc", name: "Alphabet", feedPrice: 353.5853, feedUpdatedAt: 1791833907, feedLive: true, feedFrozen: false, dexPrice: null, divergenceBps: null },
+      { symbol: "METAc", name: "Meta", feedPrice: 741.5276, feedUpdatedAt: 1791833279, feedLive: true, feedFrozen: false, dexPrice: null, divergenceBps: null },
+      { symbol: "MSFTc", name: "Microsoft", feedPrice: 539.6040, feedUpdatedAt: 1791824173, feedLive: true, feedFrozen: false, dexPrice: null, divergenceBps: null },
+      { symbol: "MSTRc", name: "Strategy", feedPrice: 148.5426, feedUpdatedAt: 1791850105, feedLive: true, feedFrozen: false, dexPrice: null, divergenceBps: null },
+      { symbol: "NVDAc", name: "NVIDIA", feedPrice: 224.2940, feedUpdatedAt: 1791850105, feedLive: true, feedFrozen: false, dexPrice: 224.3052, dexTwap1h: 224.8267, divergenceBps: 23.75 },
+      { symbol: "SNDKc", name: "Sandisk", feedPrice: 1445.4439, feedUpdatedAt: 1791850075, feedLive: true, feedFrozen: false, dexPrice: null, divergenceBps: null },
+      { symbol: "SPCXc", name: null, feedPrice: 162.0954, feedUpdatedAt: 1791850029, feedLive: true, feedFrozen: false, dexPrice: null, divergenceBps: null },
+      { symbol: "TSLAc", name: "Tesla", feedPrice: 376.657, feedUpdatedAt: 1791849399, feedLive: true, feedFrozen: false, dexPrice: null, divergenceBps: null }
+    ]
+  },
+
+  // Two weekends on all ten Chainlink Coinbase stock feeds (Base mainnet). Zero rounds while closed on every feed, both weekends.
+  // 9-11 Oct: captured live by the Observatory AND reconstructed from the chain, 0 mismatches (docs/evidence/reopen-2026-10-11.md).
+  // 2-4 Oct: reconstructed from the chain (docs/evidence/reopen-2026-10-04.md).
+  weekends: [
+    {
+      id: "2026-10-11", label: "9 to 11 October", close: 1791590400, reopen: 1791763200, captured: "live and from the chain",
+      rows: [
+        { s: "AAPLc", held: 336.844, heldSince: "Fri 15:28 ET", ageH: 52.5, first: 336.65, lag: 51, gap: -5.8, tx: "0x3be1174f22e542c01b640815c9950f9f9913e5ea0bfab7fb4c635e35ecd32533" },
+        { s: "AMZNc", held: 261.8, heldSince: "Fri 15:20 ET", ageH: 52.7, first: 263.16, lag: 41, gap: 51.9, tx: "0x29a33e322d9ab390bd18724070d19e5ed140dd69d24cd182f61dcb0b70abab82" },
+        { s: "GOOGLc", held: 352.6329, heldSince: "Fri 13:15 ET", ageH: 54.7, first: 352.798, lag: 31, gap: 4.7, tx: "0xbe0e56e7b096f80a865931fa5cb74d541147fc2626e7e0108bf93226f685dc98" },
+        { s: "METAc", held: 719.9158, heldSince: "Fri 13:36 ET", ageH: 54.4, first: 720.9712, lag: 53, gap: 14.7, tx: "0x0fe75ee5e83e0a014afb220ab17221b42ce6b437c34704a0ff1b6a6bed01cef6" },
+        { s: "MSFTc", held: 536.0777, heldSince: "Fri 14:42 ET", ageH: 53.3, first: 535.995, lag: 23, gap: -1.5, tx: "0x328ed25dbe57b8e27d1914d9a875d0ecbcc297b7f9d03442ef3eda3354f6cd27" },
+        { s: "MSTRc", held: 154.613, heldSince: "Fri 14:50 ET", ageH: 53.2, first: 157.72, lag: 21, gap: 201.0, tx: "0x2b7135d1290998e2d666013fe12eb6099a14bbf45b0812b273c92058cc0a2aa0" },
+        { s: "NVDAc", held: 230.2639, heldSince: "Fri 11:17 ET", ageH: 56.7, first: 230.2888, lag: 23, gap: 1.1, tx: "0x5ce160ab94e980bd0104fb48911992813fb0303f98fad4da06f3ef179232da5c" },
+        { s: "SNDKc", held: 1581.77, heldSince: "Fri 15:35 ET", ageH: 52.4, first: 1604.655, lag: 21, gap: 144.7, tx: "0x93883ba705a4086fedd48de76e3bf8f565c3f921bd2ce5e6dd66cccf926a5944" },
+        { s: "SPCXc", held: 162.6165, heldSince: "Fri 15:55 ET", ageH: 52.1, first: 164.16, lag: 37, gap: 94.9, tx: "0x8aa8c95d31cd7ddbe99587db07107900091b16c893caab23eada79c79395bc80" },
+        { s: "TSLAc", held: 383.965, heldSince: "Fri 12:05 ET", ageH: 55.9, first: 384.6, lag: 23, gap: 16.5, tx: "0x2d20d3a9d9aaaecd87c1e803d5b55ec340c81631465691a9bf1580b0ad3ccc0f" }
+      ]
+    },
+    {
+      id: "2026-10-04", label: "2 to 4 October", close: 1790985600, reopen: 1791158400, captured: "from the chain",
+      rows: [
+        { s: "AAPLc", held: 333.66, heldSince: "Fri 12:39 ET", ageH: 55.3, first: 333.42, lag: 45, gap: -7.5 },
+        { s: "AMZNc", held: 251.28, heldSince: "Fri 11:06 ET", ageH: 56.9, first: 251.75, lag: 27, gap: 18.7 },
+        { s: "GOOGLc", held: 342.8, heldSince: "Fri 15:12 ET", ageH: 52.8, first: 344.42, lag: 45, gap: 47.3 },
+        { s: "METAc", held: 727.92, heldSince: "Fri 14:28 ET", ageH: 53.5, first: 728.64, lag: 29, gap: 9.8 },
+        { s: "MSFTc", held: 516.2, heldSince: "Fri 09:41 ET", ageH: 58.3, first: 517.65, lag: 51, gap: 28.2 },
+        { s: "MSTRc", held: 160.62, heldSince: "Fri 16:06 ET", ageH: 51.9, first: 165.16, lag: 53, gap: 282.3 },
+        { s: "NVDAc", held: 234.69, heldSince: "Fri 13:08 ET", ageH: 54.9, first: 235.14, lag: 43, gap: 19.2 },
+        { s: "SNDKc", held: 1722.7, heldSince: "Fri 12:41 ET", ageH: 55.3, first: 1733.9, lag: 23, gap: 64.9 },
+        { s: "SPCXc", held: 158.79, heldSince: "Fri 16:08 ET", ageH: 51.9, first: 159.25, lag: 23, gap: 28.7 },
+        { s: "TSLAc", held: 370.36, heldSince: "Fri 15:55 ET", ageH: 52.1, first: 372.29, lag: 37, gap: 52.1 }
+      ]
+    }
+  ],
+
+  // Debt priced at Friday's frozen feeds, read at Saturday 12:00 UTC inside each closed window, liquidation open the whole
+  // time (docs/evidence/liquidations-2026-09-25-to-10-12.md). USDC.
+  exposure: [
+    { weekend: "26 Sep", morpho: 104933.04, aave: 405892.51, total: 510825.56 },
+    { weekend: "3 Oct", morpho: 79576.33, aave: 1148845.70, total: 1228422.03 },
+    { weekend: "10 Oct", morpho: 15825.65, aave: 1548054.36, total: 1563880.01 }
+  ],
+  // Aave V4's MAG7 stock spoke on Base, block 52,517,725 (Mon 12 Oct ~17:06 UTC): debt vs tokenized-stock collateral.
+  aaveSpoke: { debtUsdc: 1729470, collateralUsd: 5140000, block: 52517725, date: "12 Oct 2026" },
+  morphoB20: { markets: 14, borrowedUsdc: 16315.76, date: "12 Oct 2026" },
+  // Every block from 25 Sep 20:00 ET to 12 Oct 16:00 UTC (720,001 blocks): no liquidation inside a closed window or within
+  // 6 h of a reopen (the gaps were small); two Aave V4 liquidations in regular hours by one bot, ~4.9% bonus each.
+  liquidations: {
+    blocksScanned: 720001, weekendLiquidations: 0,
+    inHours: [
+      { when: "Thu 1 Oct 2026, 10:21 ET", stock: "MSFTc", bonusPct: 4.95, tx: "0xeae435367fbfdd29003822bce54b02f1bb692a412d0790fbcc6400dc7dcfa035" },
+      { when: "Thu 8 Oct 2026, 13:30 ET", stock: "TSLAc", bonusPct: 4.93, tx: "0x98dbba0de970f877cb0410d7c762ac1370d5451802f66419cf770c3b21228538" }
+    ]
+  },
+
+  // The assurance replay of Wed 7 Oct 2026: a fork of Base mainnet at block 52,295,895; five real positions (three as they
+  // stood, two staged near their limit) taken through Friday's close, a -3/-8/-15% weekend gap and the Sunday reopen.
+  // Raw venue: 3 liquidations, every one on a staged position. Boundline's path: 0. The three as they stood stayed healthy.
+  // Health is the venue's health factor (liquidatable below 1). Live at /obs/v1/assurance; docs/evidence/assurance/2026-10-07.md.
+  replay: {
+    ranAt: 1791381136, forkBlock: 52295895,
+    evidenceHash: "0xa626f0997c74896d125080de615e1407fdc4abb6d8f8296ce62caabbc8793c45",
+    summary: { positions: 5, scenarios: 3, rawLiquidations: 3, boundlineLiquidations: 0 },
+    positions: [
+      { venue: "Morpho", label: "Steakhouse AAPLc borrower", staged: false, debt: 4513.09 },
+      { venue: "Morpho", label: "Same borrower, staged to 56% LTV", staged: true, debt: 6060.34 },
+      { venue: "Aave V4", label: "Largest USDC debt on the stock spoke", staged: false, debt: 25104.75 },
+      { venue: "Aave V4", label: "Lowest health on the stock spoke", staged: false, debt: 4251.39 },
+      { venue: "Aave V4", label: "Lowest health, staged to health 1.05", staged: true, debt: 4887.81 }
+    ],
+    // per scenario, per position (same order): raw = [health at reopen, liquidated?]; bl = [action, USDC, health after]
+    scenarios: [
+      { gap: -3, raw: [[1.454, false], [1.083, false], [1.431, false], [1.180, false], [1.026, false]],
+        bl: [["none", 0, 1.454], ["pre-liquidate", 225.48, 1.099], ["none", 0, 1.431], ["none", 0, 1.180], ["none", 0, 1.026]] },
+      { gap: -8, raw: [[1.379, false], [1.027, false], [1.358, false], [1.134, false], [0.987, true]],
+        bl: [["none", 0, 1.379], ["pre-liquidate", 981.04, 1.100], ["none", 0, 1.358], ["none", 0, 1.134], ["repay", 159.77, 1.020]] },
+      { gap: -15, raw: [[1.274, false], [0.949, true], [1.254, false], [1.071, false], [0.931, true]],
+        bl: [["none", 0, 1.274], ["repay", 831.53, 1.099], ["none", 0, 1.254], ["none", 0, 1.071], ["repay", 425.28, 1.020]] }
+    ],
+    // The worked example for an interactive weekend (the staged Morpho position at -15%): 32.229 AAPLc collateral,
+    // 6,060.34 USDC debt, Morpho LLTV 62.5%, Friday's held price 335.785, reopen print 285.42 (-15%).
+    // Health = 0.625 x collateral value / debt. Venue alone: 1.116 all weekend at the held price, 0.949 at the reopen ->
+    // liquidated. Boundline: a protective repay of 831.53 USDC on Saturday at the live price -> 1.099 at the reopen.
+    example: { collateral: 32.229, symbol: "AAPLc", debt: 6060.34, lltv: 0.625, held: 335.785, reopen: 285.42, repay: 831.53, hfHeld: 1.116, hfRawReopen: 0.949, hfProtected: 1.099 }
+  },
+
+  // Base mainnet: Boundline's footprint, deployed by one command. 50 transactions, blocks 52,530,874 to 52,530,925
+  // (Tue 13 Oct 2026 00:24-00:26 UTC = Mon 12 Oct 20:24 ET), 16 contracts verified on Basescan, 33 of 33 post-deploy
+  // checks (README). Honest status: the session-safe market is unseeded and no mainnet borrower has opted in yet.
+  mainnet: {
+    blocks: [52530874, 52530925], txCount: 50, verified: 16, checks: "33 of 33", when: "Mon 12 Oct, 20:24 ET",
+    firstTx: "0x3b1343ef4fc50ae161551014b6df3c8d34992a8690ca2a6825b82d8a4ae6240e",
+    deskTx: "0x6ca4ed1683471fe9810dc1a7260d19bf00d6c01e0e36b4a51a23d3d7fcbf1f40",
+    safeMarketTx: "0xf2bc11d1eeba35e4335929034a042334d797dda50b7c5d5a74f764da406b4ff7",
+    owner: "0x55463704EB58d25f239A8f353Af2EBE4fe242431",
+    contracts: [
+      { name: "MarketCalendar", role: "Every NYSE session, onchain", addr: "0xb45cE0AEAAaADc68D5EbD9573FD8bFA91c1f79e5" },
+      { name: "SessionGate", role: "A verdict per stock: is this price safe to use?", addr: "0x327895dA0fe53e18A8af5E98Bc749223B5227Ec6" },
+      { name: "SessionGuard (AAPLc)", role: "Morpho oracle that refuses a frozen price", addr: "0xf94C3C8aEb3E79376868a23f42a31Cb3B6a3F132" },
+      { name: "SessionGuard (NVDAc)", role: "Morpho oracle that refuses a frozen price", addr: "0x8ffE3c46D677ee3b8CE1773C22607aA340e1fc8E" },
+      { name: "ShadowGuard (AAPLc)", role: "The live 24/7 price for protection", addr: "0xaBF4E1Fb06a7d8D56099ff285f2c066B88d04760" },
+      { name: "ShadowGuard (NVDAc)", role: "The live 24/7 price for protection", addr: "0xed7DFF91124403E606ff443306643eD2a621769B" },
+      { name: "CreditDesk", role: "Partner credit lines on Morpho", addr: "0x1671166DB8B93057Fa9a95b052b86c30E7B6a7Dd" },
+      { name: "Protector", role: "Sells a slice at the live price, repays the debt", addr: "0x3D620E6F0d20d5BcC8dbf2d30c81af17AB2932D5" },
+      { name: "Pre-liquidation, Steakhouse AAPLc", role: "Morpho's audited contract, on Morpho's factory", addr: "0x50353Fd5D28cD5b1481Dd96b0074655484447e2F" },
+      { name: "Pre-liquidation, Steakhouse NVDAc", role: "Morpho's audited contract, on Morpho's factory", addr: "0x8d2573D18E07186CC87B61ac1593bC293d9ECc8f" },
+      { name: "Pre-liquidation, session-safe AAPLc", role: "Morpho's audited contract, on Morpho's factory", addr: "0x1D6B5C5134C1450f9F07272106aE47637EbFCAFb" },
+      { name: "AaveDesk", role: "Partner credit lines on Aave V4", addr: "0x405dD60f038D5Aa2C411787113BeF2911F2e783A" },
+      { name: "ProtectionVault (Aave V4)", role: "Any-hour protective repays", addr: "0xDD17651338D948e8Ec2e1D830EF7705A30DC0800" },
+      { name: "DeskProtectionVault (Morpho)", role: "Any-hour protective repays", addr: "0x0828f1aDADaf7C1f44B3425337ebE7189c7B1cD9" },
+      { name: "BoundlineReserve", role: "ERC-4626 vault that funds bounded advances", addr: "0xc4d5d866E9b5aDf35B4FD750fb192d99e20da1B4" },
+      { name: "LocalPayoutRouter", role: "USDC out as a local stablecoin", addr: "0xFC18E12929a3763476c13463fb05106F6F226112" },
+      { name: "DividendHarvester", role: "Dividends that repay the loan", addr: "0x10f07f1e905Ff1205B1d6e39CEBe91fF0076E8Ce" }
+    ],
+    safeMarketId: "0xb50ecaba0652b5a51bde9a747e9b7a2075c7ab68fd3c6ef7c05eabf6bb0f1d28"
+  },
+
+  // Base Sepolia, on real B20 test stocks whose feeds mirror mainnet every minute. Chronological. "when" is ET unless noted.
+  proofs: [
+    { when: "Sat 3 Oct", title: "Refused on a real weekend", text: "Collateral added on Saturday; a borrow on the same market reverts MarketClosed(WEEKEND).", tx: "0x01191a773774584bdbf4a72aff4397c870bf455c3277d7d0adf8396a42cb760b" },
+    { when: "Tue 6 Oct, 07:41", title: "A credit line draws in pre-market", text: "5 USDC through the CreditDesk at the SessionGuard price of $332.67, with a decision hash.", tx: "0x661ebb1abc30e1fffe987b4598b006004ed746943afcc1e67ea82595854b8bac" },
+    { when: "Tue 6 Oct, 08:06", title: "Base held a transaction to the feed", text: "A validity transaction included only while the feed's storage slot still showed the held round.", tx: "0x6b17288ff94723934a83a308ad4d350fd4403c639777bb2317646f3834c949dd" },
+    { when: "Tue 6 Oct, 08:27", title: "The keeper protected a position on its own", text: "Pre-liquidated a slice at the live price, no human in the loop: shadow LTV 60.12% to 58.00%.", tx: "0x982c7327efa9f0460b92501a4322ec5dc730e5faaca3ce1d87dc80f708dfb695" },
+    { when: "Wed 7 Oct", title: "The Reserve stepped in", text: "A protective repay paid 0.5 USDC from the borrower's reserve and 0.2 USDC advanced by the Reserve, settled with its 1% fee.", tx: "0x28c1ec4479d58ff7e362499b3e0b3f41517a1ec7ee4cd2fa83523de2ca5c08a4" },
+    { when: "Wed 7 Oct", title: "Paid out in euros", text: "0.5 USDC swapped into 0.46 EURCt inside the borrow flow, behind the session check.", tx: "0x9090633cf6559f5935a9e5659f4faa7ad6b278e4db93c8141154d2aded5b5bd3" },
+    { when: "Wed 7 Oct", title: "An API call paid for itself", text: "A keyless call to the partner API settled $0.01 in test USDC over x402.", tx: "0x8816d08fb7d6fadb8983f116bb4963bb5040e9666db6f15076272eb81cf5c6ff" },
+    { when: "Fri 9 Oct", title: "A dividend repaid a loan", text: "The keeper found a replayed dividend step on the test stock and swept it into the loan three blocks later, with no operator; the share count was kept.", tx: "0xb1312b5f7844d1ae1cc2c38e001552f611a457bd605ffb634ffe2d24b1124616" },
+    { when: "Mon 12 Oct, 12:44", title: "A rescue under a frozen feed", text: "With the AAPLt feed held stale (a staged outage the oracles treat like a weekend), the keeper closed out an in-band position at the live price; a plain liquidation on the same market was refused FeedStale.", tx: "0x9774913eecd620da53019d701f10c8e90400cb6497030785a2e374360d280352" },
+    { when: "Mon 12 Oct, 12:46", title: "The funding ladder, under the same freeze", text: "The vault repaid a second line from 54.00% to 44.90%: 0.40 USDC from the borrower's reserve, 0.14 USDC advanced by the Reserve.", tx: "0x47ac5279c4804e73d05f1e8d813775514e4f8b8b09c6ffc7b014fac1956e1d24" }
+  ],
+  // The validity transaction that waited for the feed to print ("only once it prints"), Tue 6 Oct 10:10 ET:
+  validityWaitTx: "0xbbd8463132d3863f135ce30e5618d92919e4c3832b80b76510e97f18b99cb2fb",
+
+  // Real route plans from the partner API's POST /v1/route (SUBMISSION.md, 8-12 Oct).
+  routes: {
+    mainnet: { collateral: "1 AAPLc", venue: "Morpho, Steakhouse AAPLc market", capacityUsdc: 184.63, rate: "5.46%" },
+    sepolia: { collateral: "0.02 AAPLt", venue: "Morpho, session-safe AAPLt market", capacityUsdc: 3.36, rate: "1.56% APR", protection: "pre-liquidation" }
+  },
+
+  build: { commits: 104, foundryTests: 264, tsTests: 898, forkSuites: 8, workers: 8, calendarInstants: 5643, drills: 14 },
+  quotes: {
+    base: { text: "never settle or liquidate against a frozen feed", who: "Base documentation" },
+    llama: { text: "a future stage", who: "LlamaRisk, Aave's risk provider, on session-aware handling" }
+  }
+};
+</script>
+<script>
+// GitHub link: revealed only once the public repository really exists, so no visitor ever lands on a 404.
+// Mark-up: <a data-repo hidden href="#">…</a> (CSS must keep `[hidden]{display:none!important}`).
+// Set BL.links.repo to force a URL; otherwise the candidate is checked on GitHub's public API (CORS-enabled).
+(function () {
+  var CANDIDATE = "FarseenSh/boundline";
+  function reveal(url) {
+    var els = document.querySelectorAll("[data-repo]");
+    for (var i = 0; i < els.length; i++) { if (els[i].tagName === "A") els[i].href = url; els[i].hidden = false; }
+  }
+  if (BL.links.repo) { reveal(BL.links.repo); return; }
+  if (location.protocol === "file:" || !window.fetch) return;
+  var ctl = window.AbortController ? new AbortController() : null;
+  if (ctl) setTimeout(function () { ctl.abort(); }, 5000);
+  fetch("https://api.github.com/repos/" + CANDIDATE, { signal: ctl ? ctl.signal : undefined, headers: { Accept: "application/vnd.github+json" } })
+    .then(function (r) { return r.ok ? r.json() : null; })
+    .then(function (j) { if (j && j.private === false && j.html_url) reveal(j.html_url); })
+    .catch(function () {});
+})();
+</script>
+<script>
+(function () {
+  "use strict";
+  var $ = function (s, r) { return (r || document).querySelector(s); };
+  var $$ = function (s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); };
+  var esc = function (s) { return String(s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); };
+  var reduce = !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+  var CAN_FETCH = /^https?:$/.test(location.protocol);
+  var nowS = function () { return Math.floor(Date.now() / 1000); };
+  var MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+
+  var state = { tokens: BL.tokensSnapshot, live: false, gaps: null, assurance: null, rolled: false, wk: 0, failed: false };
+
+  // ---------- links ----------
+  $$("[data-link]").forEach(function (a) { var k = a.getAttribute("data-link"); if (BL.links[k]) a.href = BL.links[k]; });
+  $("#f-desk").href = BL.mainnetAddr + addrOf("CreditDesk");
+  $("#f-cal").href = BL.mainnetAddr + addrOf("MarketCalendar");
+  function addrOf(name) { for (var i = 0; i < BL.mainnet.contracts.length; i++) if (BL.mainnet.contracts[i].name === name) return BL.mainnet.contracts[i].addr; return ""; }
+
+  // ---------- formatting ----------
+  function price(x) { return x == null || !isFinite(x) ? "—" : Number(x).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+  function signed(x, d) {
+    if (x == null || !isFinite(x)) return "—";
+    var r = d ? Number(Number(x).toFixed(d)) : Math.round(x);
+    var body = Math.abs(r).toFixed(d || 0);
+    return (r > 0 ? "+" : r < 0 ? "−" : "") + body;
+  }
+  function pad(n) { return (n < 10 ? "0" : "") + n; }
+  function clockAge(s) {
+    s = Math.max(0, Math.floor(s));
+    var d = Math.floor(s / 86400), h = Math.floor((s % 86400) / 3600), m = Math.floor((s % 3600) / 60), x = s % 60;
+    return (d ? d + "d " + pad(h) : String(h)) + ":" + pad(m) + ":" + pad(x);
+  }
+  function shortHash(h) { return h.slice(0, 10) + "…" + h.slice(-4); }
+  function shortAddr(a) { return a.slice(0, 6) + "…" + a.slice(-4); }
+  function usdM(x) { return "$" + (x / 1e6).toFixed(2) + "M"; }
+  function ago(s) { s = Math.max(0, Math.floor(s)); if (s < 90) return s + " s ago"; if (s < 5400) return Math.round(s / 60) + " min ago"; if (s < 172800) return (s / 3600).toFixed(1) + " h ago"; return Math.round(s / 86400) + " days ago"; }
+  function int(n) { return Number(n).toLocaleString("en-US"); }
+
+  // ---------- fetch ----------
+  function getJSON(path) {
+    return new Promise(function (resolve, reject) {
+      var ctl = typeof AbortController === "function" ? new AbortController() : null;
+      var timer = setTimeout(function () { if (ctl) ctl.abort(); reject(new Error("timeout")); }, 6000);
+      fetch(path, { signal: ctl ? ctl.signal : undefined, headers: { accept: "application/json" }, cache: "no-store" })
+        .then(function (r) { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
+        .then(function (j) { clearTimeout(timer); resolve(j); }, function (e) { clearTimeout(timer); reject(e); });
+    });
+  }
+
+  // ---------- the clock (BLCal, client-side, every second) ----------
+  var clockEl = $("#board-clock"), pill = $("#pill"), pillText = $("#pill-text");
+  var clockMode = "";
+  function renderClock() {
+    var t = nowS(), d = BLCal.describe(t), s = d.session, live = BLCal.isFeedLive(t);
+    var ny = BLCal.fmtET(t, { seconds: true });
+    if (s === "UNKNOWN") {
+      pill.className = "pill is-held"; pillText.textContent = "Calendar not loaded: fails closed";
+      if (clockMode !== "u") { clockMode = "u"; clockEl.innerHTML = '<div class="clock-field"><span class="clock-cap">The onchain calendar has no data for this year yet, so every Boundline market treats the feed as held.</span></div>'; }
+      return;
+    }
+    pill.className = "pill " + (live ? "is-live" : "is-held");
+    pillText.textContent = BLCal.NAMES[s] + ", feeds " + (live ? "live" : "held");
+    if (live) {
+      var n = BLCal.nextFeedChange(t);
+      if (clockMode !== "l") {
+        clockMode = "l";
+        clockEl.innerHTML = '<div class="clock-field"><span class="clock-digits" id="cd-a"></span><span class="clock-cap" id="cd-a-cap"></span></div>' +
+          '<div class="clock-ny">New York<span class="num" id="cd-ny"></span></div>';
+      }
+      $("#cd-a").textContent = BLCal.fmtDur(n.at - t, true);
+      $("#cd-a-cap").textContent = "until the feeds freeze, " + BLCal.fmtET(n.at);
+      $("#cd-ny").textContent = ny;
+    } else {
+      var l = BLCal.lastFeedChange(t), r = BLCal.nextFeedChange(t);
+      if (clockMode !== "h") {
+        clockMode = "h";
+        clockEl.innerHTML = '<div class="clock-field"><span class="clock-digits amber" id="cd-a"></span><span class="clock-cap" id="cd-a-cap"></span></div>' +
+          '<div class="clock-field"><span class="clock-digits" id="cd-b"></span><span class="clock-cap" id="cd-b-cap"></span></div>' +
+          '<div class="clock-ny">New York<span class="num" id="cd-ny"></span></div>';
+      }
+      $("#cd-a").textContent = BLCal.fmtDur(t - l.at, true);
+      $("#cd-a-cap").textContent = "held since " + BLCal.fmtET(l.at);
+      $("#cd-b").textContent = BLCal.fmtDur(r.at - t, true);
+      $("#cd-b-cap").textContent = "until they reopen, " + BLCal.fmtET(r.at);
+      $("#cd-ny").textContent = ny;
+    }
+  }
+
+  // ---------- the board ----------
+  var rowsEl = $("#rows"), srcEl = $("#board-src");
+  function rowState(tk) {
+    if (tk.registryPaused || tk.transferPaused) return { cls: "paused", text: "Paused" };
+    if (tk.feedFrozen || tk.feedLive === false) return { cls: "held", text: "Held" };
+    return { cls: "live", text: "Live" };
+  }
+  function ageOf(tk) {
+    var base = state.live ? nowS() : state.tokens.takenAt;
+    return Math.max(0, base - tk.feedUpdatedAt);
+  }
+  function renderBoard() {
+    var tks = (state.tokens && state.tokens.tokens) || [];
+    var html = "";
+    tks.forEach(function (tk, i) {
+      var st = rowState(tk), age = ageOf(tk), pct = Math.min(100, (age / 216000) * 100);
+      var hasPool = tk.dexPrice != null && isFinite(tk.dexPrice);
+      html += '<div class="row" role="row">' +
+        '<span class="c-sym" role="cell"><b>' + esc(tk.symbol) + '</b></span>' +
+        '<span class="c-price num r" role="cell" data-roll="' + i + 'p">' + price(tk.feedPrice) + '</span>' +
+        '<span class="c-age" role="cell"><span class="age-t num" data-age="' + i + '">' + clockAge(age) + ' ago</span><span class="age-bar' + (st.cls === "live" ? "" : " held") + '" aria-hidden="true"><i data-bar="' + i + '" style="width:' + pct.toFixed(2) + '%"></i></span></span>' +
+        (hasPool
+          ? '<span class="c-dex num r" role="cell"><span class="m-only">Aerodrome </span>' + price(tk.dexPrice) + '<span class="m-only">, gap ' + signed(tk.divergenceBps) + ' bps</span></span>'
+          : '<span class="c-dex nopool r" role="cell">no 24/7 pool</span>') +
+        '<span class="c-gap num r" role="cell">' + (hasPool ? signed(tk.divergenceBps) : "—") + '</span>' +
+        '<span class="c-state" role="cell"><span class="chip ' + st.cls + '"><i></i>' + st.text + '</span></span>' +
+        '</div>';
+    });
+    rowsEl.innerHTML = html;
+    if (state.live) {
+      srcEl.innerHTML = 'Base block <span class="num">' + int(state.tokens.block) + '</span>, read <span id="read-ago">' + ago(nowS() - state.tokens.takenAt) + '</span> by the Observatory.';
+    } else {
+      srcEl.innerHTML = 'Snapshot from Base block <span class="num">' + int(state.tokens.block) + '</span>, ' + esc(BLCal.fmtET(state.tokens.takenAt)) + '. Live numbers load on Boundline’s site.';
+    }
+    if (!state.rolled) { state.rolled = true; rollDigits(); }
+  }
+  function tickAges() {
+    if (!state.live) return;
+    var tks = state.tokens.tokens || [], t = nowS();
+    tks.forEach(function (tk, i) {
+      var el = rowsEl.querySelector('[data-age="' + i + '"]'), bar = rowsEl.querySelector('[data-bar="' + i + '"]');
+      var age = Math.max(0, t - tk.feedUpdatedAt);
+      if (el) el.textContent = clockAge(age) + " ago";
+      if (bar) bar.style.width = Math.min(100, (age / 216000) * 100).toFixed(2) + "%";
+    });
+    var ra = $("#read-ago"); if (ra) ra.textContent = ago(t - state.tokens.takenAt);
+  }
+  // The one motion moment: the board's digits roll into place once, like a departures board.
+  function rollDigits() {
+    if (reduce) return;
+    var cells = $$(".c-price, .c-dex.num, .c-gap", rowsEl);
+    var finals = cells.map(function (c) { return c.innerHTML; });
+    var texts = cells.map(function (c) { return c.textContent; });
+    var start = performance.now();
+    function frame(now) {
+      var done = true;
+      cells.forEach(function (c, i) {
+        var settle = 260 + i * 9 + (i % 6) * 22;
+        if (now - start >= settle) { if (c.getAttribute("data-rolled") !== "1") { c.innerHTML = finals[i]; c.setAttribute("data-rolled", "1"); } return; }
+        done = false;
+        c.textContent = texts[i].replace(/\d/g, function () { return String(Math.floor(Math.random() * 10)); });
+      });
+      if (!done) requestAnimationFrame(frame);
+    }
+    requestAnimationFrame(frame);
+  }
+
+  // ---------- weekends ----------
+  function weekendList() {
+    var list = BL.weekends.map(function (w) {
+      return { id: w.id, label: w.label, close: w.close, reopen: w.reopen, kind: w.id === "2026-10-11" ? "both" : "chain",
+        rows: w.rows.map(function (r) { return { s: r.s, gap: r.gap, lag: r.lag, ageH: r.ageH, held: r.held, first: r.first, tx: r.tx || null, rounds: 0 }; }) };
+    });
+    var g = state.gaps && state.gaps.weekends;
+    if (g && g.length) {
+      g.forEach(function (lw) {
+        if (!lw || !lw.reopenAt || !lw.feeds || !lw.feeds.length) return;
+        for (var i = 0; i < list.length; i++) if (list[i].reopen === lw.reopenAt) return;
+        var zc = BLCal.zone(lw.closeAt), zr = BLCal.zone(lw.reopenAt);
+        var label = zc.m === zr.m ? zc.d + " to " + zr.d + " " + MONTHS[zr.m - 1] : zc.d + " " + MONTHS[zc.m - 1] + " to " + zr.d + " " + MONTHS[zr.m - 1];
+        list.push({ id: String(lw.reopenAt), label: label, close: lw.closeAt, reopen: lw.reopenAt,
+          kind: (lw.sources || []).indexOf("capture") >= 0 ? "capture" : "indexer",
+          rows: lw.feeds.map(function (f) {
+            return { s: f.symbol, gap: f.gapBps == null ? null : Math.round(f.gapBps * 10) / 10, lag: f.lagSeconds, ageH: f.heldAgeAtReopenSeconds == null ? null : Math.round(f.heldAgeAtReopenSeconds / 360) / 10, held: f.heldPrice, first: f.firstPrice, tx: null, rounds: f.roundsWhileClosed };
+          }) });
+      });
+    }
+    list.sort(function (a, b) { return b.reopen - a.reopen; });
+    return list;
+  }
+  var wkTabs = $("#wk-tabs"), wkPanel = $("#wk-panel");
+  function shortLabel(w) { return w.label.replace(/ (January|February|March|April|May|June|July|August|September|October|November|December)/g, function (m) { return " " + m.slice(1, 4); }); }
+  function renderWeekendTabs() {
+    var list = weekendList();
+    if (state.wk >= list.length) state.wk = 0;
+    wkTabs.innerHTML = list.map(function (w, i) {
+      return '<button class="tab" role="tab" type="button" id="wk-tab-' + i + '" aria-controls="wk-panel" aria-selected="' + (i === state.wk) + '" tabindex="' + (i === state.wk ? 0 : -1) + '" data-i="' + i + '">' + esc(shortLabel(w)) + '</button>';
+    }).join("");
+    wkPanel.setAttribute("aria-labelledby", "wk-tab-" + state.wk);
+    renderWeekend(list[state.wk]);
+  }
+  wkTabs.addEventListener("click", function (e) {
+    var b = e.target.closest(".tab"); if (!b) return;
+    state.wk = +b.getAttribute("data-i"); renderWeekendTabs(); var nb = $("#wk-tab-" + state.wk); if (nb) nb.focus();
+  });
+  wkTabs.addEventListener("keydown", function (e) {
+    var n = wkTabs.children.length; if (!n) return;
+    if (e.key === "ArrowRight" || e.key === "ArrowLeft") {
+      e.preventDefault(); state.wk = (state.wk + (e.key === "ArrowRight" ? 1 : n - 1)) % n; renderWeekendTabs(); var nb = $("#wk-tab-" + state.wk); if (nb) nb.focus();
+    }
+  });
+  function renderWeekend(w) {
+    var rows = w.rows.filter(function (r) { return r.gap != null; }).slice().sort(function (a, b) { return b.gap - a.gap; });
+    var gaps = rows.map(function (r) { return r.gap; });
+    var lo = Math.min(-50, Math.floor((Math.min.apply(null, gaps.concat([0])) - 10) / 50) * 50);
+    var hi = Math.max(300, Math.ceil((Math.max.apply(null, gaps.concat([0])) + 10) / 50) * 50);
+    var span = hi - lo, z = (0 - lo) / span * 100;
+    var ticks = []; for (var v = lo; v <= hi; v += (span > 500 ? 100 : 50)) ticks.push(v);
+    var labelled = ticks.filter(function (v) { return v === lo || v === 0 || v % 100 === 0; });
+    var grid = ticks.map(function (v) { return '<i class="gc-grid" style="left:' + ((v - lo) / span * 100).toFixed(2) + '%"></i>'; }).join("");
+    var bars = rows.map(function (r) {
+      var left = r.gap >= 0 ? z : (r.gap - lo) / span * 100, width = Math.abs(r.gap) / span * 100;
+      return '<li><span class="gc-sym">' + esc(r.s) + '</span><span class="gc-track">' + grid + '<i class="gc-zero" style="left:' + z.toFixed(2) + '%"></i><i class="gc-bar ' + (r.gap >= 0 ? "up" : "down") + '" style="left:' + left.toFixed(2) + '%;width:' + width.toFixed(2) + '%"></i></span><span class="gc-val num">' + signed(r.gap, 1) + '</span></li>';
+    }).join("");
+    var tickHtml = labelled.map(function (v) { return '<span style="left:' + ((v - lo) / span * 100).toFixed(2) + '%">' + (v > 0 ? "+" : v < 0 ? "−" : "") + Math.abs(v) + '</span>'; }).join("");
+    var aria = "Gap between Friday's held price and the first print after the reopen, " + w.label + ": " + rows.map(function (r) { return r.s + " " + signed(r.gap, 1).replace("−", "minus ") + " basis points"; }).join(", ") + ".";
+
+    var lags = w.rows.map(function (r) { return r.lag; }).filter(function (x) { return x != null; });
+    var ages = w.rows.map(function (r) { return r.ageH; }).filter(function (x) { return x != null; });
+    var allZero = w.rows.every(function (r) { return r.rounds === 0; });
+    var top = rows.slice().sort(function (a, b) { return Math.abs(b.gap) - Math.abs(a.gap); })[0];
+    var facts = "";
+    if (allZero) facts += '<div><dt>Rounds while closed</dt><dd>0<small>on all ten feeds, for the whole 48 hours from Friday 20:00 to Sunday 20:00 ET.</small></dd></div>';
+    if (lags.length) facts += '<div><dt>First prints after the reopen</dt><dd>+' + Math.min.apply(null, lags) + ' to +' + Math.max.apply(null, lags) + ' s<small>after 20:00 ET on Sunday: every position repriced by the weekend’s move in one go.</small></dd></div>';
+    if (ages.length) facts += '<div><dt>Since the last Friday print</dt><dd>' + Math.min.apply(null, ages).toFixed(1) + ' to ' + Math.max.apply(null, ages).toFixed(1) + ' h<small>at the reopen, because each feed’s last round came hours before the close.</small></dd></div>';
+    if (top) facts += '<div><dt>Largest gap</dt><dd>' + esc(top.s) + ' ' + signed(top.gap, 1) + ' bps<small>' + price(top.held) + ' held, ' + price(top.first) + ' first print' + (top.tx ? '. <a href="' + BL.mainnetTx + top.tx + '">The first print on Basescan</a>' : '') + '</small></dd></div>';
+
+    var src = w.kind === "both" ? "Captured live by the Boundline Observatory and rebuilt from the Chainlink round history on Base: the two records agree on every field."
+      : w.kind === "chain" ? "Rebuilt from the Chainlink round history on Base, round by round."
+      : w.kind === "capture" ? "Captured live by the Boundline Observatory as the feeds reopened."
+      : "From the Boundline Observatory’s indexer.";
+
+    wkPanel.innerHTML =
+      '<div class="wk-grid">' +
+        '<figure class="gapchart">' +
+          '<p class="gc-cap">Gap between Friday’s held price and the first print after Sunday’s reopen, in basis points (100 bps = 1%).</p>' +
+          '<div role="img" aria-label="' + esc(aria) + '"><ul class="gc-rows">' + bars + '</ul>' +
+          '<div class="gc-axis" aria-hidden="true"><span></span><span class="gc-ticks">' + tickHtml + '</span><span></span></div></div>' +
+          '<div class="gc-legend"><span><i style="background:var(--held)"></i>Reopened higher</span><span><i style="background:var(--hot)"></i>Reopened lower, the direction that liquidates borrowers</span></div>' +
+        '</figure>' +
+        '<dl class="wk-facts">' + facts + '</dl>' +
+      '</div>' +
+      '<p class="src">' + src + ' Weekend of ' + esc(w.label) + ': close ' + esc(BLCal.fmtET(w.close)) + ', reopen ' + esc(BLCal.fmtET(w.reopen)) + '.</p>';
+  }
+
+  // ---------- exposure ----------
+  function renderExposure() {
+    var max = Math.max.apply(null, BL.exposure.map(function (e) { return e.total; }));
+    var cols = BL.exposure.map(function (e) {
+      var h = e.total / max * 100, a = e.aave / e.total * 100, m = e.morpho / e.total * 100;
+      return '<div class="ec"><span class="ec-val">' + usdM(e.total) + '</span><span class="ec-stack" style="height:calc(' + h.toFixed(2) + '% - 30px)"><i class="aave" style="height:' + a.toFixed(2) + '%"></i><i class="morpho" style="height:' + m.toFixed(2) + '%"></i></span></div>';
+    }).join("");
+    var labels = BL.exposure.map(function (e) { return '<span>Sat ' + esc(e.weekend) + '</span>'; }).join("");
+    var aria = "USDC debt priced at frozen feeds each Saturday: " + BL.exposure.map(function (e) { return e.weekend + " " + usdM(e.total) + " (Aave V4 " + usdM(e.aave) + ", Morpho " + usdM(e.morpho) + ")"; }).join("; ") + ".";
+    $("#expo").innerHTML = '<div role="img" aria-label="' + esc(aria) + '"><div class="expo-cols">' + cols + '</div><div class="expo-labels">' + labels + '</div></div>' +
+      '<div class="gc-legend"><span><i style="background:var(--aave)"></i>Aave V4, MAG7 stock spoke</span><span><i style="background:var(--morpho)"></i>Morpho, B20 markets</span></div>';
+    $("#aave-stat").textContent = usdM(BL.aaveSpoke.debtUsdc);
+    var L = BL.liquidations.inHours;
+    $("#honest").innerHTML =
+      '<p><b style="color:var(--ink);font-weight:600">No weekend liquidation has happened yet.</b> We read every one of the ' + int(BL.liquidations.blocksScanned) + ' blocks from 25 September to 12 October: the reopen gaps were too small to push a position through its limit.</p>' +
+      '<p>The liquidators are already there. A bot took two Aave positions during market hours at about a 4.9% bonus: <a href="' + BL.mainnetTx + L[0].tx + '">' + esc(L[0].stock) + ' on 1 October</a> and <a href="' + BL.mainnetTx + L[1].tx + '">' + esc(L[1].stock) + ' on 8 October</a>. The risk is the exposure, not a loss anyone has seen.</p>';
+  }
+
+  // ---------- the allow matrix and validity transactions ----------
+  var OK = '<svg viewBox="0 0 18 18" aria-hidden="true"><circle cx="9" cy="9" r="8.25" fill="rgba(72,226,163,.14)" stroke="#48E2A3" stroke-width="1.5"/><path d="M5.4 9.3l2.3 2.3 4.9-5" fill="none" stroke="#48E2A3" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  var NO = '<svg viewBox="0 0 18 18" aria-hidden="true"><circle cx="9" cy="9" r="8.25" fill="rgba(255,181,71,.12)" stroke="#FFB547" stroke-width="1.5"/><path d="M6.2 6.2l5.6 5.6M11.8 6.2l-5.6 5.6" fill="none" stroke="#FFB547" stroke-width="1.8" stroke-linecap="round"/></svg>';
+  function renderMatrix() {
+    var rows = [
+      ["Borrow", 1, 0], ["Withdraw collateral", 1, 0], ["Liquidate", 1, 0], ["Repay", 1, 1], ["Add collateral", 1, 1]
+    ];
+    var html = rows.map(function (r) {
+      return '<tr><th scope="row">' + r[0] + '</th><td>' + (r[1] ? '<span class="ok">' + OK + 'Allowed</span>' : '<span class="no">' + NO + 'Refused</span>') + '</td><td>' + (r[2] ? '<span class="ok">' + OK + 'Allowed</span>' : '<span class="no">' + NO + 'Refused</span>') + '</td></tr>';
+    }).join("");
+    html += '<tr><th scope="row">Protect the position</th><td><span class="ok">' + OK + '<span>At the fresh feed</span></span></td><td><span class="ok">' + OK + '<span>At the Aerodrome price, less 2%</span></span></td></tr>';
+    $("#matrix-body").innerHTML = html;
+    var p = BL.proofs;
+    $("#vtx").innerHTML =
+      '<li><b>Included while the feed was held</b><span>Base Sepolia, Tue 6 Oct, 08:06 ET: the condition was “the feed’s slot still equals the held round”, and Base included it in the next block.</span><a href="' + BL.sepoliaTx + p[2].tx + '">' + shortHash(p[2].tx) + '</a></li>' +
+      '<li><b>Held until the feed printed</b><span>The opposite condition, “only once the feed shows a new round”: the sequencer kept it until the round changed, then included it.</span><a href="' + BL.sepoliaTx + BL.validityWaitTx + '">' + shortHash(BL.validityWaitTx) + '</a></li>' +
+      '<li><b>The keeper protected a position on its own</b><span>Tue 6 Oct, 08:27 ET: a pre-liquidation at the live price, armed and sent by the keeper with nobody touching it. Shadow LTV 60.12% to 58.00%.</span><a href="' + BL.sepoliaTx + p[3].tx + '">' + shortHash(p[3].tx) + '</a></li>';
+  }
+
+  // ---------- replay ----------
+  function actLabel(a, amt) {
+    if (!a || a === "none") return "no action";
+    if (a === "pre-liquidate") return "pre-liquidation " + price(amt);
+    return "repay " + price(amt);
+  }
+  function replayModel() {
+    var a = state.assurance;
+    if (a && a.scenarios && a.scenarios.length && a.scenarios[0].positions) {
+      try {
+        var same = a.evidenceHash === BL.replay.evidenceHash;
+        var pos = a.scenarios[0].positions.map(function (p, i) {
+          var b = same ? BL.replay.positions[i] : null;
+          var venue = b ? b.venue : (/aave/i.test(p.venue || "") ? "Aave V4" : "Morpho");
+          var label = b ? b.label : String(p.label || "").replace(/^(morpho|aave)\s*/i, "");
+          return { venue: venue, label: label.charAt(0).toUpperCase() + label.slice(1), staged: !!p.staged };
+        });
+        var sc = a.scenarios.map(function (s) {
+          return { gap: Math.round(Number(s.gapBps) / 100), cells: s.positions.map(function (p) {
+            return { rawHf: Number(p.raw.hfAtReopen) / 1e18, rawLiq: !!p.raw.liquidationExecuted, act: p.boundline.action, amt: Number(p.boundline.amountUsdc) / 1e6, blHf: Number(p.boundline.hfAfter) / 1e18, blLiq: !!p.boundline.liquidationExecuted };
+          }) };
+        });
+        var rawN = 0, blN = 0; sc.forEach(function (s) { s.cells.forEach(function (c) { if (c.rawLiq) rawN++; if (c.blLiq) blN++; }); });
+        return { live: true, ranAt: a.ranAt, forkBlock: a.forkBlock, hash: a.evidenceHash, pos: pos, sc: sc, rawN: rawN, blN: blN };
+      } catch (e) { /* fall through to the recorded run */ }
+    }
+    var R = BL.replay;
+    return {
+      live: false, ranAt: R.ranAt, forkBlock: R.forkBlock, hash: R.evidenceHash, pos: R.positions,
+      sc: R.scenarios.map(function (s) { return { gap: s.gap, cells: s.raw.map(function (r, i) { var b = s.bl[i]; return { rawHf: r[0], rawLiq: r[1], act: b[0], amt: b[1], blHf: b[2], blLiq: false }; }) }; }),
+      rawN: R.summary.rawLiquidations, blN: R.summary.boundlineLiquidations
+    };
+  }
+  function renderReplay() {
+    var m = replayModel();
+    $("#score").innerHTML =
+      '<div class="s-raw"><b class="num">' + m.rawN + '</b><span>liquidations on the venue alone</span></div>' +
+      '<div class="s-bl"><b class="num">' + m.blN + '</b><span>with Boundline, same positions, same gaps</span></div>';
+    function table(kind) {
+      var head = '<thead><tr><th scope="col">Position</th>' + m.sc.map(function (s) { return '<th scope="col">' + (s.gap < 0 ? "−" : "+") + Math.abs(s.gap) + '%</th>'; }).join("") + '</tr></thead>';
+      var body = m.pos.map(function (p, i) {
+        var cells = m.sc.map(function (s) {
+          var c = s.cells[i];
+          if (kind === "raw") {
+            return c.rawLiq ? '<td class="cell liq"><b>' + c.rawHf.toFixed(2) + '</b><small>liquidated</small></td>' : '<td class="cell"><b>' + c.rawHf.toFixed(2) + '</b><small>healthy</small></td>';
+          }
+          if (c.blLiq) return '<td class="cell liq"><b>' + c.blHf.toFixed(2) + '</b><small>liquidated</small></td>';
+          return '<td class="cell' + (c.act && c.act !== "none" ? " act" : "") + '"><b>' + c.blHf.toFixed(2) + '</b><small>' + esc(actLabel(c.act, c.amt)) + '</small></td>';
+        }).join("");
+        return '<tr><th scope="row">' + esc(p.venue) + '<em' + (p.staged ? ' class="stg"' : '') + '>' + esc(p.label) + (p.staged ? "" : "") + '</em></th>' + cells + '</tr>';
+      }).join("");
+      return '<table><colgroup><col class="lab"><col><col><col></colgroup>' + head + '<tbody>' + body + '</tbody></table>';
+    }
+    $("#rp-grid").innerHTML =
+      '<div class="rp"><div class="rp-title">The venue alone<span>health at the reopen</span></div>' + table("raw") + '</div>' +
+      '<div class="rp"><div class="rp-title">With Boundline<span>health at the reopen, after Saturday’s action</span></div>' + table("bl") + '</div>';
+    $("#rp-src").innerHTML = 'Health is the venue’s health factor at the reopen: below 1.00 a position can be liquidated. Fork of Base mainnet at block ' + int(m.forkBlock) + ', run ' + esc(BLCal.fmtET(m.ranAt, { weekday: false }).replace(/, \d\d:\d\d ET$/, "")) + ' 2026. Every liquidation on the venue alone was a position staged near its limit (amber); the three positions as they stood stayed healthy even at −15%. Boundline acts on Saturday at the live price: a pre-liquidation inside the band, a repay above it. Evidence hash <span class="mono">' + esc(shortHash(m.hash)) + '</span>, <a href="' + BL.links.obsAssurance + '">served live by the Observatory</a>.';
+  }
+
+  // ---------- proof ----------
+  function renderProof() {
+    var M = BL.mainnet;
+    $("#facts").innerHTML =
+      '<div><dt>Deployed</dt><dd>' + esc(M.when) + '</dd></div>' +
+      '<div><dt>Transactions</dt><dd>' + M.txCount + ', all succeeded</dd></div>' +
+      '<div><dt>Verified on Basescan</dt><dd>' + M.verified + ' contracts</dd></div>' +
+      '<div><dt>Post-deploy checks</dt><dd>' + esc(M.checks) + '</dd></div>' +
+      '<div class="span"><dt>Blocks on Base mainnet</dt><dd>' + int(M.blocks[0]) + ' to ' + int(M.blocks[1]) + '</dd></div>' +
+      '<div class="span"><dt>Open the deploy on Basescan</dt><dd class="txlinks"><a href="' + BL.mainnetTx + M.firstTx + '">The first transaction</a><a href="' + BL.mainnetTx + M.deskTx + '">The CreditDesk</a><a href="' + BL.mainnetTx + M.safeMarketTx + '">The session-safe AAPLc market on Morpho</a></dd></div>';
+    $("#ledger").innerHTML = M.contracts.map(function (c) {
+      return '<li><b>' + esc(c.name) + '</b><span>' + esc(c.role) + '</span><a href="' + BL.mainnetAddr + c.addr + '" aria-label="' + esc(c.name) + ' on Basescan">' + shortAddr(c.addr) + '</a></li>';
+    }).join("");
+    $("#timeline").innerHTML = BL.proofs.map(function (p) {
+      return '<li><time>' + esc(p.when) + '</time><div><b>' + esc(p.title) + '</b><p>' + esc(p.text) + '</p><a href="' + BL.sepoliaTx + p.tx + '" aria-label="' + esc(p.title) + ' on Basescan">' + shortHash(p.tx) + '</a></div></li>';
+    }).join("");
+    $("#goods").innerHTML = [
+      ["The B20 Credit Observatory", "Every Coinbase stock feed, session, registry flag, DEX price and real Aave and Morpho position on Base, minute by minute, as open JSON.", BL.links.observatory, "Open the Observatory"],
+      ["MarketCalendar", "Which NYSE session any instant belongs to, onchain: pre-market, regular, after-hours, overnight, weekends, holidays, early closes and daylight saving. Three implementations agree on " + int(BL.build.calendarInstants) + " instants.", BL.mainnetAddr + addrOf("MarketCalendar"), "On Basescan"],
+      ["SessionGate, SessionGuard, ShadowGuard", "A drop-in session-aware oracle for any Morpho market, and a live-price oracle for pre-liquidation.", BL.mainnetAddr + addrOf("SessionGuard (AAPLc)"), "SessionGuard on Basescan"],
+      ["The weekend dataset", "Every feed’s freeze and reopen, two weekends recorded, and a standard-library script that rebuilds any weekend from the chain.", BL.links.obsCaptures, "The captures"],
+      ["The replay harness", "Takes real positions through weekend gaps on a fork of Base mainnet and publishes the result with a hash.", BL.links.obsAssurance, "The latest run"]
+    ].map(function (g) { return '<li><b>' + esc(g[0]) + '</b><p>' + esc(g[1]) + ' <a href="' + g[2] + '">' + esc(g[3]) + '</a></p></li>'; }).join("");
+  }
+
+  // ---------- copy buttons ----------
+  document.addEventListener("click", function (e) {
+    var b = e.target.closest(".copy"); if (!b) return;
+    var pre = document.getElementById(b.getAttribute("data-copy")); if (!pre) return;
+    var text = pre.textContent.replace(/^\$\s*/, "");
+    var done = function () { b.textContent = "Copied"; setTimeout(function () { b.textContent = "Copy"; }, 1600); };
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(done, function () { selectText(pre); });
+      else selectText(pre);
+    } catch (err) { selectText(pre); }
+  });
+  function selectText(el) { var r = document.createRange(); r.selectNodeContents(el); var s = window.getSelection(); s.removeAllRanges(); s.addRange(r); }
+
+  // ---------- header seam ----------
+  var top = $("#top");
+  window.addEventListener("scroll", function () { top.classList.toggle("scrolled", window.scrollY > 8); }, { passive: true });
+
+  // ---------- boot ----------
+  renderClock();
+  renderBoard();
+  renderWeekendTabs();
+  renderExposure();
+  renderMatrix();
+  renderReplay();
+  renderProof();
+  setInterval(function () { renderClock(); tickAges(); }, 1000);
+
+  function load() {
+    if (!CAN_FETCH) return;
+    getJSON("/obs/v1/tokens").then(function (d) {
+      if (d && d.tokens && d.tokens.length) { state.tokens = d; state.live = true; renderBoard(); }
+    }, function () { if (!state.live) renderBoard(); });
+    getJSON("/obs/v1/gaps").then(function (d) { state.gaps = d; renderWeekendTabs(); }, function () {});
+    getJSON("/obs/v1/assurance").then(function (d) { state.assurance = d; renderReplay(); }, function () {});
+  }
+  load();
+  if (CAN_FETCH) setInterval(load, 60000);
+})();
+</script>
+</body>
+</html>
